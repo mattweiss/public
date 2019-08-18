@@ -1,5 +1,5 @@
 # dovebirdia
-deeplearing/ - modules related to deeplearning
+deeplearning/ - modules related to deeplearning
     
     networks/ - Feed Forward, Autoencoder, etc.
       
