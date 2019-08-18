@@ -5,4 +5,6 @@ deeplearning/ - modules related to deeplearning
       
       base.py - AbstractNetwork, FeedForwardNetwork
       autoencoder.py - Autoencoder
+      
+datasets/ Class hierarchy for datasets (TODO)
     
