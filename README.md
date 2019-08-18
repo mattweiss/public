@@ -7,4 +7,5 @@
       autoencoder.py - Autoencoder
       
 ## datasets/ - class hierarchy for datasets (TODO)
-    
+
+## filtering/ - class hierarchy for filtering (TODO)
