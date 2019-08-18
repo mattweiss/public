@@ -1,6 +1,5 @@
 import tensorflow as tf
 from pdb import set_trace as st
-
 from deeplearning.networks.base import FeedForwardNetwork
 
 class Autoencoder(FeedForwardNetwork):
@@ -19,7 +18,7 @@ class Autoencoder(FeedForwardNetwork):
     
     def train(self, dataset=None):
 
-        self._dict_to_attributes(dataset)
+        self._dictToAttributes(dataset)
 
         self._history = self._model.fit(self._x_train, self._x_train,
                                         batch_size=self._mbsize,

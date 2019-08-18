@@ -13,14 +13,14 @@ class AbstractNetwork(ABC):
         """ 
         TODO: Add parameter list
         """
-        self._model = None
-        self._dict_to_attributes(params)
+        
+        self._dictToAttributes(params)
         
     ##################
     # Public Methods #
     ##################
 
-    def build(self ):
+    def build(self):
 
         """ 
         Build Network
@@ -48,8 +48,13 @@ class AbstractNetwork(ABC):
 
     def getModelSummary(self):
 
-        print(self._model.summary())
+        try:
 
+            print(self._model.summary())
+
+        except:
+
+            print('Unable to print model summary')
     
     ###################
     # Private Methods #
@@ -65,7 +70,7 @@ class AbstractNetwork(ABC):
 
         pass
 
-    def _dict_to_attributes(self,att_dict):
+    def _dictToAttributes(self,att_dict):
 
         # Assign Attributes
         for key, value in att_dict.items():
@@ -88,7 +93,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def train(self, dataset=None):
 
-        self._dict_to_attributes(dataset)
+        self._dictToattributes(dataset)
 
         self._history = self._model.fit(self._x_train, self._y_train,
                                         batch_size=self._mbsize,
