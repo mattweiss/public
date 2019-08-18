@@ -8,4 +8,7 @@
       
 ## datasets/
 
+    base.py - AbstractDataset
+    mnist.py - MNISTDataset
+
 ## filtering/
