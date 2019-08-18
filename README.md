@@ -6,6 +6,6 @@
       base.py - AbstractNetwork, FeedForwardNetwork
       autoencoder.py - Autoencoder
       
-## datasets/ (TODO)
+## datasets/
 
-## filtering/ (TODO)
+## filtering/
