@@ -2,7 +2,7 @@ import tensorflow as tf
 from pdb import set_trace as st
 from datasets.base import AbstractDataset
 
-class MnistDataset(AbstractDataset):
+class MNISTDataset(AbstractDataset):
 
     def __init__(self, path=None):
     
