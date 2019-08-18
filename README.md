@@ -1,11 +1,11 @@
 # dovebirdia
-## deeplearning/ - modules related to deeplearning
+## deeplearning/
     
     networks/ - Feed Forward, Autoencoder, etc.
       
       base.py - AbstractNetwork, FeedForwardNetwork
       autoencoder.py - Autoencoder
       
-## datasets/ - class hierarchy for datasets (TODO)
+## datasets/ (TODO)
 
-## filtering/ - class hierarchy for filtering (TODO)
+## filtering/ (TODO)
