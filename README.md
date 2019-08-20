@@ -12,3 +12,6 @@
     mnist.py - MNISTDataset
 
 ## filtering/
+
+    base.py - AbstractFilter
+    kalman_filter.py - KalmanFilter
