@@ -25,6 +25,14 @@ class Autoencoder(FeedForwardNetwork):
                                         epochs=self._epochs,
                                         validation_data=(self._x_val, self._x_val))
 
+    def predict(self, dataset=None):
+
+        pass
+        
+    def evaluate(self, dataset=None):
+
+        pass
+
     ###################
     # Private Methods #
     ###################

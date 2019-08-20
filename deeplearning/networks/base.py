@@ -40,10 +40,20 @@ class AbstractNetwork(ABC):
     ##################
             
     @abstractmethod
-    def train(self, dataset=None):
+    def fit(self, dataset=None):
 
         pass
+            
+    @abstractmethod
+    def predict(self, dataset=None):
 
+        pass
+        
+    @abstractmethod
+    def evaluate(self, dataset=None):
+
+        pass
+    
     def getModelSummary(self):
 
         try:
@@ -89,7 +99,7 @@ class FeedForwardNetwork(AbstractNetwork):
     # Public Methods #
     ##################
 
-    def train(self, dataset=None):
+    def fit(self, dataset=None):
 
         self._dictToAttributes(dataset)
 
@@ -97,6 +107,14 @@ class FeedForwardNetwork(AbstractNetwork):
                                         batch_size=self._mbsize,
                                         epochs=self._epochs,
                                         validation_data=(self._x_val, self._y_val))
+                
+    def predict(self, dataset=None):
+
+        pass
+        
+    def evaluate(self, dataset=None):
+
+        pass
     
     ###################
     # Private Methods #
