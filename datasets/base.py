@@ -34,11 +34,3 @@ class AbstractDataset(ABC):
         """
         Load Dataset
         """
-
-    # def _buildDatasetDict(self):
-
-    #     """
-    #     Write attributes to dataset_dict attribute
-    #     """
-
-    #     self._dataset_dict = { att_name:self.__dict__[att_name] for att_name in self.__dict__.keys() if '_ds_' in att_name }

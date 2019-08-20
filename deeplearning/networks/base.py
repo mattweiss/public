@@ -15,12 +15,6 @@ class AbstractNetwork(ABC):
         """
         
         self._dictToAttributes(params)
-        
-    ##################
-    # Public Methods #
-    ##################
-
-    def build(self):
 
         """ 
         Build Network
@@ -37,9 +31,13 @@ class AbstractNetwork(ABC):
         self._setOptimizer()
 
         ############################
-        # Compile Network
+        # Compile Model
         ############################
         self._model.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metrics)
+        
+    ##################
+    # Public Methods #
+    ##################
             
     @abstractmethod
     def train(self, dataset=None):
@@ -93,7 +91,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def train(self, dataset=None):
 
-        self._dictToattributes(dataset)
+        self._dictToAttributes(dataset)
 
         self._history = self._model.fit(self._x_train, self._y_train,
                                         batch_size=self._mbsize,
@@ -109,8 +107,8 @@ class FeedForwardNetwork(AbstractNetwork):
         # set input
         input = tf.keras.Input(shape=(self._input_dim,))
 
-        output = self._buildDenseLayers(input, self._hidden_dims)
-        
+        output = self._buildDenseLayers(input, self._hidden_dims)(input)
+
         # output layer
         output = tf.keras.layers.Dense(units=self._output_dim,
                                        activation=self._output_activation,
@@ -122,9 +120,9 @@ class FeedForwardNetwork(AbstractNetwork):
                                        activity_regularizer=self._activity_regularizer,
                                        kernel_constraint=self._kernel_constraint,
                                        bias_constraint=self._bias_constraint)(output)
-            
+
         self._model = tf.keras.Model(inputs=input, outputs=output)
-    
+        
     def _setOptimizer(self):
 
         if self._optimizer_name == 'adam':

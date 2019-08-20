@@ -16,7 +16,7 @@ class Autoencoder(FeedForwardNetwork):
     # Public Methods #
     ##################
     
-    def train(self, dataset=None):
+    def fit(self, dataset=None):
 
         self._dictToAttributes(dataset)
 
