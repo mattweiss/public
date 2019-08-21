@@ -1,21 +1,19 @@
 import tensorflow as tf
 from pdb import set_trace as st
-from datasets.base import AbstractDataset
+from dovebirdia.datasets.base import AbstractDataset
 
 class MNISTDataset(AbstractDataset):
 
-    def __init__(self, path=None):
+    def __init__(self, params=None):
     
-        super().__init__(path=path)
+        super().__init__(params)
     
     ##################
     # Public Methods #
     ##################
 
-    def getDataset(self, with_val=False):
+    def getDataset(self):
 
-        self._with_val = with_val
-        
         # load data
         return self._loadDataset()
 

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import tensorflow as tf
 from pdb import set_trace as st
+from dovebirdia.utilities.base import dictToAttributes
 
 class AbstractNetwork(ABC):
 
@@ -14,7 +15,7 @@ class AbstractNetwork(ABC):
         TODO: Add parameter list
         """
         
-        self._dictToAttributes(params)
+        dictToAttributes(self,params)
 
         """ 
         Build Network
@@ -59,6 +60,7 @@ class AbstractNetwork(ABC):
         try:
 
             print(self._model.summary())
+            tf.keras.utils.plot_model(self._model, 'my_first_model.png')
 
         except:
 
@@ -77,13 +79,6 @@ class AbstractNetwork(ABC):
     def _setOptimizer(self):
 
         pass
-
-    def _dictToAttributes(self,att_dict):
-
-        # Assign Attributes
-        for key, value in att_dict.items():
-
-            setattr(self, '_' + key, value)
         
 class FeedForwardNetwork(AbstractNetwork):
 
@@ -101,7 +96,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def fit(self, dataset=None):
 
-        self._dictToAttributes(dataset)
+        dictToAttributes(self,dataset)
 
         self._history = self._model.fit(self._x_train, self._y_train,
                                         batch_size=self._mbsize,
@@ -147,7 +142,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
             self._optimizer = tf.keras.optimizers.Adam(learning_rate=self._learning_rate)
         
-    def _buildDenseLayers(self, input=None, hidden_dims=None):
+    def _buildDenseLayers(self, input=None, hidden_dims=None, name=None):
 
         assert input is not None
         assert hidden_dims is not None
@@ -170,4 +165,4 @@ class FeedForwardNetwork(AbstractNetwork):
                                            kernel_constraint=self._kernel_constraint,
                                            bias_constraint=self._bias_constraint)(output)
 
-        return tf.keras.Model(inputs=input, outputs=output)
+        return tf.keras.Model(inputs=input, outputs=output, name=name)

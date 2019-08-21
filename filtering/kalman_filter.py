@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from pdb import set_trace as st
-from filtering.base import AbstractFilter
+from dovebirdia.filtering.base import AbstractFilter
 
 class KalmanFilter(AbstractFilter):
 
@@ -13,35 +13,49 @@ class KalmanFilter(AbstractFilter):
 
         super().__init__(params)
 
-        self._z = tf.placeholder(dtype=tf.float64, shape=(None,self._n_signals), name='z')
+        # self._z = tf.placeholder(dtype=tf.float64, shape=(None,self._n_signals), name='z')
    
 ################################################################################
 
-    def filter(self,z=None):
+    def filter(self, z=None):
 
         """ 
-        Apply Kalman Filter
+        Apply Kalman Filter, Using Wrapper Functions
         """
 
-        with tf.Session() as sess:
+        # with tf.Session() as sess:
         
-            self._x_hat_pri, self._x_hat_post,\
-            self._z_hat_pri, self._z_hat_post,\
-            self._P_hat_pri, self._P_hat_post, self._kf_ctr = sess.run( tf.scan(self._kfScan,
-                                                                                self._z,
-                                                                                initializer = [ self._x0, self._x0,
-                                                                                                self._z0, self._z0,
-                                                                                                self._P0, self._P0,
-                                                                                                tf.constant(0) ], name='kfScan'), feed_dict={self._z:z})
+        self._z = tf.convert_to_tensor(z)
 
-        return { 'x_hat_pri':np.squeeze(self._x_hat_pri), 'x_hat_post':np.squeeze(self._x_hat_post),
-                 'z_hat_pri':np.squeeze(self._z_hat_pri), 'z_hat_post':np.squeeze(self._z_hat_post),
-                 'P_hat_pri':self._P_hat_pri, 'P_hat_post':self._P_hat_post,
+        self._x_hat_pri, self._x_hat_post,\
+        self._z_hat_pri, self._z_hat_post,\
+        self._P_hat_pri, self._P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
+                                                                  self._z,
+                                                                  initializer = [ self._x0, self._x0,
+                                                                                  self._z0, self._z0,
+                                                                                  self._P0, self._P0,
+                                                                                  tf.constant(0) ], name='kfScan')
+
+        #cond_bool = tf.cond(tf.cast(tf.is_tensor(z),tf.bool), lambda: True, lambda: self._runSess())
+        
+        # if z is numpy array run session
+        if not isinstance(z,tf.Tensor):
+
+            with tf.Session() as sess:
+
+                self._x_hat_pri = sess.run(self._x_hat_pri)
+                self._x_hat_post = sess.run(self._x_hat_post)
+                self._z_hat_pri = sess.run(self._z_hat_pri)
+                self._z_hat_post = sess.run(self._z_hat_post)
+                self._P_hat_pri = sess.run(self._P_hat_pri)
+                self._P_hat_post = sess.run(self._P_hat_post)
+                self._z = sess.run(self._z)
+            
+        return { 'x_hat_pri':self._x_hat_pri, 'x_hat_post':self._x_hat_post,\
+                 'z_hat_pri':self._z_hat_pri, 'z_hat_post':self._z_hat_post,\
+                 'P_hat_pri':self._P_hat_pri, 'P_hat_post':self._P_hat_post,\
                  'z':self._z }
-
-################################################################################
-
-        
+            
 ################################################################################
 
     def _kfScan(self, state, z):
