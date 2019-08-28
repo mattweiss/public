@@ -16,3 +16,7 @@
 
     base.py - AbstractFilter
     kalman_filter.py - KalmanFilter
+    
+## utilities/
+
+    base.py - dictToAttributes
