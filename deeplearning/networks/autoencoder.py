@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
@@ -18,7 +19,7 @@ class Autoencoder(FeedForwardNetwork):
     # Public Methods #
     ##################
     
-    def fit(self, dataset=None):
+    def fit(self, dataset=None, save_weights=False):
 
         dictToAttributes(self,dataset)
 
@@ -26,6 +27,10 @@ class Autoencoder(FeedForwardNetwork):
                                         batch_size=self._mbsize,
                                         epochs=self._epochs,
                                         validation_data=(self._x_val, self._x_val))
+
+        if save_weights:
+
+            self._model.save_weights(self._results_dir + self._model_name + '.keras')
 
     def predict(self, dataset=None):
 
@@ -87,7 +92,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._kalman_filter = KalmanFilter(params=kf_params)
         
         super().__init__(params=params)
-
+        
     ##################
     # Public Methods #
     ##################
@@ -106,6 +111,12 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._decoder = self._buildDecoderLayers(decoder_input, self._hidden_dims[::-1][1:])
 
         # decoder output
+        #z, self._kalman_filter._R = self._encoder(encoder_input)
+
+        # Kalman Filter Layer
+        #output = tf.keras.layers.Lambda(self._kalman_filter.filter)(self._encoder(encoder_input))['x_hat_pri'][:,0,:]
+
+        # decoder
         output = self._decoder(self._encoder(encoder_input))
 
         # output layer
@@ -125,32 +136,63 @@ class AutoencoderKalmanFilter(Autoencoder):
 
     def _buildEncoderLayers(self, input=None, hidden_dims=None):
 
-        assert input is not None
-        assert hidden_dims is not None
+        # map measurements via encoder
+        encoder_output = super()._buildEncoderLayers(input, hidden_dims)(input)
 
-        # loop over hidden layers
-        for dim_index, dim in enumerate(hidden_dims):
+        # Map z
+        z = tf.keras.layers.Dense(units=self._hidden_dims[-1],
+                                  activation=None,
+                                  use_bias=self._use_bias,
+                                  kernel_initializer=self._kernel_initializer,
+                                  bias_initializer=self._bias_initializer,
+                                  kernel_regularizer=self._kernel_regularizer,
+                                  bias_regularizer=self._bias_regularizer,
+                                  activity_regularizer=self._activity_regularizer,
+                                  kernel_constraint=self._kernel_constraint,
+                                  bias_constraint=self._bias_constraint,
+                                  name='z')(encoder_output)
 
-            # pass input parameter on first pass
-            output = input if dim_index == 0 else output
-
-            # hidden layer
-            output = tf.keras.layers.Dense(units=dim,
-                                           activation=self._activation,
-                                           use_bias=self._use_bias,
-                                           kernel_initializer=self._kernel_initializer,
-                                           bias_initializer=self._bias_initializer,
-                                           kernel_regularizer=self._kernel_regularizer,
-                                           bias_regularizer=self._bias_regularizer,
-                                           activity_regularizer=self._activity_regularizer,
-                                           kernel_constraint=self._kernel_constraint,
-                                           bias_constraint=self._bias_constraint)(output)
-
-        # pass 
-        output = tf.keras.layers.Lambda(self._kalman_filter.filter)(output)['x_hat_pri'][:,0,:]
+        # Map L to R
+        self._L_dims = np.sum( np.arange( 1, self._hidden_dims[-1] + 1 ) )
         
+        L = tf.keras.layers.Dense(units=self._L_dims,
+                                  activation=None,
+                                  use_bias=self._use_bias,
+                                  kernel_initializer=self._kernel_initializer,
+                                  bias_initializer=self._bias_initializer,
+                                  kernel_regularizer=self._kernel_regularizer,
+                                  bias_regularizer=self._bias_regularizer,
+                                  activity_regularizer=self._activity_regularizer,
+                                  kernel_constraint=self._kernel_constraint,
+                                  bias_constraint=self._bias_constraint,
+                                  name='L')(encoder_output)
+
+        R = tf.keras.layers.Lambda(self._generate_input_cov)(L)
+
+        output = tf.keras.layers.Lambda(self._kalman_filter.filter)([z,R])['z_hat_pri'][:,0:1,0]
+
+        # model which returns a priori estiamte of z in Kalman Filter space
         return tf.keras.Model(inputs=input, outputs=output, name='encoder')
 
-    def _buildDecoderLayers(self, input=None, hidden_dims=None):
+    # These two functions are nested because tf.keras.layers.Lambda does not work if tf.map_fn is passed to it.
+    def _generate_input_cov(self, L):
 
-        return self._buildDenseLayers(input, hidden_dims, name='decoder')
+        return tf.map_fn(self._generate_spd_cov_matrix, L)
+    
+    def _generate_spd_cov_matrix(self, R):
+
+        """ Generates a symmetric covariance matrix for the input covariance
+            given input vector with first n_dims elements the diagonal and the
+            remaining elements the off-diagonal elements """
+
+        ################################
+        # SPD Matrix Based on BPKF Paper
+        ################################
+
+        eps = 1e-1
+
+        # initial upper triangular matrix
+        L = tf.contrib.distributions.fill_triangular( R, upper = False )
+        X = tf.matmul( L, L, transpose_b = True ) + eps * tf.eye( tf.shape(L)[0], dtype=tf.float64 )
+
+        return X

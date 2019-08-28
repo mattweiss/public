@@ -1,6 +1,10 @@
-from abc import ABC, abstractmethod
+import random
+import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from pdb import set_trace as st
+
+from abc import ABC, abstractmethod
 from dovebirdia.utilities.base import dictToAttributes
 
 class AbstractNetwork(ABC):
@@ -17,6 +21,13 @@ class AbstractNetwork(ABC):
         
         dictToAttributes(self,params)
 
+        # hold, etc.
+        self._history = {
+            'train_loss':list(),
+            'val_loss':list(),
+            'test_loss':list(),
+            }
+        
         """ 
         Build Network
         """
@@ -34,14 +45,21 @@ class AbstractNetwork(ABC):
         ############################
         # Compile Model
         ############################
-        self._model.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metrics)
-        
+        # This is a fix since sometimes self._loss is passed as the function definition is config files are used
+        try:
+            
+            self._model.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metrics)
+
+        except:
+
+            self._model.compile(optimizer=self._optimizer, loss=self._loss(), metrics=self._metrics)
+            
     ##################
     # Public Methods #
     ##################
             
     @abstractmethod
-    def fit(self, dataset=None):
+    def fit(self, dataset=None, save_weights=False):
 
         pass
             
@@ -65,6 +83,10 @@ class AbstractNetwork(ABC):
         except:
 
             print('Unable to print model summary')
+
+    def getAttributeNames(self):
+
+        return self.__dict__.keys()
     
     ###################
     # Private Methods #
@@ -94,7 +116,7 @@ class FeedForwardNetwork(AbstractNetwork):
     # Public Methods #
     ##################
 
-    def fit(self, dataset=None):
+    def fit(self, dataset=None, save_weights=False):
 
         dictToAttributes(self,dataset)
 
@@ -102,7 +124,61 @@ class FeedForwardNetwork(AbstractNetwork):
                                         batch_size=self._mbsize,
                                         epochs=self._epochs,
                                         validation_data=(self._x_val, self._y_val))
-                
+
+        if save_weights:
+
+            self._model.save_weights('test.keras')
+
+    def fitDomainRandomization(self, fns=None, save_weights=False):
+
+        dictToAttributes(self,fns)
+
+        for epoch in range(1, self._epochs+1):
+
+            # randomly select one of the functions in self._fns
+            self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
+        
+            # generate training and validation curves
+            x_train, x_train_gt = self._generateDomainRandomizationData(self._fn_params)
+            x_val, x_val_gt = self._generateDomainRandomizationData(self._fn_params)
+
+            print('Epoch {epoch}'.format(epoch=epoch))
+
+            history = self._model.fit(x_train, x_train_gt,
+                                            batch_size=self._mbsize//4,
+                                            epochs=1,
+                                            validation_data=(x_val, x_val_gt),
+                                            shuffle=False,
+                                            verbose=2)
+
+            self._history['train_loss'].append(history.history['loss'][0])
+            self._history['val_loss'].append(history.history['val_loss'][0])
+
+            plt.plot(x_train)
+            plt.plot(x_train_gt)
+            plt.show()
+            
+            # keep history lists to fixed length
+            for loss_key in self._history.keys():
+
+                if len(self._history[loss_key]) > self._test_size:
+
+                    self._history[loss_key].pop()
+            
+        # plot test prediction
+        for _ in range(self._test_size):
+
+            x_test, x_test_gt = self._generateDomainRandomizationData(self._fn_params)
+            self._history['test_loss'].append(self._model.evaluate(self._model.predict(x_test), x_test_gt, verbose=2))
+                    
+        if save_weights:
+
+            self._model.save_weights('test.keras')
+
+        print(self._model.metrics_names)
+            
+        return self._history
+            
     def predict(self, dataset=None):
 
         pass
@@ -166,3 +242,24 @@ class FeedForwardNetwork(AbstractNetwork):
                                            bias_constraint=self._bias_constraint)(output)
 
         return tf.keras.Model(inputs=input, outputs=output, name=name)
+
+    def _generateDomainRandomizationData(self, params):
+
+        param_list = list()
+
+        for param in params:
+
+            if isinstance(param, tuple):
+
+                #param_list.append(np.random.uniform(param[0], param[1]))
+                param_list.append(np.random.normal(loc=0.0, scale=100.0))
+                
+            else:
+
+                param_list.append(param)
+                
+        x = np.linspace(self._x_range[0], self._x_range[1], self._n_samples)
+        x_gt = self._fn_def(x, *param_list)
+        x = x_gt + self._noise(**self._noise_params, size=self._n_samples)
+
+        return x, x_gt

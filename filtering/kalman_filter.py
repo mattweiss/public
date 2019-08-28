@@ -17,16 +17,24 @@ class KalmanFilter(AbstractFilter):
    
 ################################################################################
 
-    def filter(self, z=None):
+    def filter(self, inputs):
 
         """ 
         Apply Kalman Filter, Using Wrapper Functions
+        inputs is a list.  First element is z, second (optional) element is R
         """
 
-        # with tf.Session() as sess:
-        
-        self._z = tf.convert_to_tensor(z)
+        # extract z and (possibly) R from inputs list
+        self._z = tf.convert_to_tensor(inputs[0])
 
+        try:
+
+            self._R = inputs[1]
+
+        except:
+
+            pass
+        
         self._x_hat_pri, self._x_hat_post,\
         self._z_hat_pri, self._z_hat_post,\
         self._P_hat_pri, self._P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
@@ -39,7 +47,7 @@ class KalmanFilter(AbstractFilter):
         #cond_bool = tf.cond(tf.cast(tf.is_tensor(z),tf.bool), lambda: True, lambda: self._runSess())
         
         # if z is numpy array run session
-        if not isinstance(z,tf.Tensor):
+        if not isinstance(inputs[0],tf.Tensor):
 
             with tf.Session() as sess:
 
@@ -59,7 +67,7 @@ class KalmanFilter(AbstractFilter):
 ################################################################################
 
     def _kfScan(self, state, z):
-
+        
         """ This is where the acutal Kalman Filter is implemented. """
 
         x_pri, x_post, z_pri, z_post, P_pri, P_post, self._kf_ctr = state
@@ -76,13 +84,14 @@ class KalmanFilter(AbstractFilter):
         # assume R is scalar
         try:
 
-            S = tf.matmul(self._H, tf.matmul(P_pri, self._H, transpose_b=True)) + self._R
+            R = self._R[self._kf_ctr,:,:]
 
-        # if R is indexed
         except:
 
-            S = tf.matmul( self._H, tf.matmul( P_pri, self._H, transpose_b=True ) ) + self._R[self._kf_ctr]
+            R = self._R
 
+        S = tf.matmul(self._H, tf.matmul(P_pri, self._H, transpose_b=True)) + R
+        
         S_inv = tf.linalg.inv( S )
         K = tf.matmul( P_pri, tf.matmul( self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
 
@@ -104,7 +113,7 @@ class KalmanFilter(AbstractFilter):
         # Assign Attributes
         for key, value in params.items():
 
-            if isinstance(value,int) or isinstance(value,int):
+            if isinstance(value,int) or value is None:
 
                 setattr(self, '_' + key, value)
 
