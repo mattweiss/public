@@ -4,3 +4,5 @@ __pycache__/
 *.png
 *#*
 *.ipynb
+scripts/models
+change_log.txt
