@@ -140,6 +140,27 @@ class FeedForwardNetwork(AbstractNetwork):
                     # loss op
                     train_loss = sess.run(self._loss_op, feed_dict={self._X:x_mb, self._y:y_mb})
 
+                if epoch % 100 == 0:
+
+                    train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
+                    val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
+
+                    plt.figure(figsize=(12,6))
+                    plt.subplot(121)
+                    plt.plot(x_train, label='train')
+                    plt.plot(y_train, label='train_gt')
+                    plt.plot(train_pred, label='train_pred')
+                    plt.grid()
+                    plt.legend()
+                    plt.subplot(122)
+                    plt.plot(x_val, label='val')
+                    plt.plot(y_val, label='val_gt')
+                    plt.plot(val_pred, label='val_pred')
+                    plt.grid()
+                    plt.legend()
+                    plt.show()
+                    plt.close()
+
                 print('Epoch {epoch} training loss {train_loss}'.format(epoch=epoch, train_loss=train_loss))
                 
         if save_weights:
@@ -172,26 +193,26 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                 print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
 
-                if epoch % 100 == 0:
+                # if epoch % 100 == 0:
 
-                    train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
-                    val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
+                #     train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
+                #     val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
 
-                    plt.figure(figsize=(12,6))
-                    plt.subplot(121)
-                    plt.plot(x_train, label='train')
-                    plt.plot(y_train, label='train_gt')
-                    plt.plot(train_pred, label='train_pred')
-                    plt.grid()
-                    plt.legend()
-                    plt.subplot(122)
-                    plt.plot(x_val, label='val')
-                    plt.plot(y_val, label='val_gt')
-                    plt.plot(val_pred, label='val_pred')
-                    plt.grid()
-                    plt.legend()
-                    plt.show()
-                    plt.close()
+                #     plt.figure(figsize=(12,6))
+                #     plt.subplot(121)
+                #     plt.scatter(range(x_train.shape[0]), x_train, label='train', color='green')
+                #     plt.plot(y_train, label='train_gt')
+                #     plt.plot(train_pred, label='train_pred')
+                #     plt.grid()
+                #     plt.legend()
+                #     plt.subplot(122)
+                #     plt.scatter(range(x_val.shape[0]), x_val, label='val', color='green')
+                #     plt.plot(y_val, label='val_gt')
+                #     plt.plot(val_pred, label='val_pred')
+                #     plt.grid()
+                #     plt.legend()
+                #     plt.show()
+                #     plt.close()
 
         if save_weights:
 

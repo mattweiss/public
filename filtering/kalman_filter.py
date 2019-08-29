@@ -16,7 +16,7 @@ class KalmanFilter(AbstractFilter):
 
         self._dt = self._sample_freq**-1
         self._F = tf.constant(np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt],[0.0,1.0]], dtype=np.float64)), dtype=tf.float64, name='F')
-        self._Q = tf.constant(np.kron(np.eye(self._n_signals), np.array([[self._q,1.0],[1.0,self._q]], dtype=np.float64)), dtype=tf.float64, name='Q')
+        self._Q = tf.constant(np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]], dtype=np.float64)), dtype=tf.float64, name='Q')
         self._H = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._h, dtype=np.float64)), dtype=tf.float64, name='H')
         self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
         self._z0 = tf.constant(np.zeros((self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='z0')
