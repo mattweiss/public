@@ -37,7 +37,7 @@ params['bias_constraint'] = None
 params['loss'] = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
 # training
-params['epochs'] = 10
+params['epochs'] = 25
 params['mbsize'] = 32
 params['optimizer'] = tf.train.AdamOptimizer
 params['learning_rate'] = 1e-3

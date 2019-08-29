@@ -126,7 +126,8 @@ class FeedForwardNetwork(AbstractNetwork):
 
             # initialize variables
             sess.run(tf.global_variables_initializer())
-            
+
+            # loop over epochs
             for epoch in range(1, self._epochs+1):
 
                 # minibatch split
@@ -137,31 +138,14 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                     # training op
                     _ = sess.run(self._optimizer_op, feed_dict={self._X:x_mb, self._y:y_mb})
+
                     # loss op
                     train_loss = sess.run(self._loss_op, feed_dict={self._X:x_mb, self._y:y_mb})
 
-                if epoch % 100 == 0:
+                # validation loss
+                val_loss = sess.run(self._loss_op, feed_dict={self._X:self._x_val, self._y:self._y_val})
 
-                    train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
-                    val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
-
-                    plt.figure(figsize=(12,6))
-                    plt.subplot(121)
-                    plt.plot(x_train, label='train')
-                    plt.plot(y_train, label='train_gt')
-                    plt.plot(train_pred, label='train_pred')
-                    plt.grid()
-                    plt.legend()
-                    plt.subplot(122)
-                    plt.plot(x_val, label='val')
-                    plt.plot(y_val, label='val_gt')
-                    plt.plot(val_pred, label='val_pred')
-                    plt.grid()
-                    plt.legend()
-                    plt.show()
-                    plt.close()
-
-                print('Epoch {epoch} training loss {train_loss}'.format(epoch=epoch, train_loss=train_loss))
+                print('Epoch {epoch} Training Loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
                 
         if save_weights:
 
@@ -170,7 +154,7 @@ class FeedForwardNetwork(AbstractNetwork):
     def fitDomainRandomization(self, fns=None, save_weights=False):
 
         dictToAttributes(self,fns)
-            
+
         with tf.Session() as sess:
 
             # initialize variables
@@ -190,6 +174,14 @@ class FeedForwardNetwork(AbstractNetwork):
                 # loss op
                 train_loss = sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train})
                 val_loss = sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val})
+
+                self._history['train_loss'].append(train_loss)
+                self._history['val_loss'].append(val_loss)
+
+                if len(self._history['train_loss']) > self._history_size:
+
+                    self._history['train_loss'].pop(0)
+                    self._history['val_loss'].pop(0)
                 
                 print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
 
@@ -217,6 +209,8 @@ class FeedForwardNetwork(AbstractNetwork):
         if save_weights:
 
             pass
+
+        return self._history
 
             
     def predict(self, dataset=None):

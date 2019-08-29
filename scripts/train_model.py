@@ -18,10 +18,14 @@ import numpy as np
 import os
 import dill
 from datetime import datetime
-# import time
 import argparse
 from pdb import set_trace as st
-import csv
+import mlflow
+mlflow_uri = 'file:' + "/".join(os.getcwd().split('/')[:-2]) + '/mlruns'
+#os.environ["MLFLOW_TRACKING_URI"] = mlflow_uri
+mlflow.set_tracking_uri(mlflow_uri)
+mlflow.set_experiment(os.getcwd().split('/')[-2])
+mlflow.start_run(run_name=os.getcwd().split('/')[-1])
 
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
@@ -86,15 +90,26 @@ print(nn.__class__)
 nn.getModelSummary()
 history = nn.fitDomainRandomization(config_dicts['dr'], save_weights=False)
 
-# add history to model params dictionary
-for metric_name, metric in history.items():
+################################################################################
+# mlflow
+################################################################################
 
-    config_dicts['model'][metric_name] = np.asarray(metric[:config_dicts['model']['test_size']]).mean()
-
+# params
 for config_name, config_dict in config_dicts.items():
 
-    with open(res_dir + config_name + '.csv', 'w') as f:  # Just use 'w' mode in 3.x
-    
-        w = csv.DictWriter(f, config_dict.keys())
-        w.writeheader()
-        w.writerow(config_dict)
+    for param_name, param in config_dict.items():
+
+        try:
+
+            mlflow.log_param(config_name + '_' + param_name, param.__name__)
+
+        except:
+
+            mlflow.log_param(config_name + '_' + param_name, param)
+
+# metrics
+for metric_name, metric in history.items():
+
+    if len(metric) != 0:
+
+        mlflow.log_metric(metric_name, np.asarray(metric).mean())

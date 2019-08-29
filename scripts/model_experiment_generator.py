@@ -21,7 +21,7 @@ from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_model.py'
-test_name = 'aekf_KILLME2'
+test_name = 'aekf_ALPHA'
 test_dir = '/Documents/wpi/research/code/dovebirdia/models/' + test_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -68,15 +68,13 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 1000
+model_params['epochs'] = 5
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['learning_rate'] = 1e-3
-#list(np.logspace(-3,-5,10))
+model_params['learning_rate'] = list(np.logspace(-3,-5,10))
 
-# metric(s)
-model_params['metrics'] = None
-model_params['test_size'] = 10
+# testing
+model_params['history_size'] = 10
 
 ####################################
 # Domain Randomization Parameters
@@ -108,8 +106,7 @@ kf_params['n_signals'] = 1
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0
 kf_params['h'] = (1.0,0.0)
-kf_params['q'] = 1e-4
-#list(np.logspace(-8,1,10))
+kf_params['q'] = list(np.logspace(-8,1,10))
 
 ####################################
 # Determine scaler and vector parameters
