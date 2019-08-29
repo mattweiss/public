@@ -63,9 +63,7 @@ class KalmanFilter(AbstractFilter):
                                                                                   self._z0, self._z0,
                                                                                   self._P0, self._P0,
                                                                                   tf.constant(0) ], name='kfScan')
-
-        #cond_bool = tf.cond(tf.cast(tf.is_tensor(z),tf.bool), lambda: True, lambda: self._runSess())
-        
+       
         # if z is numpy array run session
         if not isinstance(z,tf.Tensor):
 
@@ -96,6 +94,8 @@ class KalmanFilter(AbstractFilter):
         x_pri, x_post, z_pri, z_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
                                                                              lambda: [ x_pri, x_post, z_pri, z_post, P_pri, P_post, self._kf_ctr ],
                                                                              lambda: [ self._x0, self._x0, self._z0, self._z0, self._P0, self._P0, tf.constant(0) ])
+
+        #z = tf.expand_dims( z, axis = -1 )
 
         # Predict
         x_pri = tf.matmul( self._F, x_post, name='x_pri' )

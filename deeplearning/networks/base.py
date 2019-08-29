@@ -18,9 +18,9 @@ class AbstractNetwork(ABC):
         """ 
         TODO: Add parameter list
         """
-        
-        dictToAttributes(self,params)
 
+        dictToAttributes(self,params)
+        
         # hold, etc.
         self._history = {
             'train_loss':list(),
@@ -40,19 +40,13 @@ class AbstractNetwork(ABC):
         ############################
         # Set Optimizer
         ############################
+        self._setLoss()
+        
+        ############################
+        # Set Optimizer
+        ############################
         self._setOptimizer()
 
-        ############################
-        # Compile Model
-        ############################
-        # This is a fix since sometimes self._loss is passed as the function definition is config files are used
-        try:
-            
-            self._model.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metrics)
-
-        except:
-
-            self._model.compile(optimizer=self._optimizer, loss=self._loss(), metrics=self._metrics)
 
     ##################
     # Public Methods #
@@ -75,14 +69,22 @@ class AbstractNetwork(ABC):
     
     def getModelSummary(self):
 
-        try:
+        # Print trainable variables
+        variables_names = list()
 
-            print(self._model.summary())
-            tf.keras.utils.plot_model(self._model, 'my_first_model.png')
+        with tf.Session() as sess:
+        
+            for v in tf.trainable_variables():
 
-        except:
+                # add variables to list for printing
+                variables_names.append( v.name )
 
-            print('Unable to print model summary')
+            # print varibles and shape
+            values = sess.run(variables_names)
+
+        for k, v in zip(variables_names, values):
+                
+            print ("Trainable Variable: %s %s" % (k, v.shape,))
 
     def getAttributeNames(self):
 
@@ -117,94 +119,105 @@ class FeedForwardNetwork(AbstractNetwork):
     ##################
 
     def fit(self, dataset=None, save_weights=False):
-
+        
         dictToAttributes(self,dataset)
 
-        self._history = self._model.fit(self._x_train, self._y_train,
-                                        batch_size=self._mbsize,
-                                        epochs=self._epochs,
-                                        validation_data=(self._x_val, self._y_val))
+        with tf.Session() as sess:
 
+            # initialize variables
+            sess.run(tf.global_variables_initializer())
+            
+            for epoch in range(1, self._epochs+1):
+
+                # minibatch split
+                self._x_train_mb, self._y_train_mb = self._generateMinibatches(self._x_train, self._y_train)
+
+                # loop over minibatches
+                for x_mb, y_mb in zip(self._x_train_mb, self._y_train_mb):
+                
+                    # training op
+                    _ = sess.run(self._optimizer_op, feed_dict={self._X:x_mb, self._y:y_mb})
+                    # loss op
+                    train_loss = sess.run(self._loss_op, feed_dict={self._X:x_mb, self._y:y_mb})
+
+                if epoch % 100 == 0:
+
+                    train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
+                    val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
+
+                    plt.figure(figsize=(12,6))
+                    plt.subplot(121)
+                    plt.plot(x_train, label='train')
+                    plt.plot(y_train, label='train_gt')
+                    plt.plot(train_pred, label='train_pred')
+                    plt.grid()
+                    plt.legend()
+                    plt.subplot(122)
+                    plt.plot(x_val, label='val')
+                    plt.plot(y_val, label='val_gt')
+                    plt.plot(val_pred, label='val_pred')
+                    plt.grid()
+                    plt.legend()
+                    plt.show()
+                    plt.close()
+
+                print('Epoch {epoch} training loss {train_loss}'.format(epoch=epoch, train_loss=train_loss))
+                
         if save_weights:
 
-            self._model.save_weights('test.keras')
+            pass
 
     def fitDomainRandomization(self, fns=None, save_weights=False):
 
         dictToAttributes(self,fns)
-
-        # randomly select one of the functions in self._fns
-        self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
-
-        # generate training and validation curves
-        x_train, x_train_gt = self._generateDomainRandomizationData(self._fn_params)
-        x_val, x_val_gt = self._generateDomainRandomizationData(self._fn_params)
             
-        for epoch in range(1, self._epochs+1):
+        with tf.Session() as sess:
 
-            # randomly select one of the functions in self._fns
-            # self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
-        
-            # # generate training and validation curves
-            # x_train, x_train_gt = self._generateDomainRandomizationData(self._fn_params)
-            # x_val, x_val_gt = self._generateDomainRandomizationData(self._fn_params)
+            # initialize variables
+            sess.run(tf.global_variables_initializer())
 
-            print('Epoch {epoch}'.format(epoch=epoch))
-
-            history = self._model.fit(x_train, x_train,
-                                      batch_size=100,
-                                      epochs=1,
-                                      validation_data=(x_val, x_val_gt),
-                                      shuffle=False,
-                                      verbose=2)
-
-            self._history['train_loss'].append(history.history['loss'][0])
-            self._history['val_loss'].append(history.history['val_loss'][0])
+            for epoch in range(1, self._epochs+1):
             
-            # train_loss = self._model.train_on_batch(x_train, x_train_gt)
-            # val_loss =  self._model.test_on_batch(x_val, x_val_gt)
-            #print('Train Loss: {train_loss}, Val Loss: {val_loss}'.format(train_loss=train_loss, val_loss=val_loss))           
-            # self._history['train_loss'].append(train_loss)
-            # self._history['val_loss'].append(val_loss)
+                # randomly select one of the functions in self._fns
+                self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
 
-            if epoch == self._epochs:
-            
-                plt.figure(figsize=(12,6))
-                plt.subplot(121)
-                plt.plot(x_train, label='train')
-                plt.plot(x_train_gt, label='train_gt')
-                plt.plot(self._model.predict(x_train), label='train_pred')
-                plt.grid()
-                plt.legend()
-                plt.subplot(122)
-                plt.plot(x_val, label='val')
-                plt.plot(x_val_gt, label='val_gt')
-                plt.plot(self._model.predict(x_val), label='val_pred')
-                plt.grid()
-                plt.legend()
-                plt.show()
-                plt.close()
-            
-            # keep history lists to fixed length
-            for loss_key in self._history.keys():
+                # generate training and validation curves
+                x_train, y_train = self._generateDomainRandomizationData(self._fn_params)
+                x_val, y_val = self._generateDomainRandomizationData(self._fn_params)
 
-                if len(self._history[loss_key]) > self._test_size:
+                # training op
+                _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
+                # loss op
+                train_loss = sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train})
+                val_loss = sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val})
+                
+                print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
 
-                    self._history[loss_key].pop()
-            
-        # plot test prediction
-        for _ in range(self._test_size):
+                # if epoch % 100 == 0:
 
-            x_test, x_test_gt = self._generateDomainRandomizationData(self._fn_params)
-            self._history['test_loss'].append(self._model.evaluate(self._model.predict(x_test), x_test_gt, verbose=2))
-                    
+                #     train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
+                #     val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
+
+                #     plt.figure(figsize=(12,6))
+                #     plt.subplot(121)
+                #     plt.scatter(range(x_train.shape[0]), x_train, label='train', color='green')
+                #     plt.plot(y_train, label='train_gt')
+                #     plt.plot(train_pred, label='train_pred')
+                #     plt.grid()
+                #     plt.legend()
+                #     plt.subplot(122)
+                #     plt.scatter(range(x_val.shape[0]), x_val, label='val', color='green')
+                #     plt.plot(y_val, label='val_gt')
+                #     plt.plot(val_pred, label='val_pred')
+                #     plt.grid()
+                #     plt.legend()
+                #     plt.show()
+                #     plt.close()
+
         if save_weights:
 
-            self._model.save_weights('test.keras')
+            pass
 
-        print(self._model.metrics_names)
-            
-        return self._history
             
     def predict(self, dataset=None):
 
@@ -220,31 +233,22 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def _buildNetwork(self):
 
-        # set input
-        input = tf.keras.Input(shape=(self._input_dim,))
+        # input and output placeholders
+        self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
+        self._y = tf.placeholder(dtype=tf.int64, shape=(None), name='y')
 
-        output = self._buildDenseLayers(input, self._hidden_dims)(input)
+        self._X_hat = self._buildDenseLayers(self._X, self._hidden_dims)
 
-        # output layer
-        output = tf.keras.layers.Dense(units=self._output_dim,
-                                       activation=self._output_activation,
-                                       use_bias=self._use_bias,
-                                       kernel_initializer=self._kernel_initializer,
-                                       bias_initializer=self._bias_initializer,
-                                       kernel_regularizer=self._kernel_regularizer,
-                                       bias_regularizer=self._bias_regularizer,
-                                       activity_regularizer=self._activity_regularizer,
-                                       kernel_constraint=self._kernel_constraint,
-                                       bias_constraint=self._bias_constraint)(output)
-
-        self._model = tf.keras.Model(inputs=input, outputs=output)
-        
+    def _setLoss(self):
+            
+        self._loss_op = tf.cast(self._loss(self._y, self._X_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
+            
     def _setOptimizer(self):
 
         if self._optimizer.__name__ == 'AdamOptimizer':
 
-            self._optimizer = tf.train.AdamOptimizer(learning_rate=self._learning_rate)
-        
+            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate).minimize(self._loss_op)
+
     def _buildDenseLayers(self, input=None, hidden_dims=None, name=None):
 
         assert input is not None
@@ -268,8 +272,26 @@ class FeedForwardNetwork(AbstractNetwork):
                                            kernel_constraint=self._kernel_constraint,
                                            bias_constraint=self._bias_constraint)(output)
 
-        return tf.keras.Model(inputs=input, outputs=output, name=name)
+        output = tf.keras.layers.Dense(units=self._output_dim,
+                                       activation=None,
+                                       use_bias=self._use_bias,
+                                       kernel_initializer=self._kernel_initializer,
+                                       bias_initializer=self._bias_initializer,
+                                       kernel_regularizer=self._kernel_regularizer,
+                                       bias_regularizer=self._bias_regularizer,
+                                       activity_regularizer=self._activity_regularizer,
+                                       kernel_constraint=self._kernel_constraint,
+                                       bias_constraint=self._bias_constraint)(output)
+            
+        return output
 
+    def _generateMinibatches(self, X, y):
+
+        X_mb = [X[i * self._mbsize:(i + 1) * self._mbsize,:] for i in range((X.shape[0] + self._mbsize - 1) // self._mbsize )]
+        y_mb = [y[i * self._mbsize:(i + 1) * self._mbsize] for i in range((y.shape[0] + self._mbsize - 1) // self._mbsize )]
+
+        return X_mb, y_mb
+        
     def _generateDomainRandomizationData(self, params):
 
         param_list = list()
@@ -285,7 +307,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 param_list.append(param)
                 
         x = np.linspace(self._x_range[0], self._x_range[1], self._n_samples)
-        x_gt = self._fn_def(x, *param_list)
-        x = x_gt + self._noise(**self._noise_params, size=self._n_samples)
+        y = self._fn_def(x, *param_list)
+        y_noise = y + self._noise(**self._noise_params, size=self._n_samples)
 
-        return np.expand_dims(x, axis=-1), np.expand_dims(x_gt, axis=-1)
+        return np.expand_dims(y_noise, axis=-1), np.expand_dims(y, axis=-1)

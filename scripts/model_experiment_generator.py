@@ -65,12 +65,12 @@ model_params['kernel_constraint'] = None
 model_params['bias_constraint'] = None
 
 # loss
-model_params['loss'] = tf.keras.losses.MeanSquaredError
+model_params['loss'] = tf.losses.mean_squared_error
 
 # training
 model_params['epochs'] = 1000
 model_params['mbsize'] = 100
-model_params['optimizer_name'] = 'adam'
+model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = 1e-3
 #list(np.logspace(-3,-5,10))
 
