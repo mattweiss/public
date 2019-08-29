@@ -241,9 +241,9 @@ class FeedForwardNetwork(AbstractNetwork):
         
     def _setOptimizer(self):
 
-        if self._optimizer_name == 'adam':
+        if self._optimizer.__name__ == 'AdamOptimizer':
 
-            self._optimizer = tf.keras.optimizers.Adam(learning_rate=self._learning_rate)
+            self._optimizer = tf.train.AdamOptimizer(learning_rate=self._learning_rate)
         
     def _buildDenseLayers(self, input=None, hidden_dims=None, name=None):
 
