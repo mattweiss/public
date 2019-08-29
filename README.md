@@ -20,3 +20,7 @@
 ## utilities/
 
     base.py - dictToAttributes
+
+## scripts/
+
+    various scripts related to testing code
