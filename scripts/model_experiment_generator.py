@@ -6,7 +6,7 @@
 #SBATCH -t 24:00:00
 #SBATCH --gres=gpu:0
 
-import os, sys
+import os, sys, socket
 import numpy as np
 import itertools
 import tensorflow as tf
@@ -15,16 +15,15 @@ import pickle
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from sklearn.datasets import make_spd_matrix
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_model.py'
-test_name = 'aekf_GAMMA'
-test_dir = '/Documents/wpi/research/code/dovebirdia/scripts/models/' + test_name + '/'
-machine = 'turing'
+test_name = 'aekf_KILLME2'
+test_dir = '/Documents/wpi/research/code/dovebirdia/models/' + test_name + '/'
+machine = socket.gethostname()
 ####################################
 
 meta_params = dict()
@@ -69,14 +68,15 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.keras.losses.MeanSquaredError
 
 # training
-model_params['epochs'] = 100000
+model_params['epochs'] = 1000
 model_params['mbsize'] = 100
 model_params['optimizer_name'] = 'adam'
-model_params['learning_rate'] = list( np.logspace( -3, -5, 10 ) )
+model_params['learning_rate'] = 1e-3
+#list(np.logspace(-3,-5,10))
 
 # metric(s)
 model_params['metrics'] = None
-model_params['test_size'] = 1000
+model_params['test_size'] = 10
 
 ####################################
 # Domain Randomization Parameters
@@ -88,7 +88,7 @@ def exponential_fn(x,a,b,c):
 
 def sigmoid_fn(x,a,b,c):
 
-    y = a * (1 + np.exp(-b * (x - c) ) )**-1
+    y = a * (1 + np.exp(-b * (x - c)))**-1
     y -= y[0]
     return y
 
@@ -102,34 +102,14 @@ dr_params['noise_params'] = {'loc':0.0, 'scale':5.0}
 # Kalman Filter Parameters
 ####################################
 
-
 kf_params['dimensions'] = (1,2)
+#kf_params['model'] = 'ncv'
 kf_params['n_signals'] = 1
-kf_params['n_samples'] = dr_params['n_samples']
+kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0
-kf_params['dt'] = kf_params['sample_freq']**-1
-kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt']],[0.0,1.0]], dtype=np.float64))
-
-# build Q
-Q = [ 1e-0, 1e-2, 1e-4, 1e-6, 1e-8 ]
-if len(Q) > 1:
-    
-    kf_params['Q'] = list()
-
-    for q in Q:
-
-        kf_params['Q'].append(np.kron(np.eye(kf_params['n_signals']), np.array([[q,0.0],[0.0,q]], dtype=np.float64)))
-
-else:
-
-    kf_params['Q'].append(np.kron(np.eye(kf_params['n_signals']), np.array([[Q,0.0],[0.0,Q]], dtype=np.float64)))
-        
-kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0], dtype=np.float64))
-kf_params['R'] = None
-kf_params['x0'] = np.zeros((kf_params['dimensions'][1]*kf_params['n_signals'],1), dtype=np.float64)
-kf_params['z0'] = np.zeros((kf_params['n_signals'],1), dtype=np.float64)
-#kf_params['P0'] = np.eye( kf_params['dimensions'][1]*kf_params['n_signals'], dtype=np.float64 )
-kf_params['P0'] = make_spd_matrix( kf_params['dimensions'][1]*kf_params['n_signals'] )
+kf_params['h'] = (1.0,0.0)
+kf_params['q'] = 1e-4
+#list(np.logspace(-8,1,10))
 
 ####################################
 # Determine scaler and vector parameters
@@ -216,13 +196,13 @@ for config_params in itertools.product(config_params_dicts['meta'],
     res_file_name = subtest_dir_name[:-1]
 
     # bash-batch script
-    if machine == 'turing':
-
-        batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
-
-    elif machine == 'pengy':
+    if machine == 'pengy':
 
         batch_string_prefix = 'python3 '
+
+    else:
+
+        batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
         
     batch_str = batch_string_prefix + script + ' -c ./config/' + ' -r ./results//\n'
     batch_file_name = subtest_dir + 'run.sh'

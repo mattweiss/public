@@ -50,7 +50,7 @@ class Autoencoder(FeedForwardNetwork):
         encoder_input = tf.keras.Input(shape=(self._input_dim,))
         decoder_input = tf.keras.Input(shape=(self._hidden_dims[-1],))
         
-        self._encoder = self._buildEncoderLayers(encoder_input, self._hidden_dims)
+        self._encoder = self._buildEncoderLayers(encoder_input, self._hidden_dims[:-1])
         self._decoder = self._buildDecoderLayers(decoder_input, self._hidden_dims[::-1][1:])
 
         # decoder output
@@ -106,38 +106,10 @@ class AutoencoderKalmanFilter(Autoencoder):
         # set inputs
         encoder_input = tf.keras.Input(shape=(self._input_dim,), dtype=tf.float64, name='encoder_input')
         decoder_input = tf.keras.Input(shape=(self._hidden_dims[-1],), dtype=tf.float64, name='decoder_input')
-        
-        self._encoder = self._buildEncoderLayers(encoder_input, self._hidden_dims)
-        self._decoder = self._buildDecoderLayers(decoder_input, self._hidden_dims[::-1][1:])
 
-        # decoder output
-        #z, self._kalman_filter._R = self._encoder(encoder_input)
-
-        # Kalman Filter Layer
-        #output = tf.keras.layers.Lambda(self._kalman_filter.filter)(self._encoder(encoder_input))['x_hat_pri'][:,0,:]
-
-        # decoder
-        output = self._decoder(self._encoder(encoder_input))
-
-        # output layer
-        output = tf.keras.layers.Dense(units=self._output_dim,
-                                       activation=self._output_activation,
-                                       use_bias=self._use_bias,
-                                       kernel_initializer=self._kernel_initializer,
-                                       bias_initializer=self._bias_initializer,
-                                       kernel_regularizer=self._kernel_regularizer,
-                                       bias_regularizer=self._bias_regularizer,
-                                       activity_regularizer=self._activity_regularizer,
-                                       kernel_constraint=self._kernel_constraint,
-                                       bias_constraint=self._bias_constraint,
-                                       name='output')(output)
-
-        self._model = tf.keras.Model(inputs=encoder_input, outputs=output, name='autoencoder')
-
-    def _buildEncoderLayers(self, input=None, hidden_dims=None):
-
-        # map measurements via encoder
-        encoder_output = super()._buildEncoderLayers(input, hidden_dims)(input)
+        # encoder/decoder models
+        self._encoder = self._buildEncoderLayers(encoder_input, self._hidden_dims[:-1])
+        self._decoder = self._buildDecoderLayers(decoder_input, self._hidden_dims[::-1][1:] + [self._input_dim])
 
         # Map z
         z = tf.keras.layers.Dense(units=self._hidden_dims[-1],
@@ -150,7 +122,7 @@ class AutoencoderKalmanFilter(Autoencoder):
                                   activity_regularizer=self._activity_regularizer,
                                   kernel_constraint=self._kernel_constraint,
                                   bias_constraint=self._bias_constraint,
-                                  name='z')(encoder_output)
+                                  name='z')(self._encoder(encoder_input))
 
         # Map L to R
         self._L_dims = np.sum( np.arange( 1, self._hidden_dims[-1] + 1 ) )
@@ -165,14 +137,42 @@ class AutoencoderKalmanFilter(Autoencoder):
                                   activity_regularizer=self._activity_regularizer,
                                   kernel_constraint=self._kernel_constraint,
                                   bias_constraint=self._bias_constraint,
-                                  name='L')(encoder_output)
+                                  name='L')(self._encoder(encoder_input))
 
-        R = tf.keras.layers.Lambda(self._generate_input_cov)(L)
+        R = tf.keras.layers.Lambda(self._generate_input_cov, name='R')(L)
 
-        output = tf.keras.layers.Lambda(self._kalman_filter.filter)([z,R])['z_hat_pri'][:,0:1,0]
+        kf_output = tf.keras.layers.Lambda(self._kalman_filter.filter, name='KF')([z,R])['z_hat_pri'][:,0:1,0]
 
-        # model which returns a priori estiamte of z in Kalman Filter space
-        return tf.keras.Model(inputs=input, outputs=output, name='encoder')
+        # Post KF Affine Transformation
+        output = tf.keras.layers.Dense(units=self._hidden_dims[-1],
+                                       activation=None,
+                                       use_bias=self._use_bias,
+                                       kernel_initializer=self._kernel_initializer,
+                                       bias_initializer=self._bias_initializer,
+                                       kernel_regularizer=self._kernel_regularizer,
+                                       bias_regularizer=self._bias_regularizer,
+                                       activity_regularizer=self._activity_regularizer,
+                                       kernel_constraint=self._kernel_constraint,
+                                       bias_constraint=self._bias_constraint,
+                                       name='post_kf_affine')(kf_output)
+        
+        # decoder
+        output = self._decoder(output)
+        
+        # output layer
+        output = tf.keras.layers.Dense(units=self._output_dim,
+                                       activation=self._output_activation,
+                                       use_bias=self._use_bias,
+                                       kernel_initializer=self._kernel_initializer,
+                                       bias_initializer=self._bias_initializer,
+                                       kernel_regularizer=self._kernel_regularizer,
+                                       bias_regularizer=self._bias_regularizer,
+                                       activity_regularizer=self._activity_regularizer,
+                                       kernel_constraint=self._kernel_constraint,
+                                       bias_constraint=self._bias_constraint,
+                                       name='output')(output)
+
+        self._model = tf.keras.Model(inputs=encoder_input, outputs=output, name='autoencoder')
 
     # These two functions are nested because tf.keras.layers.Lambda does not work if tf.map_fn is passed to it.
     def _generate_input_cov(self, L):

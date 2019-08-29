@@ -53,7 +53,7 @@ class AbstractNetwork(ABC):
         except:
 
             self._model.compile(optimizer=self._optimizer, loss=self._loss(), metrics=self._metrics)
-            
+
     ##################
     # Public Methods #
     ##################
@@ -133,30 +133,57 @@ class FeedForwardNetwork(AbstractNetwork):
 
         dictToAttributes(self,fns)
 
+        # randomly select one of the functions in self._fns
+        self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
+
+        # generate training and validation curves
+        x_train, x_train_gt = self._generateDomainRandomizationData(self._fn_params)
+        x_val, x_val_gt = self._generateDomainRandomizationData(self._fn_params)
+            
         for epoch in range(1, self._epochs+1):
 
             # randomly select one of the functions in self._fns
-            self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
+            # self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
         
-            # generate training and validation curves
-            x_train, x_train_gt = self._generateDomainRandomizationData(self._fn_params)
-            x_val, x_val_gt = self._generateDomainRandomizationData(self._fn_params)
+            # # generate training and validation curves
+            # x_train, x_train_gt = self._generateDomainRandomizationData(self._fn_params)
+            # x_val, x_val_gt = self._generateDomainRandomizationData(self._fn_params)
 
             print('Epoch {epoch}'.format(epoch=epoch))
 
-            history = self._model.fit(x_train, x_train_gt,
-                                            batch_size=self._mbsize//4,
-                                            epochs=1,
-                                            validation_data=(x_val, x_val_gt),
-                                            shuffle=False,
-                                            verbose=2)
+            history = self._model.fit(x_train, x_train,
+                                      batch_size=100,
+                                      epochs=1,
+                                      validation_data=(x_val, x_val_gt),
+                                      shuffle=False,
+                                      verbose=2)
 
             self._history['train_loss'].append(history.history['loss'][0])
             self._history['val_loss'].append(history.history['val_loss'][0])
+            
+            # train_loss = self._model.train_on_batch(x_train, x_train_gt)
+            # val_loss =  self._model.test_on_batch(x_val, x_val_gt)
+            #print('Train Loss: {train_loss}, Val Loss: {val_loss}'.format(train_loss=train_loss, val_loss=val_loss))           
+            # self._history['train_loss'].append(train_loss)
+            # self._history['val_loss'].append(val_loss)
 
-            plt.plot(x_train)
-            plt.plot(x_train_gt)
-            plt.show()
+            if epoch == self._epochs:
+            
+                plt.figure(figsize=(12,6))
+                plt.subplot(121)
+                plt.plot(x_train, label='train')
+                plt.plot(x_train_gt, label='train_gt')
+                plt.plot(self._model.predict(x_train), label='train_pred')
+                plt.grid()
+                plt.legend()
+                plt.subplot(122)
+                plt.plot(x_val, label='val')
+                plt.plot(x_val_gt, label='val_gt')
+                plt.plot(self._model.predict(x_val), label='val_pred')
+                plt.grid()
+                plt.legend()
+                plt.show()
+                plt.close()
             
             # keep history lists to fixed length
             for loss_key in self._history.keys():
@@ -222,7 +249,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
         assert input is not None
         assert hidden_dims is not None
-        
+
         # loop over hidden layers
         for dim_index, dim in enumerate(hidden_dims):
 
@@ -251,8 +278,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
             if isinstance(param, tuple):
 
-                #param_list.append(np.random.uniform(param[0], param[1]))
-                param_list.append(np.random.normal(loc=0.0, scale=100.0))
+                param_list.append(np.random.uniform(param[0], param[1]))
                 
             else:
 
@@ -262,4 +288,4 @@ class FeedForwardNetwork(AbstractNetwork):
         x_gt = self._fn_def(x, *param_list)
         x = x_gt + self._noise(**self._noise_params, size=self._n_samples)
 
-        return x, x_gt
+        return np.expand_dims(x, axis=-1), np.expand_dims(x_gt, axis=-1)

@@ -15,39 +15,13 @@
 
 # Python
 import numpy as np
-#import tensorflow as tf
-#import pickle
 import os
 import dill
-# from scipy import linalg
-# import sys
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # or any {'0', '1', '2'}
-# import csv
-# import socket
 from datetime import datetime
 # import time
 import argparse
-# from collections import OrderedDict
 from pdb import set_trace as st
 import csv
-
-# Matplotlib
-# import matplotlib
-
-# if socket.gethostname() != 'pengy' and socket.gethostname() != 'sharky':
-
-#     matplotlib.use('Agg')
-
-# import matplotlib.pyplot as plt
-# import pandas as pd
-
-# from deeplearning.domain_randomization_autoencoder_kalman_filter import DomainRandomizationAutoencoderKalmanFilter
-# from deeplearning.domain_randomization_lstmts import DomainRandomizationLSTMTS
-# import deeplearning.curve_families as cf
-
-#from utilities.csvresults import csvResults
-
-#from sklearn.datasets import make_spd_matrix
 
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
@@ -115,7 +89,7 @@ history = nn.fitDomainRandomization(config_dicts['dr'], save_weights=False)
 # add history to model params dictionary
 for metric_name, metric in history.items():
 
-    config_dicts['model'][metric_name] = np.asarray(metric).mean()
+    config_dicts['model'][metric_name] = np.asarray(metric[:config_dicts['model']['test_size']]).mean()
 
 for config_name, config_dict in config_dicts.items():
 

@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from sklearn.datasets import make_spd_matrix
 from pdb import set_trace as st
 from dovebirdia.filtering.base import AbstractFilter
 
@@ -13,8 +14,25 @@ class KalmanFilter(AbstractFilter):
 
         super().__init__(params)
 
-        # self._z = tf.placeholder(dtype=tf.float64, shape=(None,self._n_signals), name='z')
-   
+        self._dt = self._sample_freq**-1
+        self._F = tf.constant(np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt],[0.0,1.0]], dtype=np.float64)), dtype=tf.float64, name='F')
+        self._Q = tf.constant(np.kron(np.eye(self._n_signals), np.array([[self._q,1.0],[1.0,self._q]], dtype=np.float64)), dtype=tf.float64, name='Q')
+        self._H = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._h, dtype=np.float64)), dtype=tf.float64, name='H')
+        self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
+        self._z0 = tf.constant(np.zeros((self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='z0')
+        #self._P0 = np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64 ), dtype=tf.float64, name='P0')
+        self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
+
+       
+        # set R is parameter was passed
+        try:
+
+            self._R = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._r, dtype=np.float64)), dtype=tf.float64, name='R')
+
+        except:
+
+            self._R = None
+
 ################################################################################
 
     def filter(self, inputs):
@@ -24,17 +42,19 @@ class KalmanFilter(AbstractFilter):
         inputs is a list.  First element is z, second (optional) element is R
         """
 
-        # extract z and (possibly) R from inputs list
-        self._z = tf.convert_to_tensor(inputs[0])
-
         try:
-
+            
+            # extract z and (possibly) R from inputs list
+            z, R = inputs
+            self._z = tf.convert_to_tensor(inputs[0])
             self._R = inputs[1]
 
         except:
 
-            pass
-        
+            # if R is not passed set z
+            z = inputs
+            self._z = tf.convert_to_tensor(inputs)
+
         self._x_hat_pri, self._x_hat_post,\
         self._z_hat_pri, self._z_hat_post,\
         self._P_hat_pri, self._P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
@@ -47,7 +67,7 @@ class KalmanFilter(AbstractFilter):
         #cond_bool = tf.cond(tf.cast(tf.is_tensor(z),tf.bool), lambda: True, lambda: self._runSess())
         
         # if z is numpy array run session
-        if not isinstance(inputs[0],tf.Tensor):
+        if not isinstance(z,tf.Tensor):
 
             with tf.Session() as sess:
 
@@ -91,8 +111,8 @@ class KalmanFilter(AbstractFilter):
             R = self._R
 
         S = tf.matmul(self._H, tf.matmul(P_pri, self._H, transpose_b=True)) + R
-        
         S_inv = tf.linalg.inv( S )
+
         K = tf.matmul( P_pri, tf.matmul( self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
 
         # Update
@@ -113,10 +133,10 @@ class KalmanFilter(AbstractFilter):
         # Assign Attributes
         for key, value in params.items():
 
-            if isinstance(value,int) or value is None:
+            #if isinstance(value,int) or value is None:
 
-                setattr(self, '_' + key, value)
+            setattr(self, '_' + key, value)
 
-            else:
+            # else:
 
-                setattr(self, '_' + key, tf.constant(value, name=key, dtype=tf.float64) )
+            #     setattr(self, '_' + key, tf.constant(value, name=key, dtype=tf.float64) )
