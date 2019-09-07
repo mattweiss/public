@@ -21,7 +21,7 @@ from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_model.py'
-test_name = 'aekf_ALPHA'
+test_name = 'aekf_gaussian100k_rand'
 test_dir = '/Documents/wpi/research/code/dovebirdia/models/' + test_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -48,7 +48,7 @@ meta_params['model'] = AutoencoderKalmanFilter
 ####################################
 # Model Parameters
 ####################################
-
+ 
 model_params['results_dir'] = './saved_weights/'
 model_params['input_dim'] = 1
 model_params['output_dim'] = 1
@@ -68,13 +68,13 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 5
+model_params['epochs'] = 100000
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
 
 # testing
-model_params['history_size'] = 10
+model_params['history_size'] = 1000
 
 ####################################
 # Domain Randomization Parameters
@@ -90,9 +90,18 @@ def sigmoid_fn(x,a,b,c):
     y -= y[0]
     return y
 
+def sine_fn(x,a,b,c):
+
+    return a * np.sin(b*x+c)
+
 dr_params['x_range'] = (0,100)
 dr_params['n_samples'] = 100
-dr_params['fns'] = [['sigmoid', sigmoid_fn, [(0,100),0.15,60.0]]]
+dr_params['fns'] = [
+    ('exponential', exponential_fn, [1.0,(np.log(100.0)/100.0,np.log(10.0)/100.0),-1.0]),
+    ('sigmoid', sigmoid_fn, [(0,100),0.15,60.0]),
+    ('sine', sine_fn, [(0,100),(0.04,0.2),0.0]),
+]
+
 dr_params['noise'] = np.random.normal
 dr_params['noise_params'] = {'loc':0.0, 'scale':5.0}
 

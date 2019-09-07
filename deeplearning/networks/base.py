@@ -66,7 +66,7 @@ class AbstractNetwork(ABC):
     def evaluate(self, dataset=None):
 
         pass
-    
+        
     def getModelSummary(self):
 
         # Print trainable variables
@@ -103,7 +103,7 @@ class AbstractNetwork(ABC):
     def _setOptimizer(self):
 
         pass
-        
+
 class FeedForwardNetwork(AbstractNetwork):
 
     """
@@ -171,6 +171,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 # training op
                 _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
+                
                 # loss op
                 train_loss = sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train})
                 val_loss = sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val})
@@ -185,7 +186,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                 print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
 
-                # if epoch % 100 == 0:
+                # if epoch % 1 == 0:
 
                 #     train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
                 #     val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})

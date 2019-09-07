@@ -4,17 +4,24 @@ from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.base import AbstractNetwork
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.networks.autoencoder import Autoencoder
-from dovebirdia.datasets.mnist import MNISTDataset
+from dovebirdia.datasets.ccdc_mixtures import ccdcMixturesDataset
 
 # load MNIST
 ds_params = {
-    'with_val':True,
-    'onehot':False,
-    'supervised':True,
+    'dataset_dir':'/home/mlweiss/Documents/wpi/research/code/sensors/mixtures/datasets/02_05_19-0905144322/',
+    'val_size':0.1,
+    'resistance_type':'resistance_z',
+    'labels':None,
+    'sensors':None,
+    'with_synthetic':True,
     }
 
-mnist_dataset = MNISTDataset(params=ds_params).getDataset()
+ccdc_dataset = ccdcMixturesDataset(params=ds_params).getDataset()
 
+for k,v in ccdc_dataset.items():
+
+    print(k,v.shape)
+st()
 # parameters dictionary
 params = dict()
 

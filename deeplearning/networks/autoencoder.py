@@ -52,7 +52,7 @@ class Autoencoder(FeedForwardNetwork):
                                             activity_regularizer=self._activity_regularizer,
                                             kernel_constraint=self._kernel_constraint,
                                             bias_constraint=self._bias_constraint)(self._decoder)
-
+        
 class AutoencoderKalmanFilter(Autoencoder):
 
     """

@@ -41,7 +41,7 @@ params['bias_constraint'] = None
 params['loss'] = tf.losses.mean_squared_error
 
 # training
-params['epochs'] = 1000
+params['epochs'] = 3
 params['mbsize'] = 32
 params['optimizer'] = tf.train.AdamOptimizer
 params['learning_rate'] = 1e-3

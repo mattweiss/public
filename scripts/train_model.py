@@ -21,9 +21,16 @@ from datetime import datetime
 import argparse
 from pdb import set_trace as st
 import mlflow
-mlflow_uri = 'file:' + "/".join(os.getcwd().split('/')[:-2]) + '/mlruns'
-#os.environ["MLFLOW_TRACKING_URI"] = mlflow_uri
-mlflow.set_tracking_uri(mlflow_uri)
+
+# set tracking uri if it do not exist.
+# mlflow occationally gives the following error: "File exists: '/home/mlweiss/Documents/wpi/research/code/dovebirdia/models/mlruns"
+mlflow_dir = "/".join(os.getcwd().split('/')[:-2]) + '/mlruns'
+
+if not os.path.isdir(mlflow_dir):
+
+    mlflow_uri = 'file:' + mlflow_dir
+    mlflow.set_tracking_uri(mlflow_uri)
+
 mlflow.set_experiment(os.getcwd().split('/')[-2])
 mlflow.start_run(run_name=os.getcwd().split('/')[-1])
 
