@@ -11,7 +11,7 @@
     base.py - AbstractDataset
     mnist.py - MNISTDataset
     unpa_op.py - UNPAOPDataset (Based on OpenPose estimates of Facial Features - http://www.unavarra.es/gi4e/databases/hpdb)
-    domain_randomization.py - Generates training, validation and testing datasets for domain randomization
+    domain_randomization.py - generates training, validation and testing datasets for domain randomization
 
 ## filtering/
 
@@ -24,4 +24,6 @@
 
 ## scripts/
 
-    various scripts related to testing code
+    model_experiment_generator.py - creates configuration files to run deeplearning models
+    train_model.py - script used to train models
+    dr_test_set_generator.py - generates domain randomization test set and saves to disk
