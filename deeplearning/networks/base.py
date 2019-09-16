@@ -1,11 +1,12 @@
-import random
-import numpy as np
+import os
 import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 from pdb import set_trace as st
 
 from abc import ABC, abstractmethod
-from dovebirdia.utilities.base import dictToAttributes
+from dovebirdia.utilities.base import dictToAttributes, saveDict
+from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 
 class AbstractNetwork(ABC):
 
@@ -53,7 +54,7 @@ class AbstractNetwork(ABC):
     ##################
             
     @abstractmethod
-    def fit(self, dataset=None, save_weights=False):
+    def fit(self, dataset=None, save_model=False):
 
         pass
             
@@ -104,6 +105,11 @@ class AbstractNetwork(ABC):
 
         pass
 
+    @abstractmethod
+    def _saveModel(self):
+
+        pass
+    
 class FeedForwardNetwork(AbstractNetwork):
 
     """
@@ -118,7 +124,7 @@ class FeedForwardNetwork(AbstractNetwork):
     # Public Methods #
     ##################
 
-    def fit(self, dataset=None, save_weights=False):
+    def fit(self, dataset=None, save_model=False):
         
         dictToAttributes(self,dataset)
 
@@ -147,13 +153,16 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 print('Epoch {epoch} Training Loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
                 
-        if save_weights:
+        if save_model:
 
-            pass
+            self._saveModel()
 
-    def fitDomainRandomization(self, fns=None, save_weights=False):
+    def fitDomainRandomization(self, dr_params=None, save_model=False):
 
-        dictToAttributes(self,fns)
+        # dictToAttributes(self,params)
+
+        # create domainRandomizationDataset object
+        self._dr_dataset = DomainRandomizationDataset(dr_params)
 
         with tf.Session() as sess:
 
@@ -161,33 +170,40 @@ class FeedForwardNetwork(AbstractNetwork):
             sess.run(tf.global_variables_initializer())
 
             for epoch in range(1, self._epochs+1):
-            
-                # randomly select one of the functions in self._fns
-                self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
 
-                # generate training and validation curves
-                x_train, y_train = self._generateDomainRandomizationData(self._fn_params)
-                x_val, y_val = self._generateDomainRandomizationData(self._fn_params)
+                # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
+                dr_data = self._dr_dataset.getDataset()
 
-                # training op
-                _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
-                
-                # loss op
-                train_loss = sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train})
-                val_loss = sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val})
+                # train on all trials
+                for x_train, y_train in zip(dr_data['x_train'],dr_data['y_train']):
 
-                self._history['train_loss'].append(train_loss)
-                self._history['val_loss'].append(val_loss)
+                    # training op
+                    _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
+
+                # train and val loss lists
+                train_loss = list()
+                val_loss = list()
+
+                # compute loss on all training and validation trials
+                for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
+
+                    # loss op
+                    train_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train}))
+                    val_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val}))
+
+                self._history['train_loss'].append(np.asarray(train_loss).mean())
+                self._history['val_loss'].append(np.asarray(val_loss).mean())
 
                 if len(self._history['train_loss']) > self._history_size:
 
                     self._history['train_loss'].pop(0)
                     self._history['val_loss'].pop(0)
                 
-                print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
+                print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=self._history['train_loss'][-1], val_loss=self._history['val_loss'][-1]))
 
-                # if epoch % 1 == 0:
+                # if epoch == self._epochs:
 
+                #     # plot using last x_train and x_val
                 #     train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
                 #     val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
 
@@ -207,9 +223,9 @@ class FeedForwardNetwork(AbstractNetwork):
                 #     plt.show()
                 #     plt.close()
 
-        if save_weights:
+            if save_model:
 
-            pass
+                self._saveModel(sess)
 
         return self._history
 
@@ -243,6 +259,10 @@ class FeedForwardNetwork(AbstractNetwork):
         if self._optimizer.__name__ == 'AdamOptimizer':
 
             self._optimizer_op = self._optimizer(learning_rate=self._learning_rate).minimize(self._loss_op)
+
+        elif self._optimizer.__name__ == 'MomentumOptimizer':
+
+            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate, momentum=self._momentum).minimize(self._loss_op)
 
     def _buildDenseLayers(self, input=None, hidden_dims=None, name=None):
 
@@ -286,23 +306,15 @@ class FeedForwardNetwork(AbstractNetwork):
         y_mb = [y[i * self._mbsize:(i + 1) * self._mbsize] for i in range((y.shape[0] + self._mbsize - 1) // self._mbsize )]
 
         return X_mb, y_mb
+
+    def _saveModel(self, tf_session=None):
+
+        assert tf_session is not None
         
-    def _generateDomainRandomizationData(self, params):
+        # save Tensorflow variables
 
-        param_list = list()
+        # name of file weights are saved to
+        self._trained_model_file = os.getcwd() + self._results_dir + 'tensorflow_model.ckpt'
 
-        for param in params:
-
-            if isinstance(param, tuple):
-
-                param_list.append(np.random.uniform(param[0], param[1]))
-                
-            else:
-
-                param_list.append(param)
-                
-        x = np.linspace(self._x_range[0], self._x_range[1], self._n_samples)
-        y = self._fn_def(x, *param_list)
-        y_noise = y + self._noise(**self._noise_params, size=self._n_samples)
-
-        return np.expand_dims(y_noise, axis=-1), np.expand_dims(y, axis=-1)
+        # save everything
+        tf.train.Saver().save(tf_session, self._trained_model_file)

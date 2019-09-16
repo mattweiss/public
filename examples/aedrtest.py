@@ -6,7 +6,7 @@ from dovebirdia.deeplearning.networks.base import AbstractNetwork
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.networks.autoencoder import Autoencoder
 
-# define domain randomization functions
+# define domain randomization parameters
 # dr_fns is a dictionary with a single key whose value is a list.
 # Each element of this list is a list defining a function: [ function name, function definition, parameters ]
 # if parameters is a tuple that is the range from which the parameter is drawn
@@ -41,9 +41,10 @@ params['bias_constraint'] = None
 
 # loss
 params['loss'] = tf.keras.losses.MeanSquaredError()
+params['history_size'] = 100
 
 # training
-params['epochs'] = 1000
+params['epochs'] = 2
 params['mbsize'] = 100
 params['optimizer'] = tf.train.AdamOptimizer
 params['learning_rate'] = 1e-3

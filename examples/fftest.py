@@ -5,9 +5,22 @@ from dovebirdia.deeplearning.networks.base import AbstractNetwork
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.networks.autoencoder import Autoencoder
 from dovebirdia.datasets.ccdc_mixtures import ccdcMixturesDataset
+from dovebirdia.datasets.mnist import MNISTDataset
 
 # load MNIST
-ds_params = {
+mnist_params = {
+    #'dataset_dir':'/home/mlweiss/Documents/wpi/research/code/sensors/mixtures/datasets/02_05_19-0905144322/',
+    'val_size':0.1,
+    'supervised':True,
+    'with_val':True,
+    'onehot':False,
+    #'resistance_type':'resistance_z',
+    #'labels':None,
+    #'sensors':None,
+    #'with_synthetic':True,
+    }
+
+ccdc_params = {
     'dataset_dir':'/home/mlweiss/Documents/wpi/research/code/sensors/mixtures/datasets/02_05_19-0905144322/',
     'val_size':0.1,
     'resistance_type':'resistance_z',
@@ -16,12 +29,13 @@ ds_params = {
     'with_synthetic':True,
     }
 
-ccdc_dataset = ccdcMixturesDataset(params=ds_params).getDataset()
 
-for k,v in ccdc_dataset.items():
+dataset = MNISTDataset(params=mnist_params).getDataset()
+
+for k,v in dataset.items():
 
     print(k,v.shape)
-st()
+
 # parameters dictionary
 params = dict()
 
@@ -42,18 +56,17 @@ params['bias_constraint'] = None
 
 # loss
 params['loss'] = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+params['history_size'] = 100
 
 # training
 params['epochs'] = 25
 params['mbsize'] = 32
 params['optimizer'] = tf.train.AdamOptimizer
 params['learning_rate'] = 1e-3
-
-# metrics
-#params['metrics'] = [tf.keras.metrics.MeanSquaredError()]
+params['res_dir'] = 
 
 # Network
 nn = FeedForwardNetwork(params)
 print(nn.__class__)
 nn.getModelSummary()
-nn.fit(mnist_dataset)
+nn.fit(dataset)

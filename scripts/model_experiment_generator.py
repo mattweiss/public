@@ -11,18 +11,18 @@ import numpy as np
 import itertools
 import tensorflow as tf
 import dill
-import pickle
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+import dovebirdia.utilities.dr_functions as drfns 
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_model.py'
-test_name = 'aekf_gaussian100k_rand'
-test_dir = '/Documents/wpi/research/code/dovebirdia/models/' + test_name + '/'
+experiment_name = 'aekf_gaussian100k_rand'
+experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
 
@@ -42,14 +42,14 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['model'] = AutoencoderKalmanFilter
+#meta_params['model'] = AutoencoderKalmanFilter
 #meta_params['fit'] = AutoencoderKalmanFilter.fitDomainRandomization
 
 ####################################
 # Model Parameters
 ####################################
  
-model_params['results_dir'] = './saved_weights/'
+model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 1
 model_params['output_dim'] = 1
 model_params['hidden_dims'] = (256,64) # if using AEKF append number of signals from KF to hidden_dims in train_model.py, otherwise include here
@@ -68,7 +68,7 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100000
+model_params['epochs'] = 10
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
@@ -80,30 +80,20 @@ model_params['history_size'] = 1000
 # Domain Randomization Parameters
 ####################################
 
-def exponential_fn(x,a,b,c):
-
-    return a * np.exp(b*x) + c
-
-def sigmoid_fn(x,a,b,c):
-
-    y = a * (1 + np.exp(-b * (x - c)))**-1
-    y -= y[0]
-    return y
-
-def sine_fn(x,a,b,c):
-
-    return a * np.sin(b*x+c)
-
-dr_params['x_range'] = (0,100)
+dr_params['ds_type'] = 'train'
+dr_params['x_range'] = (-1,1)
+dr_params['n_trials'] = 1
 dr_params['n_samples'] = 100
+dr_params['n_features'] = 1
+n = 1.0
 dr_params['fns'] = [
-    ('exponential', exponential_fn, [1.0,(np.log(100.0)/100.0,np.log(10.0)/100.0),-1.0]),
-    ('sigmoid', sigmoid_fn, [(0,100),0.15,60.0]),
-    ('sine', sine_fn, [(0,100),(0.04,0.2),0.0]),
+    #['exponential', drfns.exponential_fn, [1.0,(0.02,0.045),-1.0]],
+    #['sigmoid', drfns.sigmoid_fn, [(0.0,100.0),0.15,60.0]],
+    ['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
+    #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
 ]
-
 dr_params['noise'] = np.random.normal
-dr_params['noise_params'] = {'loc':0.0, 'scale':5.0}
+dr_params['noise_params'] = {'loc':0.0, 'scale':0.1}
 
 ####################################
 # Kalman Filter Parameters
@@ -179,11 +169,11 @@ for config_params in itertools.product(config_params_dicts['meta'],
                                        config_params_dicts['kf']):
 
     # Create Directories
-    subtest_dir_name = test_name + '_test_' + str(cfg_ctr) + '/'
-    subtest_dir = os.environ['HOME'] + test_dir + subtest_dir_name
-    results_dir = subtest_dir + '/results/'
-    out_dir = subtest_dir + '/out'
-    config_dir = subtest_dir + '/config/'
+    model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'
+    model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
+    results_dir = model_dir + '/results/'
+    out_dir = model_dir + '/out'
+    config_dir = model_dir + '/config/'
     
     if not os.path.exists(results_dir): os.makedirs(results_dir)
     if not os.path.exists(out_dir): os.makedirs(out_dir)
@@ -192,14 +182,14 @@ for config_params in itertools.product(config_params_dicts['meta'],
     # Write Config Files
     for name, config_param in zip(config_params_dicts.keys(), config_params):
 
-        cfg_file_name = subtest_dir_name[:-1] +  '_' + name + '.cfg'
+        cfg_file_name = model_dir_name[:-1] +  '_' + name + '.cfg'
 
         with open(config_dir + cfg_file_name, 'wb') as handle:
 
             dill.dump(config_param, handle)
         
-    out_file_name = subtest_dir_name[:-1] + '.out'
-    res_file_name = subtest_dir_name[:-1]
+    out_file_name = model_dir_name[:-1] + '.out'
+    res_file_name = model_dir_name[:-1]
 
     # bash-batch script
     if machine == 'pengy':
@@ -211,7 +201,7 @@ for config_params in itertools.product(config_params_dicts['meta'],
         batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
         
     batch_str = batch_string_prefix + script + ' -c ./config/' + ' -r ./results//\n'
-    batch_file_name = subtest_dir + 'run.sh'
+    batch_file_name = model_dir + 'run.sh'
     batch_file = open(batch_file_name, 'w')
     batch_file.write(batch_str)
     batch_file.close()

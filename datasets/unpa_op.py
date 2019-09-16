@@ -15,8 +15,11 @@ class UNPAOPDataset(AbstractDataset):
 
     def getDataset(self):
 
+        # run loadDataset
+        self._loadDataset()
+        
         # load data
-        return self._loadDataset()
+        return self._dataset_dict
 
     ###################
     # Private Methods #
@@ -61,5 +64,3 @@ class UNPAOPDataset(AbstractDataset):
         self._dataset_dict['y'] = self._unpa_labels
         self._dataset_dict['x_noise'] = self._op_data
         self._dataset_dict['y_noise'] = self._op_labels
-        
-        return self._dataset_dict

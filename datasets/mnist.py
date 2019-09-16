@@ -14,8 +14,11 @@ class MNISTDataset(AbstractDataset):
 
     def getDataset(self):
 
+        # run loadDataset
+        self._loadDataset()
+        
         # load data
-        return self._loadDataset()
+        return self._dataset_dict
 
     ###################
     # Private Methods #
@@ -66,4 +69,4 @@ class MNISTDataset(AbstractDataset):
             self._dataset_dict['y_val'] = tf.keras.utils.to_categorical(self._dataset_dict['y_val'], 10)
             self._dataset_dict['y_test'] = tf.keras.utils.to_categorical(self._dataset_dict['y_test'], 10)
             
-        return self._dataset_dict
+        #return self._dataset_dict

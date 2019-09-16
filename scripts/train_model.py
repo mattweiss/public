@@ -22,6 +22,8 @@ import argparse
 from pdb import set_trace as st
 import mlflow
 
+from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+
 # set tracking uri if it do not exist.
 # mlflow occationally gives the following error: "File exists: '/home/mlweiss/Documents/wpi/research/code/dovebirdia/models/mlruns"
 mlflow_dir = "/".join(os.getcwd().split('/')[:-2]) + '/mlruns'
@@ -92,10 +94,11 @@ if not os.path.exists(res_dir):
 config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
 config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
 
-nn = config_dicts['meta']['model'](config_dicts['model'], config_dicts['kf'])
+#nn = config_dicts['meta']['model'](config_dicts['model'], config_dicts['kf'])
+nn = AutoencoderKalmanFilter(config_dicts['model'], config_dicts['kf'])
 print(nn.__class__)
 nn.getModelSummary()
-history = nn.fitDomainRandomization(config_dicts['dr'], save_weights=False)
+history = nn.fitDomainRandomization(config_dicts['dr'], save_model=True)
 
 ################################################################################
 # mlflow

@@ -29,8 +29,11 @@ class ccdcMixturesDataset(AbstractDataset):
 
     def getDataset(self):
 
+        # run loadDataset
+        self._loadDataset()
+        
         # load data
-        return self._loadDataset()
+        return self._dataset_dict
 
     ###################
     # Private Methods #
@@ -68,4 +71,4 @@ class ccdcMixturesDataset(AbstractDataset):
         self._dataset_dict['x_test'] = self._dataset_dict['x_test'].reshape(-1,  self._dataset_dict['x_test'].shape[1]* self._dataset_dict['x_test'].shape[2] )
         self._dataset_dict['y_test'] = self._data_test.y
 
-        return self._dataset_dict
+        #return self._dataset_dict

@@ -24,7 +24,7 @@ class AbstractDataset(ABC):
     def getDataset(self):
 
         """
-        vars - a list of the variables to be returned
+        return dataset
         """
     
     ###################
@@ -37,3 +37,14 @@ class AbstractDataset(ABC):
         """
         Load Dataset
         """
+    
+    def _saveDataset(self):
+
+        """
+        Save Dataset
+        
+        Not an abstract method since some datasets, e.g. mnist, are not saved.
+        
+        """
+
+        pass
