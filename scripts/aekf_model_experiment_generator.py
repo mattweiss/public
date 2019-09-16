@@ -20,8 +20,8 @@ import dovebirdia.utilities.dr_functions as drfns
 ####################################
 # Test Name and Description
 ####################################
-script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_model.py'
-experiment_name = 'aekf_gaussian100k_rand'
+script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_dl_model.py'
+experiment_name = 'aekf_gaussian1k_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -42,8 +42,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-#meta_params['model'] = AutoencoderKalmanFilter
-#meta_params['fit'] = AutoencoderKalmanFilter.fitDomainRandomization
+meta_params['model'] = AutoencoderKalmanFilter
 
 ####################################
 # Model Parameters
@@ -68,7 +67,7 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10
+model_params['epochs'] = 1000
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
@@ -85,7 +84,7 @@ dr_params['x_range'] = (-1,1)
 dr_params['n_trials'] = 1
 dr_params['n_samples'] = 100
 dr_params['n_features'] = 1
-n = 1.0
+n = 10.0
 dr_params['fns'] = [
     #['exponential', drfns.exponential_fn, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid_fn, [(0.0,100.0),0.15,60.0]],
@@ -93,7 +92,7 @@ dr_params['fns'] = [
     #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
 ]
 dr_params['noise'] = np.random.normal
-dr_params['noise_params'] = {'loc':0.0, 'scale':0.1}
+dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
 
 ####################################
 # Kalman Filter Parameters

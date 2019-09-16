@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import tensorflow as tf
 from pdb import set_trace as st
+from dovebirdia.utilities.base import dictToAttributes, saveDict
 
 class AbstractFilter(ABC):
 
@@ -10,7 +11,7 @@ class AbstractFilter(ABC):
 
     def __init__(self, params=None):
 
-        self._dictToAttributes(params=params)
+        dictToAttributes(self,params)
 
     ##################
     # Public Methods #
@@ -24,8 +25,3 @@ class AbstractFilter(ABC):
     ###################
     # Private Methods #
     ###################
-    
-    @abstractmethod
-    def _dictToAttributes(self,params=None):
-
-        pass
