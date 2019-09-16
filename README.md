@@ -24,6 +24,6 @@
 
 ## scripts/
 
-    model_experiment_generator.py - creates configuration files to run deeplearning models
-    train_model.py - script used to train models
+    aekf_model_experiment_generator.py - creates configuration files to run aekf models
+    train_dl_model.py - script used to train deep learning models
     dr_test_set_generator.py - generates domain randomization test set and saves to disk
