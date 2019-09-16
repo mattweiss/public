@@ -11,6 +11,7 @@
     base.py - AbstractDataset
     mnist.py - MNISTDataset
     unpa_op.py - UNPAOPDataset (Based on OpenPose estimates of Facial Features - http://www.unavarra.es/gi4e/databases/hpdb)
+    domain_randomization.py - Generates training, validation and testing datasets for domain randomization
 
 ## filtering/
 
@@ -19,7 +20,7 @@
     
 ## utilities/
 
-    base.py - dictToAttributes
+    base.py - dictToAttributes, saveDict
 
 ## scripts/
 
