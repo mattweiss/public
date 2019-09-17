@@ -19,14 +19,6 @@ class Autoencoder(FeedForwardNetwork):
     # Public Methods #
     ##################
     
-    def predict(self, dataset=None):
-
-        pass
-        
-    def evaluate(self, dataset=None):
-
-        pass
-
     ###################
     # Private Methods #
     ###################

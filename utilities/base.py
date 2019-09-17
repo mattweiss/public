@@ -14,7 +14,17 @@ def dictToAttributes(cls, params):
 
 def saveDict(save_dict=None, save_path=None):
 
-    assert dict is not None
+    assert save_dict is not None
+    assert save_path is not None
+    
+    # write save_dict to disk
+    with open(save_path, 'wb') as handle:
+
+        dill.dump(save_dict, handle)
+        
+def saveAttrDict(save_dict=None, save_path=None):
+
+    assert save_dict is not None
     assert save_path is not None
     
     # copy self.__dict__ to save_dict

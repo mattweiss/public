@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import tensorflow as tf
 from pdb import set_trace as st
-from dovebirdia.utilities.base import dictToAttributes, saveDict
+from dovebirdia.utilities.base import dictToAttributes
 
 class AbstractFilter(ABC):
 

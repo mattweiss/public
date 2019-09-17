@@ -10,7 +10,7 @@ import dovebirdia.utilities.dr_functions as drfns
 # if parameters is a tuple that is the range from which the parameter is drawn
 
 dr_params = dict()
-dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/datasets/first_test_test.pkl'
+dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/datasets/test.pkl'
 dr_params['ds_type'] = 'test'
 dr_params['x_range'] = (-1,1)
 dr_params['n_trials'] = 10

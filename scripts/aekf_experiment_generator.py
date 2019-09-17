@@ -21,8 +21,8 @@ import dovebirdia.utilities.distributions as distributions
 ####################################
 # Test Name and Description
 ####################################
-script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_dl_model.py'
-experiment_name = 'aekf_bimodal1k_taylor'
+script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
+experiment_name = 'aekf_gaussian_KILLME_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -92,8 +92,9 @@ dr_params['fns'] = [
     ['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
     #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
 ]
-dr_params['noise'] = distributions.bimodal
-dr_params['noise_params'] = {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}
+dr_params['noise'] = np.random.normal
+dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
+#{'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}
 
 ####################################
 # Kalman Filter Parameters
@@ -201,7 +202,7 @@ for config_params in itertools.product(config_params_dicts['meta'],
         batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
         
     batch_str = batch_string_prefix + script + ' -c ./config/' + ' -r ./results//\n'
-    batch_file_name = model_dir + 'run.sh'
+    batch_file_name = model_dir + 'train_model.sh'
     batch_file = open(batch_file_name, 'w')
     batch_file.write(batch_str)
     batch_file.close()

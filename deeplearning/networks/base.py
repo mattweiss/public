@@ -5,7 +5,7 @@ import tensorflow as tf
 from pdb import set_trace as st
 
 from abc import ABC, abstractmethod
-from dovebirdia.utilities.base import dictToAttributes, saveDict
+from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 
 class AbstractNetwork(ABC):
@@ -51,7 +51,7 @@ class AbstractNetwork(ABC):
 
     ##################
     # Public Methods #
-    ##################
+   ##################
             
     @abstractmethod
     def fit(self, dataset=None, save_model=False):
@@ -59,12 +59,12 @@ class AbstractNetwork(ABC):
         pass
             
     @abstractmethod
-    def predict(self, dataset=None):
+    def predict(self, x=None):
 
         pass
         
     @abstractmethod
-    def evaluate(self, dataset=None):
+    def evaluate(self, x=None, y=None, t=None, save_results=True):
 
         pass
         
@@ -159,8 +159,6 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def fitDomainRandomization(self, dr_params=None, save_model=False):
 
-        # dictToAttributes(self,params)
-
         # create domainRandomizationDataset object
         self._dr_dataset = DomainRandomizationDataset(dr_params)
 
@@ -172,7 +170,7 @@ class FeedForwardNetwork(AbstractNetwork):
             for epoch in range(1, self._epochs+1):
 
                 # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
-                dr_data = self._dr_dataset.getDataset()
+                dr_data = self._dr_dataset.generateDataset()
 
                 # train on all trials
                 for x_train, y_train in zip(dr_data['x_train'],dr_data['y_train']):
@@ -234,10 +232,46 @@ class FeedForwardNetwork(AbstractNetwork):
 
         pass
         
-    def evaluate(self, dataset=None):
+    def evaluate(self, x=None, y=None, t=None, save_results=True):
 
-        pass
-    
+        assert x is not None
+        assert y is not None
+        assert t is not None
+
+        # model predictions
+        x_hat_list = list()
+        
+        # load trained model
+        model_results_path = './results/tensorflow_model.ckpt'
+        
+        with tf.Session() as sess:
+            
+            tf.train.Saver().restore(sess, model_results_path)
+
+            for X,Y in zip(x,y):
+
+                test_loss, x_hat = sess.run([self._loss_op,self._X_hat], feed_dict={self._X:X, self._y:Y})
+                
+                self._history['test_loss'].append(test_loss)
+                x_hat_list.append(x_hat)
+
+        x_hat = np.asarray(x_hat_list)
+
+        # save predictions
+        if save_results:
+
+            test_results_dict = {
+                'x':x,
+                'y':y,
+                'x_hat':x_hat,
+                't':t
+                }
+            
+
+            saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
+            
+        return self._history
+                
     ###################
     # Private Methods #
     ###################

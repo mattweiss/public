@@ -5,7 +5,7 @@ import random
 import copy
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
-from dovebirdia.utilities.base import saveDict, loadDict
+from dovebirdia.utilities.base import saveAttrDict, loadDict
 
 class DomainRandomizationDataset(AbstractDataset):
 
@@ -33,7 +33,7 @@ class DomainRandomizationDataset(AbstractDataset):
         """
 
         # linspace for generating function values
-        x = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_samples), axis=-1)
+        t = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_samples), axis=-1)
 
         # list to hold either training of testing datasets.
         x_list = list()
@@ -70,7 +70,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
                         param_list.append(param)
 
-                y = self._fn_def(x, param_list)
+                y = self._fn_def(t, param_list)
                 y -= y[0]
 
                 y_noise = y + self._noise(**self._noise_params, size=(self._n_samples,1))
@@ -92,12 +92,14 @@ class DomainRandomizationDataset(AbstractDataset):
             self._data['y_train'] = np.asarray(y_list)
             self._data['x_val'] = np.asarray(x_val_list)
             self._data['y_val'] = np.asarray(y_val_list)
+            self._data['t'] = t
 
         else:
 
             self._data['x_test'] = np.asarray(x_list)
             self._data['y_test'] = np.asarray(y_list)
-
+            self._data['t'] = t
+            
         # save dataset logic
         if getattr(self, '_save_path', None) is not None:
 
@@ -111,7 +113,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
                     raise
             
-            saveDict(save_dict=self.__dict__, save_path=self._save_path)
+            saveAttrDict(save_dict=self.__dict__, save_path=self._save_path)
             
         else:
 
