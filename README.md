@@ -21,6 +21,7 @@
 ## utilities/
 
     base.py - dictToAttributes, saveDict
+    distributions.py - statistical distribution functions
 
 ## scripts/
 
