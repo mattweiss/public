@@ -83,7 +83,7 @@ if not os.path.exists(res_dir):
 
 dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset()
 
-x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
+x_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
 
 ################################################################################
 # Model
@@ -92,25 +92,12 @@ x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
 filter = config_dicts['meta']['filter'](config_dicts['kf'])
 print(filter.__class__)
 
-testing_results = list()
+history = filter.evaluate(x_test,y_test,t)
 
-for z in x_test:
+results_dict = {
+'test_mse':np.asarray(history['test_loss']).mean(),
+}
 
-    kf_results = filter.filter(z)
-
-    mse = np.square(np.subtract(kf_results['z_hat_post'],z)).mean()
-
-    testing_results.append(mse)
-    
-    # plt.plot(z, label='z')
-    # plt.plot(kf_results['x_hat_post'][:,0], label='x post')
-    # plt.plot(kf_results['x_hat_pri'][:,0], label='x pri')
-    # plt.plot(kf_results['x_hat_post'][:,1], label='x-dot post')
-    # plt.legend()
-    # plt.grid()
-    # plt.show()
-    # plt.close()
-    
 ################################################################################
 # CSV
 ################################################################################
@@ -123,7 +110,7 @@ for config_dict in config_dicts.values():
     merged_config_dicts.update(config_dict)
 
 # training results
-merged_config_dicts.update({'test_mse':np.asarray(testing_results).mean()})
+merged_config_dicts.update(results_dict)
 
 # model id
 merged_config_dicts.update({'model_id':os.getcwd().split('/')[-1].split('_')[-1]})
@@ -139,7 +126,7 @@ for k,v in merged_config_dicts.items():
 
         pass
         
-results_file = os.getcwd() + config_dicts['model']['results_dir'] + 'model_results.csv'
+results_file = os.getcwd() + config_dicts['model']['results_dir'] + 'testing_results.csv'
 
 try:
     

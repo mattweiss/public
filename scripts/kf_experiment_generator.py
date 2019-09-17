@@ -21,8 +21,8 @@ import dovebirdia.utilities.distributions as distributions
 ####################################
 # Test Name and Description
 ####################################
-script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/test_filter_model.py'
-experiment_name = 'kf_first_test_test'
+script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
+experiment_name = 'kf_KILLME'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -55,7 +55,7 @@ model_params['results_dir'] = '/results/'
 # Domain Randomization Parameters
 ####################################
 
-dr_params['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/datasets/first_test_test.pkl'
+dr_params['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/datasets/test.pkl'
 
 ####################################
 # Kalman Filter Parameters
@@ -163,7 +163,7 @@ for config_params in itertools.product(config_params_dicts['meta'],
         batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
         
     batch_str = batch_string_prefix + script + ' -c ./config/' + ' -r ./results//\n'
-    batch_file_name = model_dir + 'run.sh'
+    batch_file_name = model_dir + 'test_model.sh'
     batch_file = open(batch_file_name, 'w')
     batch_file.write(batch_str)
     batch_file.close()

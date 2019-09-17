@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.datasets import make_spd_matrix
 from pdb import set_trace as st
 from dovebirdia.filtering.base import AbstractFilter
+from dovebirdia.utilities.base import saveDict
 
 class KalmanFilter(AbstractFilter):
 
@@ -32,6 +33,43 @@ class KalmanFilter(AbstractFilter):
         except:
 
             self._R = None
+            
+################################################################################
+
+    def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True):
+
+        assert x is not None
+        assert y is not None
+        assert t is not None
+
+        test_loss = list()
+        x_hat_list = list()
+        
+        for X,Y in zip(x,y):
+        
+            filter_results = self.filter(X)
+
+            x_hat = filter_results[x_key][:,:,0]
+            
+            test_loss.append(np.square(np.subtract(x_hat,Y)).mean())
+            x_hat_list.append(x_hat)
+
+        x_hat = np.asarray(x_hat_list)
+
+        # save predictions
+        if save_results:
+
+            test_results_dict = {
+                'x':x,
+                'y':y,
+                'x_hat':x_hat,
+                't':t
+                }
+            
+
+            saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
+
+        return {'test_loss':test_loss}
 
 ################################################################################
 
