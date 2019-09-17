@@ -25,6 +25,9 @@
 
 ## scripts/
 
-    aekf_model_experiment_generator.py - creates configuration files to run aekf models
-    train_dl_model.py - script used to train deep learning models
+    aekf_experiment_generator.py - creates configuration files to run aekf models
+    aekf_evaluation_generator.py - creates configuration files to test previously trained aekf models
+    dl_model.py - script used to train and test deep learning models
     dr_test_set_generator.py - generates domain randomization test set and saves to disk
+    kf_experiment_generator.py - creates configuration files to run Kalman Filter models
+    filter_model.py - scripts used to test filter models
