@@ -15,18 +15,6 @@ class UNPAOPDataset(AbstractDataset):
 
     def getDataset(self):
 
-        # run loadDataset
-        self._loadDataset()
-        
-        # load data
-        return self._dataset_dict
-
-    ###################
-    # Private Methods #
-    ###################
-
-    def _loadDataset(self):
-
         # read data from disk
         self._dataset_dir = self._dataset_base_dir + 'user_{user}_video_{video}'.format(user=self._user, video=self._video) + '/data/'
         self._dataset_file = 'unpaop_user_{user}_video_{video}.npy'.format(user=self._user, video=self._video)
@@ -60,7 +48,9 @@ class UNPAOPDataset(AbstractDataset):
         self._op_data = np.asarray(self._op_data)
         self._op_labels = np.asarray(self._op_labels)
 
-        self._dataset_dict['x'] = self._unpa_data
-        self._dataset_dict['y'] = self._unpa_labels
-        self._dataset_dict['x_noise'] = self._op_data
-        self._dataset_dict['y_noise'] = self._op_labels
+        self._data['x'] = self._unpa_data
+        self._data['y'] = self._unpa_labels
+        self._data['x_noise'] = self._op_data
+        self._data['y_noise'] = self._op_labels
+
+        return self._data

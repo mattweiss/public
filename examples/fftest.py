@@ -59,11 +59,11 @@ params['loss'] = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 params['history_size'] = 100
 
 # training
-params['epochs'] = 25
+params['epochs'] = 2
 params['mbsize'] = 32
 params['optimizer'] = tf.train.AdamOptimizer
 params['learning_rate'] = 1e-3
-params['res_dir'] = 
+params['res_dir'] = 'results/'
 
 # Network
 nn = FeedForwardNetwork(params)

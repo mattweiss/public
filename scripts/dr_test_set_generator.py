@@ -10,10 +10,10 @@ import dovebirdia.utilities.dr_functions as drfns
 # if parameters is a tuple that is the range from which the parameter is drawn
 
 dr_params = dict()
-dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/domain_randomization/test_sets/first_test_test.pkl'
+dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/datasets/first_test_test.pkl'
 dr_params['ds_type'] = 'test'
 dr_params['x_range'] = (-1,1)
-dr_params['n_trials'] = 100
+dr_params['n_trials'] = 10
 dr_params['n_samples'] = 100
 dr_params['n_features'] = 1
 n = 10.0
@@ -30,4 +30,4 @@ dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
 dr_dataset = DomainRandomizationDataset(dr_params)
 
 # generate dataset and save to disk
-dr_dataset.getDataset()
+dr_dataset.generateDataset()

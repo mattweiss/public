@@ -22,9 +22,10 @@ import argparse
 from pdb import set_trace as st
 import csv
 import pandas as pd
+import matplotlib.pyplot as plt
 
-from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
-
+from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+from dovebirdia.filtering.kalman_filter import KalmanFilter
 
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
@@ -77,23 +78,39 @@ if not os.path.exists(res_dir):
     os.makedirs( res_dir )
 
 ################################################################################
+# Dataset
+################################################################################
+
+dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset()
+
+x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
+
+################################################################################
 # Model
 ################################################################################
 
-# Network
-config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
-config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
+filter = config_dicts['meta']['filter'](config_dicts['kf'])
+print(filter.__class__)
 
-nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
-print(nn.__class__)
-nn.getModelSummary()
-history = nn.fitDomainRandomization(config_dicts['dr'], save_model=True)
+testing_results = list()
 
-training_results_dict = {
-    'train_mse':np.asarray(history['train_loss']).mean(),
-    'val_mse':np.asarray(history['val_loss']).mean()
-    }
+for z in x_test:
 
+    kf_results = filter.filter(z)
+
+    mse = np.square(np.subtract(kf_results['z_hat_post'],z)).mean()
+
+    testing_results.append(mse)
+    
+    # plt.plot(z, label='z')
+    # plt.plot(kf_results['x_hat_post'][:,0], label='x post')
+    # plt.plot(kf_results['x_hat_pri'][:,0], label='x pri')
+    # plt.plot(kf_results['x_hat_post'][:,1], label='x-dot post')
+    # plt.legend()
+    # plt.grid()
+    # plt.show()
+    # plt.close()
+    
 ################################################################################
 # CSV
 ################################################################################
@@ -106,7 +123,7 @@ for config_dict in config_dicts.values():
     merged_config_dicts.update(config_dict)
 
 # training results
-merged_config_dicts.update(training_results_dict)
+merged_config_dicts.update({'test_mse':np.asarray(testing_results).mean()})
 
 # model id
 merged_config_dicts.update({'model_id':os.getcwd().split('/')[-1].split('_')[-1]})

@@ -1,10 +1,11 @@
+import os, errno
 import tensorflow as tf
 import numpy as np
 import random
 import copy
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
-from dovebirdia.utilities.base import saveDict
+from dovebirdia.utilities.base import saveDict, loadDict
 
 class DomainRandomizationDataset(AbstractDataset):
 
@@ -18,15 +19,14 @@ class DomainRandomizationDataset(AbstractDataset):
 
     def getDataset(self):
 
-        self._loadDataset()
+        assert self._load_path is not None
+        
+        # load dataset using load_path attribute
+        self._data = loadDict(self._load_path)
 
-        return self._dataset_dict
-
-    ###################
-    # Private Methods #
-    ###################
-
-    def _loadDataset(self):
+        return self._data
+        
+    def generateDataset(self):
 
         """
         Generate domain randomization dataset.  Logic for whether to save to disk or return in in getDataset()
@@ -88,21 +88,33 @@ class DomainRandomizationDataset(AbstractDataset):
         # set dataset_dict
         if self._ds_type == 'train':
             
-            self._dataset_dict['x_train'] = np.asarray(x_list)
-            self._dataset_dict['y_train'] = np.asarray(y_list)
-            self._dataset_dict['x_val'] = np.asarray(x_val_list)
-            self._dataset_dict['y_val'] = np.asarray(y_val_list)
+            self._data['x_train'] = np.asarray(x_list)
+            self._data['y_train'] = np.asarray(y_list)
+            self._data['x_val'] = np.asarray(x_val_list)
+            self._data['y_val'] = np.asarray(y_val_list)
 
         else:
 
-            self._dataset_dict['x_test'] = np.asarray(x_list)
-            self._dataset_dict['y_test'] = np.asarray(y_list)
+            self._data['x_test'] = np.asarray(x_list)
+            self._data['y_test'] = np.asarray(y_list)
 
         # save dataset logic
         if getattr(self, '_save_path', None) is not None:
 
+            try:
+
+                os.makedirs(os.path.dirname(self._save_path))
+
+            except OSError as e:
+
+                if e.errno != errno.EEXIST:
+
+                    raise
+            
             saveDict(save_dict=self.__dict__, save_path=self._save_path)
             
-            
+        else:
+
+            return self._data
 
             

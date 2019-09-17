@@ -29,18 +29,6 @@ class ccdcMixturesDataset(AbstractDataset):
 
     def getDataset(self):
 
-        # run loadDataset
-        self._loadDataset()
-        
-        # load data
-        return self._dataset_dict
-
-    ###################
-    # Private Methods #
-    ###################
-
-    def _loadDataset(self):
-
         # read training and testing pickle files
         self._pickle_files_train = os.listdir( self._dataset_dir + 'training/' )
         self._pickle_files_val = os.listdir( self._dataset_dir + 'validation/' )
@@ -57,18 +45,18 @@ class ccdcMixturesDataset(AbstractDataset):
         self._data_test  = pd.DataFrame( [ pd.read_pickle( self._dataset_dir + '/testing/' + pf ) for pf in self._pickle_files_test ] )
 
         # training set
-        self._dataset_dict['x_train'] = np.asarray(list(self._data_train[self._resistance_type].values))
-        self._dataset_dict['x_train'] = self._dataset_dict['x_train'].reshape(-1,  self._dataset_dict['x_train'].shape[1]* self._dataset_dict['x_train'].shape[2] )
-        self._dataset_dict['y_train'] = self._data_train.y
+        self._data['x_train'] = np.asarray(list(self._data_train[self._resistance_type].values))
+        self._data['x_train'] = self._data['x_train'].reshape(-1,  self._data['x_train'].shape[1]* self._data['x_train'].shape[2] )
+        self._data['y_train'] = self._data_train.y
 
         # validation set
-        self._dataset_dict['x_val'] = np.asarray(list(self._data_val[self._resistance_type].values))
-        self._dataset_dict['x_val'] = self._dataset_dict['x_val'].reshape(-1,  self._dataset_dict['x_val'].shape[1]* self._dataset_dict['x_val'].shape[2] )
-        self._dataset_dict['y_val'] = self._data_val.y
+        self._data['x_val'] = np.asarray(list(self._data_val[self._resistance_type].values))
+        self._data['x_val'] = self._data['x_val'].reshape(-1,  self._data['x_val'].shape[1]* self._data['x_val'].shape[2] )
+        self._data['y_val'] = self._data_val.y
         
         # testing set
-        self._dataset_dict['x_test'] = np.asarray(list(self._data_test[self._resistance_type].values))
-        self._dataset_dict['x_test'] = self._dataset_dict['x_test'].reshape(-1,  self._dataset_dict['x_test'].shape[1]* self._dataset_dict['x_test'].shape[2] )
-        self._dataset_dict['y_test'] = self._data_test.y
+        self._data['x_test'] = np.asarray(list(self._data_test[self._resistance_type].values))
+        self._data['x_test'] = self._data['x_test'].reshape(-1,  self._data['x_test'].shape[1]* self._data['x_test'].shape[2] )
+        self._data['y_test'] = self._data_test.y
 
-        #return self._dataset_dict
+        return self._data

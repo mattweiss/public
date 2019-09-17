@@ -14,7 +14,7 @@ class AbstractDataset(ABC):
         #self._path = path
         dictToAttributes(self,params)
 
-        self._dataset_dict = dict()
+        self._data = dict()
                 
     ##################
     # Public Methods #
@@ -26,25 +26,3 @@ class AbstractDataset(ABC):
         """
         return dataset
         """
-    
-    ###################
-    # Private Methods #
-    ###################
-
-    @abstractmethod
-    def _loadDataset(self):
-
-        """
-        Load Dataset
-        """
-    
-    def _saveDataset(self):
-
-        """
-        Save Dataset
-        
-        Not an abstract method since some datasets, e.g. mnist, are not saved.
-        
-        """
-
-        pass

@@ -29,3 +29,12 @@ def saveDict(save_dict=None, save_path=None):
     with open(save_path, 'wb') as handle:
 
         dill.dump(save_dict_copy, handle)
+
+def loadDict(load_path=None):
+
+    assert load_path is not None
+    
+    # write save_dict to disk
+    with open(load_path, 'rb') as handle:
+
+        return dill.load(handle)
