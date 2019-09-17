@@ -16,12 +16,13 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
+import dovebirdia.utilities.distributions as distributions
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/train_dl_model.py'
-experiment_name = 'aekf_gaussian1k_taylor'
+experiment_name = 'aekf_bimodal1k_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -67,7 +68,7 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 1000
+model_params['epochs'] = 10
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
@@ -91,8 +92,8 @@ dr_params['fns'] = [
     ['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
     #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
 ]
-dr_params['noise'] = np.random.normal
-dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
+dr_params['noise'] = distributions.bimodal
+dr_params['noise_params'] = {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}
 
 ####################################
 # Kalman Filter Parameters

@@ -20,22 +20,11 @@ import dill
 from datetime import datetime
 import argparse
 from pdb import set_trace as st
-import mlflow
-import time
+import csv
+from collections import OrderedDict
 
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 
-# set tracking uri if it does not exist.
-# mlflow occationally gives the following error: "File exists: '/home/mlweiss/Documents/wpi/research/code/dovebirdia/models/mlruns"
-mlflow_dir = "/".join(os.getcwd().split('/')[:-2]) + '/mlruns'
-
-if not os.path.isdir(mlflow_dir):
-
-    mlflow_uri = 'file:' + mlflow_dir
-    mlflow.set_tracking_uri(mlflow_uri)
-
-mlflow.set_experiment(os.getcwd().split('/')[-2])
-mlflow.start_run(run_name=os.getcwd().split('/')[-1])
 
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
@@ -70,7 +59,7 @@ for config_file in config_files:
     with open(config_dir + config_file, 'rb') as handle:
 
         config_dicts[config_name] = dill.load(handle)
-    
+
 ################################################################################
 # SET DIRECTORIES
 ################################################################################
@@ -101,27 +90,56 @@ print(nn.__class__)
 nn.getModelSummary()
 history = nn.fitDomainRandomization(config_dicts['dr'], save_model=True)
 
+training_results_dict = {
+    'train_loss':np.asarray(history['train_loss']).mean(),
+    'val_loss':np.asarray(history['val_loss']).mean()
+    }
+
 ################################################################################
-# mlflow
+# CSV
 ################################################################################
 
-# params
-for config_name, config_dict in config_dicts.items():
+# merge dictionaries in config_dicts and training_results_dict
+merged_config_dicts = dict()
 
-    for param_name, param in config_dict.items():
+for config_dict in config_dicts.values():
 
-        try:
+    merged_config_dicts.update(config_dict)
 
-            mlflow.log_param(config_name + '_' + param_name, param.__name__)
+# training results
+merged_config_dicts.update(training_results_dict)
 
-        except:
+# model name
+merged_config_dicts.update({'model_name':os.getcwd().split('/')[-1].split('_')[-1]})
 
-            mlflow.log_param(config_name + '_' + param_name, param)
+# change dictionary value to name if exists
+for k,v in merged_config_dicts.items():
 
-# metrics
-for metric_name, metric in history.items():
+    try:
 
-    if len(metric) != 0:
+        merged_config_dicts[k] = v.__name__
 
-        mlflow.log_metric(metric_name, np.asarray(metric).mean())
+    except:
+
+        pass
+        
+results_file = os.getcwd() + config_dicts['model']['results_dir'] + 'model_results.csv'
+
+try:
+    
+    with open(results_file, 'a') as csvfile:
+        
+        writer = csv.DictWriter(csvfile, fieldnames=sorted(merged_config_dicts.keys()))
+
+        if os.stat(results_file).st_size == 0:
+
+            writer.writeheader()
+
+        writer.writerow(merged_config_dicts)
+
+except IOError:
+
+    print("I/O error") 
+
+
 
