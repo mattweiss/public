@@ -1,5 +1,4 @@
 import os
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from pdb import set_trace as st
@@ -254,7 +253,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                 self._history['test_loss'].append(test_loss)
                 x_hat_list.append(x_hat)
-
+                
         x_hat = np.asarray(x_hat_list)
 
         # save predictions

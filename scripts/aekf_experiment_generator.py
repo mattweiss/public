@@ -22,7 +22,7 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_gaussian_KILLME_taylor'
+experiment_name = 'aekf_gaussian_KILLMME_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -68,13 +68,13 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10
+model_params['epochs'] = 100
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
 
 # testing
-model_params['history_size'] = 1000
+model_params['history_size'] = 100
 
 ####################################
 # Domain Randomization Parameters
@@ -101,8 +101,7 @@ dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
 ####################################
 
 kf_params['dimensions'] = (1,2)
-#kf_params['model'] = 'ncv'
-kf_params['n_signals'] = 1
+kf_params['n_signals'] = 16
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0
 kf_params['h'] = (1.0,0.0)

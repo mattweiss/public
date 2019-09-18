@@ -16,23 +16,17 @@ class KalmanFilter(AbstractFilter):
         super().__init__(params)
 
         self._dt = self._sample_freq**-1
-        self._F = tf.constant(np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt],[0.0,1.0]], dtype=np.float64)), dtype=tf.float64, name='F')
-        self._Q = tf.constant(np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]], dtype=np.float64)), dtype=tf.float64, name='Q')
-        self._H = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._h, dtype=np.float64)), dtype=tf.float64, name='H')
+
+        # constructs matrices based on NCV, NCA, etc.
+        self._F, self._Q, self._H, self._R = self._buildModel()
+        
         self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
         self._z0 = tf.constant(np.zeros((self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='z0')
-        #self._P0 = np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64 ), dtype=tf.float64, name='P0')
-        self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
+        self._P0 = tf.constant(np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64 ), dtype=tf.float64, name='P0')
+        #self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
 
        
-        # set R is parameter was passed
-        try:
 
-            self._R = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._r, dtype=np.float64)), dtype=tf.float64, name='R')
-
-        except:
-
-            self._R = None
             
 ################################################################################
 
@@ -178,3 +172,61 @@ class KalmanFilter(AbstractFilter):
             # else:
 
             #     setattr(self, '_' + key, tf.constant(value, name=key, dtype=tf.float64) )
+
+    def _buildModel(self):
+
+        """
+        Builds F, Q, H and R based on inputs
+        """
+
+        # F = tf.constant(np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt],[0.0,1.0]], dtype=np.float64)), dtype=tf.float64, name='F')
+        # Q = tf.constant(np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]], dtype=np.float64)), dtype=tf.float64, name='Q')
+        # H = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._h, dtype=np.float64)), dtype=tf.float64, name='H')
+
+        # ZV
+        if self._dimensions[1] == 1:
+
+            F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
+            Q = np.kron(np.eye(self._n_signals), np.array([[self._q]]))
+            H = np.kron(np.eye(self._n_signals), np.array([self._h]))
+
+        # NCV
+        elif self._dimensions[1] == 2:
+
+            F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt],[0.0,1.0]]))
+            Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]]))
+            H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0]))
+
+        # NCA
+        elif self._dimensions[1] == 3:
+
+            F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
+            Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0,0.0],[0.0,self._q,0.0],[0.0,0.0,self._q]]))
+            H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0]))
+
+        # jerk model
+        elif self._dimensions[1] == 4:
+
+            F = np.kron(np.eye(self._n_signals), np.array([[1.0, self._dt, 0.5*self._dt**2, (6**-1)*self._dt**3],
+                                                             [0.0,1.0,self._dt, 0.5*self._dt**2],
+                                                             [0.0,0.0,1.0,self._dt],
+                                                             [0.0,0.0,0.0,1.0]]))
+
+            Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0,0.0,0.0],
+                                                             [0.0,self._q,0.0,0.0],
+                                                             [0.0,0.0,self._q,0.0],
+                                                             [0.0,0.0,0.0,self._q]]))
+
+            H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0,0.0]))
+
+                    
+        # set R if parameter was passed
+        try:
+
+            R = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._r, dtype=np.float64)), dtype=tf.float64, name='R')
+
+        except:
+
+            R = None
+
+        return F, Q, H, R

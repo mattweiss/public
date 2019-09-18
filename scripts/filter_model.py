@@ -22,7 +22,6 @@ import argparse
 from pdb import set_trace as st
 import csv
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.filtering.kalman_filter import KalmanFilter

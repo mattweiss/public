@@ -171,8 +171,8 @@ else:
     # dataset
     merged_config_dicts.update({'test_dataset':test_dataset_path})
     
-    # model id
-    merged_config_dicts.update({'model_id':os.getcwd().split('/')[-1].split('_')[-1]})
+# model id
+merged_config_dicts.update({'model_id':os.getcwd().split('/')[-1].split('_')[-1]})
 
 # training results
 merged_config_dicts.update(results_dict)

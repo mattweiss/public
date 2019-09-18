@@ -22,10 +22,14 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_gaussian_KILLME_taylor'
+#****************************************************************************************************************************
+experiment_name = 'aekf_gaussian_KILLMME_taylor'
+test_dataset_file = 'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
+model_ids = [1]
+#****************************************************************************************************************************
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-model_ids = [1,2]
-test_dataset_path = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/datasets/test.pkl'
+test_dataset_dir = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/'
+test_dataset_path = test_dataset_dir + test_dataset_file
 machine = socket.gethostname()
 ####################################
 
@@ -46,7 +50,7 @@ for model_id in model_ids:
 
     else:
 
-        batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
+        batch_string_prefix = 'sbatch -o ./testing_results.out '
         
     batch_str = batch_string_prefix + script + ' -d ' + test_dataset_path + '\n'
     batch_file_name = model_dir + 'test_model.sh'
