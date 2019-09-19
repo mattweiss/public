@@ -100,6 +100,11 @@ class AbstractNetwork(ABC):
         pass
     
     @abstractmethod
+    def _setLoss(self):
+
+        pass
+    
+    @abstractmethod
     def _setOptimizer(self):
 
         pass

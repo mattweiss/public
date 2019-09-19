@@ -10,11 +10,13 @@ import os, sys, socket
 import numpy as np
 import itertools
 import tensorflow as tf
+from keras import optimizers, losses
 import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+from dovebirdia.deeplearning.networks.lstm import LSTM
 import dovebirdia.utilities.dr_functions as drfns 
 import dovebirdia.utilities.distributions as distributions
 
@@ -22,21 +24,19 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_gaussian_jerk_100k_taylor'
+experiment_name = 'lstm_gaussian_KILLME_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-machine = 'turing'
+machine = 'pengy'
 ####################################
 
 meta_params = dict()
 dr_params = dict()
-kf_params = dict()
 model_params = dict()
 
 params_dicts = OrderedDict([
     ('meta',meta_params),
     ('model',model_params),
     ('dr',dr_params),
-    ('kf',kf_params),
 ])
 
 ####################################
@@ -52,26 +52,31 @@ meta_params['network'] = LSTM
 model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 1
 model_params['output_dim'] = 1
-model_params['hidden_dims'] = (256,64) # if using AEKF append number of signals from KF to hidden_dims in train_model.py, otherwise include here
+model_params['hidden_dims'] = (256,64)
 model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
 model_params['kernel_initializer'] = 'glorot_uniform'
-model_params['bias_initializer'] = 'zeros'
+model_params['bias_initializer'] = 0.0
 model_params['kernel_regularizer'] = None
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
 model_params['kernel_constraint'] = None
 model_params['bias_constraint'] = None
 
+model_params['seq_len'] = 10
+model_params['recurrent_regularizer'] = None
+model_params['stateful'] = False
+model_params['return_seq'] = True
+
 # loss
-model_params['loss'] = tf.losses.mean_squared_error
+model_params['loss'] = losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100000
+model_params['epochs'] = 1000
 model_params['mbsize'] = 100
-model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['learning_rate'] = list(np.logspace(-3,-5,10))
+model_params['optimizer'] = optimizers.Adam
+model_params['learning_rate'] = 1e-3
 
 # testing
 model_params['history_size'] = 100
@@ -87,25 +92,14 @@ dr_params['n_samples'] = 100
 dr_params['n_features'] = 1
 n = 10.0
 dr_params['fns'] = [
-    #['exponential', drfns.exponential_fn, [1.0,(0.02,0.045),-1.0]],
-    #['sigmoid', drfns.sigmoid_fn, [(0.0,100.0),0.15,60.0]],
+    #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
+    #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
     ['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
     #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
 ]
 dr_params['noise'] = np.random.normal
 dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
 #{'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}
-
-####################################
-# Kalman Filter Parameters
-####################################
-
-kf_params['dimensions'] = (1,4)
-kf_params['n_signals'] = 16
-kf_params['n_samples'] = 100
-kf_params['sample_freq'] = 1.0
-kf_params['h'] = 1.0
-kf_params['q'] = list(np.logspace(-8,1,10))
 
 ####################################
 # Determine scaler and vector parameters
@@ -165,8 +159,7 @@ cfg_ctr = 1
 
 for config_params in itertools.product(config_params_dicts['meta'],
                                        config_params_dicts['model'],
-                                       config_params_dicts['dr'],
-                                       config_params_dicts['kf']):
+                                       config_params_dicts['dr']):
 
     # Create Directories
     model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'

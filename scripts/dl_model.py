@@ -24,6 +24,7 @@ import csv
 import pandas as pd
 
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+from dovebirdia.deeplearning.networks.lstm import LSTM
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 
 ################################################################################
@@ -129,14 +130,22 @@ else:
 
 # Network
 config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
-config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
 
-nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
+
+# if using AEKF
+if isinstance(config_dicts['meta']['network'], AutoencoderKalmanFilter):
+    
+    config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
+    nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
+
+else:
+
+    nn = config_dicts['meta']['network'](config_dicts['model'])
+    
 print(nn.__class__)
-nn.getModelSummary()
 
 if TRAINING:
-    
+
     history = nn.fitDomainRandomization(config_dicts['dr'], save_model=True)
 
     results_dict = {
