@@ -133,7 +133,7 @@ config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims']
 
 
 # if using AEKF
-if isinstance(config_dicts['meta']['network'], AutoencoderKalmanFilter):
+if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
     
     config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
@@ -143,6 +143,7 @@ else:
     nn = config_dicts['meta']['network'](config_dicts['model'])
     
 print(nn.__class__)
+nn.getModelSummary()
 
 if TRAINING:
 

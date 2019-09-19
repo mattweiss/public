@@ -34,7 +34,7 @@ class Autoencoder(FeedForwardNetwork):
         self._decoder = self._buildDenseLayers(self._encoder, self._hidden_dims[::-1][1:])
 
         # output layer
-        self._X_hat = tf.keras.layers.Dense(units=self._output_dim,
+        self._y_hat = tf.keras.layers.Dense(units=self._output_dim,
                                             activation=None,
                                             use_bias=self._use_bias,
                                             kernel_initializer=self._kernel_initializer,
@@ -74,10 +74,10 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
 
         # encoder
-        self._encoder = self._buildDenseLayers(self._X, self._hidden_dims[:-1])
+        self._encoder = self._buildDenseLayers(self._X, self._hidden_dims)
 
         # learn z
-        self._z = tf.keras.layers.Dense(units=self._output_dim,
+        self._z = tf.keras.layers.Dense(units=self._hidden_dims[-1],
                                         activation=None,
                                         use_bias=self._use_bias,
                                         kernel_initializer=self._kernel_initializer,
@@ -105,10 +105,13 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         # learned noise covariance
         self._R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
-        
+
         # Kalman Filter a priori measurement estimate
-        self._z_hat_pri = self._kalman_filter.filter([self._z,self._R])['z_hat_pri'][:,0:1,0]
-                
+        self._kf_results = self._kalman_filter.filter([self._z,self._R])
+
+        self._z_hat_pri = tf.squeeze(self._kf_results['z_hat_pri'],axis=-1)
+        self._z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)
+
         # post kf affine transformation
         self._post_kf_affine = tf.keras.layers.Dense(units=self._hidden_dims[-1],
                                                      activation=None,
@@ -120,12 +123,13 @@ class AutoencoderKalmanFilter(Autoencoder):
                                                      activity_regularizer=self._activity_regularizer,
                                                      kernel_constraint=self._kernel_constraint,
                                                      bias_constraint=self._bias_constraint)(self._z_hat_pri)   
+
         # decoder
         self._decoder = self._buildDenseLayers(self._post_kf_affine, self._hidden_dims[::-1][1:])
-        
+
         # output layer
-        self._X_hat = tf.keras.layers.Dense(units=self._output_dim,
-                                            activation=None,
+        self._y_hat = tf.keras.layers.Dense(units=self._output_dim,
+                                            activation=self._output_activation,
                                             use_bias=self._use_bias,
                                             kernel_initializer=self._kernel_initializer,
                                             bias_initializer=self._bias_initializer,
@@ -134,7 +138,7 @@ class AutoencoderKalmanFilter(Autoencoder):
                                             activity_regularizer=self._activity_regularizer,
                                             kernel_constraint=self._kernel_constraint,
                                             bias_constraint=self._bias_constraint)(self._decoder)
-       
+        
     def _generate_spd_cov_matrix(self, R):
 
         """ 

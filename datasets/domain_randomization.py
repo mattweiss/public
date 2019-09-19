@@ -6,6 +6,7 @@ import copy
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
 from dovebirdia.utilities.base import saveAttrDict, loadDict
+from sklearn.preprocessing import MinMaxScaler
 
 class DomainRandomizationDataset(AbstractDataset):
 
@@ -71,9 +72,21 @@ class DomainRandomizationDataset(AbstractDataset):
                         param_list.append(param)
 
                 y = self._fn_def(t, param_list)
+
+                try:
+                    
+                    y = MinMaxScaler(feature_range=self._feature_range).fit_transform(y)
+
+                except:
+
+                    pass
+                    
                 y -= y[0]
 
-                y_noise = y + self._noise(**self._noise_params, size=(self._n_samples,1))
+                # randomly select training noise and parameters
+                self._noise_name, self._noise_dist, self._noise_params = random.choice(self._noise)
+
+                y_noise = y + self._noise_dist(**self._noise_params, size=(self._n_samples,1))
 
                 if dataset_ctr == 0:
 

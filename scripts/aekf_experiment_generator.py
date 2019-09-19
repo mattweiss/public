@@ -22,9 +22,9 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_gaussian_jerk_100k_taylor'
+experiment_name = 'aekf_allnoise_jerk_100k'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-machine = 'turing'
+machine = 'pengy'
 ####################################
 
 meta_params = dict()
@@ -43,7 +43,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['network'] = LSTM
+meta_params['network'] = AutoencoderKalmanFilter
 
 ####################################
 # Model Parameters
@@ -85,22 +85,26 @@ dr_params['x_range'] = (-1,1)
 dr_params['n_trials'] = 1
 dr_params['n_samples'] = 100
 dr_params['n_features'] = 1
+dr_params['feature_range'] = None
 n = 10.0
-dr_params['fns'] = [
+dr_params['fns'] = (
     #['exponential', drfns.exponential_fn, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid_fn, [(0.0,100.0),0.15,60.0]],
     ['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
     #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
-]
-dr_params['noise'] = np.random.normal
-dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
-#{'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}
+)
+
+dr_params['noise'] = (
+    ['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
+    ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
+    ['cauchy', np.random.standard_cauchy, {}],
+)
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
-kf_params['dimensions'] = (1,4)
+kf_params['dimensions'] = (1,2)
 kf_params['n_signals'] = 16
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0

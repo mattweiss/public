@@ -25,9 +25,6 @@ class KalmanFilter(AbstractFilter):
         self._P0 = tf.constant(np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64 ), dtype=tf.float64, name='P0')
         #self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
 
-       
-
-            
 ################################################################################
 
     def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True):
@@ -95,7 +92,7 @@ class KalmanFilter(AbstractFilter):
                                                                                   self._z0, self._z0,
                                                                                   self._P0, self._P0,
                                                                                   tf.constant(0) ], name='kfScan')
-       
+
         # if z is numpy array run session
         if not isinstance(z,tf.Tensor):
 
@@ -127,7 +124,7 @@ class KalmanFilter(AbstractFilter):
                                                                              lambda: [ x_pri, x_post, z_pri, z_post, P_pri, P_post, self._kf_ctr ],
                                                                              lambda: [ self._x0, self._x0, self._z0, self._z0, self._P0, self._P0, tf.constant(0) ])
 
-        #z = tf.expand_dims( z, axis = -1 )
+        z = tf.expand_dims( z, axis = -1 )
 
         # Predict
         x_pri = tf.matmul( self._F, x_post, name='x_pri' )

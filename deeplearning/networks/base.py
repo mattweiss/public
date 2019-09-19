@@ -7,6 +7,16 @@ from abc import ABC, abstractmethod
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 
+try:
+
+    import matplotlib.pyplot as plt
+
+except:
+
+    import matplotlib
+    matplotlib.use('agg')
+    import matplotlib.pyplot as plt
+    
 class AbstractNetwork(ABC):
 
     """
@@ -69,22 +79,35 @@ class AbstractNetwork(ABC):
         
     def getModelSummary(self):
 
-        # Print trainable variables
-        variables_names = list()
-
-        with tf.Session() as sess:
+        pass
         
-            for v in tf.trainable_variables():
+        # with tf.Session() as sess:
+        
+        #     variables_names = [v.name for v in tf.trainable_variables()]
+        #     values = sess.run(variables_names)
 
-                # add variables to list for printing
-                variables_names.append( v.name )
+        # for k, v in zip(variables_names, values):
 
-            # print varibles and shape
-            values = sess.run(variables_names)
+        #     print("Variable: ", k)
+        #     print("Shape: ", v.shape)
+        #     print(v)
 
-        for k, v in zip(variables_names, values):
+        # # Print trainable variables
+        # variables_names = list()
+
+        # with tf.Session() as sess:
+        
+        #     for v in tf.trainable_variables():
+
+        #         # add variables to list for printing
+        #         variables_names.append( v.name )
+
+        #     # print varibles and shape
+        #     values = sess.run(variables_names)
+
+        # for k, v in zip(variables_names, values):
                 
-            print ("Trainable Variable: %s %s" % (k, v.shape,))
+        #     print ("Trainable Variable: %s %s" % (k, v,))
 
     def getAttributeNames(self):
 
@@ -136,7 +159,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
             # initialize variables
             sess.run(tf.global_variables_initializer())
-
+                
             # loop over epochs
             for epoch in range(1, self._epochs+1):
 
@@ -170,7 +193,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
             # initialize variables
             sess.run(tf.global_variables_initializer())
-
+            
             for epoch in range(1, self._epochs+1):
 
                 # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
@@ -203,27 +226,48 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                 print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=self._history['train_loss'][-1], val_loss=self._history['val_loss'][-1]))
 
-                # if epoch == self._epochs:
+                if epoch == self._epochs:
 
-                #     # plot using last x_train and x_val
-                #     train_pred = sess.run(self._X_hat, feed_dict={self._X:x_train})
-                #     val_pred = sess.run(self._X_hat, feed_dict={self._X:x_val})
+                    # plot using last x_train and x_val
+                    train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
+                    val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
 
-                #     plt.figure(figsize=(12,6))
-                #     plt.subplot(121)
-                #     plt.scatter(range(x_train.shape[0]), x_train, label='train', color='green')
-                #     plt.plot(y_train, label='train_gt')
-                #     plt.plot(train_pred, label='train_pred')
-                #     plt.grid()
-                #     plt.legend()
-                #     plt.subplot(122)
-                #     plt.scatter(range(x_val.shape[0]), x_val, label='val', color='green')
-                #     plt.plot(y_val, label='val_gt')
-                #     plt.plot(val_pred, label='val_pred')
-                #     plt.grid()
-                #     plt.legend()
-                #     plt.show()
-                #     plt.close()
+                    plt.figure(figsize=(12,12))
+
+                    plt.subplot(221)
+                    plt.scatter(range(x_train.shape[0]), x_train, label='train', color='green')
+                    plt.plot(y_train, label='train_gt')
+                    plt.plot(train_pred, label='train_pred')
+                    plt.grid()
+                    plt.legend()
+
+                    plt.subplot(222)
+                    plt.scatter(range(x_val.shape[0]), x_val, label='val', color='green')
+                    plt.plot(y_val, label='val_gt')
+                    plt.plot(val_pred, label='val_pred')
+                    plt.grid()
+                    plt.legend()
+                    
+                    plt.subplot(223)
+                    for dim in range(z_hat_post_train.shape[1]):
+                        
+                        plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
+                        plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
+
+                    plt.grid()
+                    #plt.legend()
+                    
+                    plt.subplot(224)
+                    for dim in range(z_hat_post_val.shape[1]):
+                        
+                        plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
+                        plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
+                        
+                    plt.grid()
+                    #plt.legend()
+                    
+                    plt.show()
+                    plt.close()
 
             if save_model:
 
@@ -254,8 +298,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
             for X,Y in zip(x,y):
 
-                test_loss, x_hat = sess.run([self._loss_op,self._X_hat], feed_dict={self._X:X, self._y:Y})
-                
+                test_loss, x_hat = sess.run([self._loss_op,self._y_hat], feed_dict={self._X:X, self._y:Y})
                 self._history['test_loss'].append(test_loss)
                 x_hat_list.append(x_hat)
                 
@@ -271,7 +314,6 @@ class FeedForwardNetwork(AbstractNetwork):
                 't':t
                 }
             
-
             saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
             
         return self._history
@@ -286,11 +328,11 @@ class FeedForwardNetwork(AbstractNetwork):
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.int64, shape=(None), name='y')
 
-        self._X_hat = self._buildDenseLayers(self._X, self._hidden_dims)
+        self._y_hat = self._buildDenseLayers(self._X, self._hidden_dims)
 
     def _setLoss(self):
             
-        self._loss_op = tf.cast(self._loss(self._y, self._X_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
+        self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
             
     def _setOptimizer(self):
 
@@ -324,17 +366,6 @@ class FeedForwardNetwork(AbstractNetwork):
                                            activity_regularizer=self._activity_regularizer,
                                            kernel_constraint=self._kernel_constraint,
                                            bias_constraint=self._bias_constraint)(output)
-
-        output = tf.keras.layers.Dense(units=self._output_dim,
-                                       activation=None,
-                                       use_bias=self._use_bias,
-                                       kernel_initializer=self._kernel_initializer,
-                                       bias_initializer=self._bias_initializer,
-                                       kernel_regularizer=self._kernel_regularizer,
-                                       bias_regularizer=self._bias_regularizer,
-                                       activity_regularizer=self._activity_regularizer,
-                                       kernel_constraint=self._kernel_constraint,
-                                       bias_constraint=self._bias_constraint)(output)
             
         return output
 
