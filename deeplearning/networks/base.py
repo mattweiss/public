@@ -1,4 +1,5 @@
 import os
+from time import time
 import numpy as np
 import tensorflow as tf
 from pdb import set_trace as st
@@ -193,6 +194,9 @@ class FeedForwardNetwork(AbstractNetwork):
 
             # initialize variables
             sess.run(tf.global_variables_initializer())
+
+            # start time
+            start_time = time()
             
             for epoch in range(1, self._epochs+1):
 
@@ -226,48 +230,50 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                 print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=self._history['train_loss'][-1], val_loss=self._history['val_loss'][-1]))
 
-                if epoch == self._epochs:
+                # if epoch == self._epochs:
 
-                    # plot using last x_train and x_val
-                    train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
-                    val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
+                #     # plot using last x_train and x_val
+                #     train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
+                #     val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
 
-                    plt.figure(figsize=(12,12))
+                #     plt.figure(figsize=(12,12))
 
-                    plt.subplot(221)
-                    plt.scatter(range(x_train.shape[0]), x_train, label='train', color='green')
-                    plt.plot(y_train, label='train_gt')
-                    plt.plot(train_pred, label='train_pred')
-                    plt.grid()
-                    plt.legend()
+                #     plt.subplot(221)
+                #     plt.scatter(range(x_train.shape[0]), x_train, label='train', color='green')
+                #     plt.plot(y_train, label='train_gt')
+                #     plt.plot(train_pred, label='train_pred')
+                #     plt.grid()
+                #     plt.legend()
 
-                    plt.subplot(222)
-                    plt.scatter(range(x_val.shape[0]), x_val, label='val', color='green')
-                    plt.plot(y_val, label='val_gt')
-                    plt.plot(val_pred, label='val_pred')
-                    plt.grid()
-                    plt.legend()
+                #     plt.subplot(222)
+                #     plt.scatter(range(x_val.shape[0]), x_val, label='val', color='green')
+                #     plt.plot(y_val, label='val_gt')
+                #     plt.plot(val_pred, label='val_pred')
+                #     plt.grid()
+                #     plt.legend()
                     
-                    plt.subplot(223)
-                    for dim in range(z_hat_post_train.shape[1]):
+                #     plt.subplot(223)
+                #     for dim in range(z_hat_post_train.shape[1]):
                         
-                        plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
-                        plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
+                #         plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
+                #         plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
 
-                    plt.grid()
-                    #plt.legend()
+                #     plt.grid()
+                #     #plt.legend()
                     
-                    plt.subplot(224)
-                    for dim in range(z_hat_post_val.shape[1]):
+                #     plt.subplot(224)
+                #     for dim in range(z_hat_post_val.shape[1]):
                         
-                        plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
-                        plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
+                #         plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
+                #         plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
                         
-                    plt.grid()
-                    #plt.legend()
+                #     plt.grid()
+                #     #plt.legend()
                     
-                    plt.show()
-                    plt.close()
+                #     plt.show()
+                #     plt.close()
+
+            self._history['runtime'] = (time() - start_time) / 60.0
 
             if save_model:
 

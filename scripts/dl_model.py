@@ -151,7 +151,8 @@ if TRAINING:
 
     results_dict = {
         'train_mse':np.asarray(history['train_loss']).mean(),
-        'val_mse':np.asarray(history['val_loss']).mean()
+        'val_mse':np.asarray(history['val_loss']).mean(),
+        'runtime':history['runtime']
         }
 
 else:
@@ -160,6 +161,7 @@ else:
     
     results_dict = {
     'test_mse':np.asarray(history['test_loss']).mean(),
+    'runtime':history['runtime']
     }
     
 ################################################################################

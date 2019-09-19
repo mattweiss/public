@@ -22,9 +22,9 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_allnoise_jerk_100k'
+experiment_name = 'aekf_allnoise_ncv_500k_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-machine = 'pengy'
+machine = 'turing'
 ####################################
 
 meta_params = dict()
@@ -68,11 +68,11 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100000
+model_params['epochs'] = 500000
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
-
+                                     
 # testing
 model_params['history_size'] = 100
 

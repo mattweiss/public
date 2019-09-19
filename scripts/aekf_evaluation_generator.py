@@ -23,9 +23,9 @@ import dovebirdia.utilities.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-experiment_name = 'aekf_gaussian_KILLMME_taylor'
+experiment_name = 'aekf_allnoise_jerk_100k'
 test_dataset_file = 'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
-model_ids = [1]
+model_ids = list(range(1,101))
 #****************************************************************************************************************************
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 test_dataset_dir = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/'

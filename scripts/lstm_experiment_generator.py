@@ -73,7 +73,7 @@ model_params['return_seq'] = True
 model_params['loss'] = losses.mean_squared_error
 
 # training
-model_params['epochs'] = 1000
+model_params['epochs'] = 100
 model_params['mbsize'] = 100
 model_params['optimizer'] = optimizers.Adam
 model_params['learning_rate'] = 1e-3
@@ -97,9 +97,12 @@ dr_params['fns'] = [
     ['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
     #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
 ]
-dr_params['noise'] = np.random.normal
-dr_params['noise_params'] = {'loc':0.0, 'scale':1.0}
-#{'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}
+
+dr_params['noise'] = (
+    ['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
+    #['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
+    #['cauchy', np.random.standard_cauchy, {}],
+)
 
 ####################################
 # Determine scaler and vector parameters
