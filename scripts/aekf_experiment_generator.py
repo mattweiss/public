@@ -22,9 +22,9 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_allnoise_ncv_500k_taylor'
+experiment_name = 'aekf_allnoise_ncv_50_taylor_DENSE'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-machine = 'turing'
+machine = 'pengy'
 ####################################
 
 meta_params = dict()
@@ -57,8 +57,10 @@ model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
 model_params['kernel_initializer'] = 'glorot_uniform'
-model_params['bias_initializer'] = 'zeros'
+model_params['weight_initializer'] = tf.initializers.glorot_uniform #'glorot_uniform'
+model_params['bias_initializer'] = tf.initializers.zeros #'zeros'
 model_params['kernel_regularizer'] = None
+model_params['weight_regularizer'] = None
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
 model_params['kernel_constraint'] = None
@@ -68,7 +70,7 @@ model_params['bias_constraint'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 500000
+model_params['epochs'] = 1000
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
@@ -96,8 +98,8 @@ dr_params['fns'] = (
 
 dr_params['noise'] = (
     ['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
-    ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
-    ['cauchy', np.random.standard_cauchy, {}],
+    # ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
+    # ['cauchy', np.random.standard_cauchy, {}],
 )
 
 ####################################
@@ -105,7 +107,7 @@ dr_params['noise'] = (
 ####################################
 
 kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = 16
+kf_params['n_signals'] = 4
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0
 kf_params['h'] = 1.0

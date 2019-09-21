@@ -1,5 +1,6 @@
 import os
 from time import time
+import copy
 import numpy as np
 import tensorflow as tf
 from pdb import set_trace as st
@@ -7,6 +8,7 @@ from pdb import set_trace as st
 from abc import ABC, abstractmethod
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+from dovebirdia.deeplearning.layers.base import Dense
 
 try:
 
@@ -26,11 +28,26 @@ class AbstractNetwork(ABC):
 
     def __init__(self, params=None):
 
-        """ 
-        TODO: Add parameter list
-        """
+        assert isinstance(params,dict)
 
         dictToAttributes(self,params)
+
+        self._hidden_layer_dict = {
+
+            'weight_initializer':self.__dict__['_weight_initializer'],
+            'weight_regularizer':self.__dict__['_weight_regularizer'],
+            'bias_initializer':self.__dict__['_bias_initializer'],
+            'bias_regularizer':self.__dict__['_bias_regularizer'],
+            'activation':self.__dict__['_activation'],
+            'use_bias':self.__dict__['_use_bias'],
+
+        }
+
+        self._affine_layer_dict = copy.deepcopy(self._hidden_layer_dict)
+        self._affine_layer_dict['activation'] = None
+
+        self._output_layer_dict = copy.deepcopy(self._hidden_layer_dict)
+        self._output_layer_dict['activation'] = self._output_activation
         
         # hold, etc.
         self._history = {
@@ -77,38 +94,6 @@ class AbstractNetwork(ABC):
     def evaluate(self, x=None, y=None, t=None, save_results=True):
 
         pass
-        
-    def getModelSummary(self):
-
-        pass
-        
-        # with tf.Session() as sess:
-        
-        #     variables_names = [v.name for v in tf.trainable_variables()]
-        #     values = sess.run(variables_names)
-
-        # for k, v in zip(variables_names, values):
-
-        #     print("Variable: ", k)
-        #     print("Shape: ", v.shape)
-        #     print(v)
-
-        # # Print trainable variables
-        # variables_names = list()
-
-        # with tf.Session() as sess:
-        
-        #     for v in tf.trainable_variables():
-
-        #         # add variables to list for printing
-        #         variables_names.append( v.name )
-
-        #     # print varibles and shape
-        #     values = sess.run(variables_names)
-
-        # for k, v in zip(variables_names, values):
-                
-        #     print ("Trainable Variable: %s %s" % (k, v,))
 
     def getAttributeNames(self):
 
@@ -122,7 +107,12 @@ class AbstractNetwork(ABC):
     def _buildNetwork(self):
 
         pass
-    
+
+    @abstractmethod
+    def _buildLayers(self):
+
+        pass
+        
     @abstractmethod
     def _setLoss(self):
 
@@ -176,7 +166,7 @@ class FeedForwardNetwork(AbstractNetwork):
                     # loss op
                     train_loss = sess.run(self._loss_op, feed_dict={self._X:x_mb, self._y:y_mb})
 
-                # validation loss
+               # validation loss
                 val_loss = sess.run(self._loss_op, feed_dict={self._X:self._x_val, self._y:self._y_val})
 
                 print('Epoch {epoch} Training Loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=train_loss, val_loss=val_loss))
@@ -195,6 +185,13 @@ class FeedForwardNetwork(AbstractNetwork):
             # initialize variables
             sess.run(tf.global_variables_initializer())
 
+            variables_names = [v.name for v in tf.trainable_variables()]
+            values = sess.run(variables_names)
+
+            for k, v in zip(variables_names, values):
+
+                print(v.shape, k)
+            
             # start time
             start_time = time()
             
@@ -334,8 +331,24 @@ class FeedForwardNetwork(AbstractNetwork):
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.int64, shape=(None), name='y')
 
-        self._y_hat = self._buildDenseLayers(self._X, self._hidden_dims)
+        #self._y_hat = self._buildLayers(self._X, self._hidden_dims)
+        self._y_hat = Dense(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
+        
+    def _buildLayers(self, x=None, hidden_dims=None, name=None):
 
+        assert x is not None
+        assert isinstance(hidden_dims,list)
+
+        # loop over hidden layers
+        for dim_index, dim in enumerate(hidden_dims):
+
+            # pass input parameter on first pass
+            y_hat = x if dim_index == 0 else y_hat
+
+            y_hat = Dense(self.__dict__).build(y_hat, dim, scope='layers')
+            
+        return y_hat
+    
     def _setLoss(self):
             
         self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
@@ -349,31 +362,6 @@ class FeedForwardNetwork(AbstractNetwork):
         elif self._optimizer.__name__ == 'MomentumOptimizer':
 
             self._optimizer_op = self._optimizer(learning_rate=self._learning_rate, momentum=self._momentum).minimize(self._loss_op)
-
-    def _buildDenseLayers(self, input=None, hidden_dims=None, name=None):
-
-        assert input is not None
-        assert hidden_dims is not None
-
-        # loop over hidden layers
-        for dim_index, dim in enumerate(hidden_dims):
-
-            # pass input parameter on first pass
-            output = input if dim_index == 0 else output
-
-            # hidden layer
-            output = tf.keras.layers.Dense(units=dim,
-                                           activation=self._activation,
-                                           use_bias=self._use_bias,
-                                           kernel_initializer=self._kernel_initializer,
-                                           bias_initializer=self._bias_initializer,
-                                           kernel_regularizer=self._kernel_regularizer,
-                                           bias_regularizer=self._bias_regularizer,
-                                           activity_regularizer=self._activity_regularizer,
-                                           kernel_constraint=self._kernel_constraint,
-                                           bias_constraint=self._bias_constraint)(output)
-            
-        return output
 
     def _generateMinibatches(self, X, y):
 

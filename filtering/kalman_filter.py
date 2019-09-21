@@ -22,7 +22,7 @@ class KalmanFilter(AbstractFilter):
         
         self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
         self._z0 = tf.constant(np.zeros((self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='z0')
-        self._P0 = tf.constant(np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64 ), dtype=tf.float64, name='P0')
+        self._P0 = tf.constant(np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
         #self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
 
 ################################################################################
@@ -147,7 +147,7 @@ class KalmanFilter(AbstractFilter):
         # Update
         innov_plus = tf.subtract( z, tf.matmul( self._H, x_pri ), name='innov_plus' )
         x_post = tf.add( x_pri, tf.matmul( K, innov_plus ), name = 'x_post' )
-        P_post = tf.matmul( tf.subtract( tf.eye( tf.shape( P_pri )[0], dtype=tf.float64 ), tf.matmul( K, self._H ) ), P_pri, name = 'P_post' )
+        P_post = tf.matmul( tf.subtract( tf.eye( tf.shape( P_pri )[0], dtype=tf.float64), tf.matmul( K, self._H ) ), P_pri, name = 'P_post' )
 
         # map state estimates to measurement space
         z_pri  = tf.matmul(self._H, x_pri, name='z_pri', transpose_b=False)

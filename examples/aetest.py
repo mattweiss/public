@@ -30,8 +30,10 @@ params['output_activation'] = tf.nn.sigmoid
 params['activation'] = tf.nn.sigmoid
 params['use_bias'] = True
 params['kernel_initializer'] = 'glorot_normal'
-params['bias_initializer'] = 'zeros'
+params['weight_initializer'] = tf.initializers.glorot_uniform
+params['bias_initializer'] = tf.initializers.zeros #'zeros'
 params['kernel_regularizer'] = None
+params['weight_regularizer'] = None
 params['bias_regularizer'] = None
 params['activity_regularizer'] = None
 params['kernel_constraint'] = None
@@ -52,5 +54,4 @@ params['learning_rate'] = 1e-3
 # Network
 nn = Autoencoder(params)
 print(nn.__class__)
-nn.getModelSummary()
-nn.fit(mnist_dataset, save_weights=True)
+nn.fit(mnist_dataset, save_model=False)

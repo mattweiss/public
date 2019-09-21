@@ -143,7 +143,6 @@ else:
     nn = config_dicts['meta']['network'](config_dicts['model'])
     
 print(nn.__class__)
-nn.getModelSummary()
 
 if TRAINING:
 
@@ -153,15 +152,14 @@ if TRAINING:
         'train_mse':np.asarray(history['train_loss']).mean(),
         'val_mse':np.asarray(history['val_loss']).mean(),
         'runtime':history['runtime']
-        }
-
+    }
+        
 else:
 
     history = nn.evaluate(x=x_test, y=y_test, t=t)
-    
+
     results_dict = {
     'test_mse':np.asarray(history['test_loss']).mean(),
-    'runtime':history['runtime']
     }
     
 ################################################################################
