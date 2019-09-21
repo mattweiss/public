@@ -56,14 +56,12 @@ model_params['hidden_dims'] = (256,64) # if using AEKF append number of signals 
 model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
-model_params['kernel_initializer'] = 'glorot_uniform'
 model_params['weight_initializer'] = tf.initializers.glorot_uniform #'glorot_uniform'
 model_params['bias_initializer'] = tf.initializers.zeros #'zeros'
-model_params['kernel_regularizer'] = None
 model_params['weight_regularizer'] = None
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
-model_params['kernel_constraint'] = None
+model_params['weight_constraint'] = None
 model_params['bias_constraint'] = None
 
 # loss
