@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from sklearn.datasets import make_spd_matrix
+#from sklearn.datasets import make_spd_matrix
+from scipy import stats
 from pdb import set_trace as st
 from dovebirdia.filtering.base import AbstractFilter
 from dovebirdia.utilities.base import saveDict
@@ -35,6 +36,7 @@ class KalmanFilter(AbstractFilter):
 
         test_loss = list()
         x_hat_list = list()
+        sw_list = list()
         
         for X,Y in zip(x,y):
         
@@ -45,8 +47,13 @@ class KalmanFilter(AbstractFilter):
             test_loss.append(np.square(np.subtract(x_hat,Y)).mean())
             x_hat_list.append(x_hat)
 
+            # Shapiro-Wilk test
+            w, p = stats.shapiro(x-x_hat)
+            sw_list.append(p)
+        
         x_hat = np.asarray(x_hat_list)
-
+        sw = np.asarray(sw_list)
+        
         # save predictions
         if save_results:
 
@@ -54,7 +61,8 @@ class KalmanFilter(AbstractFilter):
                 'x':x,
                 'y':y,
                 'x_hat':x_hat,
-                't':t
+                't':t,
+                'sw':sw,
                 }
             
 

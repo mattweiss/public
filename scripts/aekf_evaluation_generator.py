@@ -23,37 +23,55 @@ import dovebirdia.utilities.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-experiment_name = 'aekf_allnoise_ncv_500k_taylor'
-test_dataset_file = 'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
-model_ids = [17]
+experiments = [
+    ('aekf_allnoise_ncv_500k_taylor',[17]),
+    ('aekf_allnoise_nca_500k_taylor',[34]),
+    ('aekf_allnoise_jerk_500k_taylor',[11]),
+]                  
+
+test_dataset_files = [
+    'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_10_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
+    'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
+    'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
+]
+#model_ids = [16]
+#list(range(1,101))
 machine = 'turing'
 #****************************************************************************************************************************
-experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-test_dataset_dir = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/'
-test_dataset_path = test_dataset_dir + test_dataset_file
-####################################
 
-#######################
-# Write Config Files
-#######################
+for experiment in experiments:
 
-for model_id in model_ids:
+    experiment_name = experiment[0]
+    model_ids = experiment[1]
+     
+    experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
+    test_dataset_dir = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/'
 
-    # Create Directories
-    model_dir_name = experiment_name + '_model_' + str(model_id) + '/'
-    model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
-  
-    # bash-batch script
-    if machine == 'pengy':
+    for test_dataset_file in test_dataset_files:
 
-        batch_string_prefix = 'python3 '
+        test_dataset_path = test_dataset_dir + test_dataset_file
 
-    else:
+        #######################
+        # Write Config Files
+        #######################
 
-        batch_string_prefix = 'sbatch -o ./testing_results.out '
-        
-    batch_str = batch_string_prefix + script + ' -d ' + test_dataset_path + '\n'
-    batch_file_name = model_dir + 'test_model.sh'
-    batch_file = open(batch_file_name, 'w')
-    batch_file.write(batch_str)
-    batch_file.close()
+        for model_id in model_ids:
+
+            # Create Directories
+            model_dir_name = experiment_name + '_model_' + str(model_id) + '/'
+            model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
+
+            # bash-batch script
+            if machine == 'pengy':
+
+                batch_string_prefix = 'python3 '
+
+            else:
+
+                batch_string_prefix = 'sbatch -o ./testing_results.out '
+
+            batch_str = batch_string_prefix + script + ' -d ' + test_dataset_path + '\n'
+            batch_file_name = model_dir + 'test_model.sh'
+            batch_file = open(batch_file_name, 'a')
+            batch_file.write(batch_str)
+            batch_file.close()

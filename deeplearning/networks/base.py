@@ -32,7 +32,10 @@ class AbstractNetwork(ABC):
 
         dictToAttributes(self,params)
 
-        self._hidden_layer_dict = {
+        # backwards compatibility
+        try:
+
+            self._hidden_layer_dict = {
 
             'weight_initializer':self.__dict__['_weight_initializer'],
             'weight_regularizer':self.__dict__['_weight_regularizer'],
@@ -43,6 +46,19 @@ class AbstractNetwork(ABC):
 
         }
 
+        except:
+
+            self._hidden_layer_dict = {
+
+            'weight_initializer':self.__dict__['_kernel_initializer'],
+            'weight_regularizer':self.__dict__['_kernel_regularizer'],
+            'bias_initializer':self.__dict__['_bias_initializer'],
+            'bias_regularizer':self.__dict__['_bias_regularizer'],
+            'activation':self.__dict__['_activation'],
+            'use_bias':self.__dict__['_use_bias'],
+
+        }
+            
         self._affine_layer_dict = copy.deepcopy(self._hidden_layer_dict)
         self._affine_layer_dict['activation'] = None
 
@@ -75,10 +91,9 @@ class AbstractNetwork(ABC):
         ############################
         self._setOptimizer()
 
-
     ##################
     # Public Methods #
-   ##################
+    ##################
             
     @abstractmethod
     def fit(self, dataset=None, save_model=False):
@@ -108,10 +123,10 @@ class AbstractNetwork(ABC):
 
         pass
 
-    @abstractmethod
-    def _buildLayers(self):
+    # @abstractmethod
+    # def _buildLayers(self):
 
-        pass
+    #     pass
         
     @abstractmethod
     def _setLoss(self):
@@ -191,7 +206,7 @@ class FeedForwardNetwork(AbstractNetwork):
             for k, v in zip(variables_names, values):
 
                 print(v.shape, k)
-            
+
             # start time
             start_time = time()
             
@@ -199,7 +214,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
                 dr_data = self._dr_dataset.generateDataset()
-
+                
                 # train on all trials
                 for x_train, y_train in zip(dr_data['x_train'],dr_data['y_train']):
 
@@ -225,7 +240,9 @@ class FeedForwardNetwork(AbstractNetwork):
                     self._history['train_loss'].pop(0)
                     self._history['val_loss'].pop(0)
                 
-                print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch, train_loss=self._history['train_loss'][-1], val_loss=self._history['val_loss'][-1]))
+                print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch,
+                                                                                            train_loss=self._history['train_loss'][-1],
+                                                                                            val_loss=self._history['val_loss'][-1]))
 
                 # if epoch == self._epochs:
 
@@ -236,16 +253,24 @@ class FeedForwardNetwork(AbstractNetwork):
                 #     plt.figure(figsize=(12,12))
 
                 #     plt.subplot(221)
-                #     plt.scatter(range(x_train.shape[0]), x_train, label='train', color='green')
-                #     plt.plot(y_train, label='train_gt')
-                #     plt.plot(train_pred, label='train_pred')
+
+                #     for sensor in range(x_train.shape[1]):
+                    
+                #         plt.scatter(range(x_train.shape[0]), x_train[:,sensor], label='train', color='green')
+                #         plt.plot(y_train[:,sensor], label='train_gt')
+                #         plt.plot(train_pred[:,sensor], label='train_pred')
+
                 #     plt.grid()
                 #     plt.legend()
 
                 #     plt.subplot(222)
-                #     plt.scatter(range(x_val.shape[0]), x_val, label='val', color='green')
-                #     plt.plot(y_val, label='val_gt')
-                #     plt.plot(val_pred, label='val_pred')
+
+                #     for sensor in range(x_val.shape[1]):
+                        
+                #         plt.scatter(range(x_val.shape[0]), x_val[:,sensor], label='val', color='green')
+                #         plt.plot(y_val[:,sensor], label='val_gt')
+                #         plt.plot(val_pred[:,sensor], label='val_pred')
+
                 #     plt.grid()
                 #     plt.legend()
                     
@@ -271,6 +296,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 #     plt.close()
 
             self._history['runtime'] = (time() - start_time) / 60.0
+            z, z_hat_post = sess.run([self._z,self._z_hat_post], feed_dict={self._X:x_train, self._y:y_train})
 
             if save_model:
 
@@ -291,7 +317,9 @@ class FeedForwardNetwork(AbstractNetwork):
 
         # model predictions
         x_hat_list = list()
-        
+        z_list = list()
+        z_hat_post_list = list()
+                
         # load trained model
         model_results_path = './results/tensorflow_model.ckpt'
         
@@ -301,12 +329,16 @@ class FeedForwardNetwork(AbstractNetwork):
 
             for X,Y in zip(x,y):
 
-                test_loss, x_hat = sess.run([self._loss_op,self._y_hat], feed_dict={self._X:X, self._y:Y})
+                test_loss, x_hat, z, z_hat_post = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post], feed_dict={self._X:X, self._y:Y})
                 self._history['test_loss'].append(test_loss)
                 x_hat_list.append(x_hat)
+                z_list.append(z)
+                z_hat_post_list.append(z_hat_post)
                 
         x_hat = np.asarray(x_hat_list)
-
+        z = np.asarray(z)
+        z_hat_post = np.asarray(z_hat_post_list)
+                
         # save predictions
         if save_results:
 
@@ -314,7 +346,9 @@ class FeedForwardNetwork(AbstractNetwork):
                 'x':x,
                 'y':y,
                 'x_hat':x_hat,
-                't':t
+                't':t,
+                'z':z,
+                'z_hat_post':z_hat_post,
                 }
             
             saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
@@ -333,24 +367,9 @@ class FeedForwardNetwork(AbstractNetwork):
 
         #self._y_hat = self._buildLayers(self._X, self._hidden_dims)
         self._y_hat = Dense(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
-        
-    def _buildLayers(self, x=None, hidden_dims=None, name=None):
-
-        assert x is not None
-        assert isinstance(hidden_dims,list)
-
-        # loop over hidden layers
-        for dim_index, dim in enumerate(hidden_dims):
-
-            # pass input parameter on first pass
-            y_hat = x if dim_index == 0 else y_hat
-
-            y_hat = Dense(self.__dict__).build(y_hat, dim, scope='layers')
-            
-        return y_hat
     
     def _setLoss(self):
-            
+
         self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
             
     def _setOptimizer(self):
@@ -377,7 +396,7 @@ class FeedForwardNetwork(AbstractNetwork):
         # save Tensorflow variables
 
         # name of file weights are saved to
-        self._trained_model_file = os.getcwd() + self._results_dir + 'tensorflow_model.ckpt'
+        self._trained_model_file = os.getcwd() + self._results_dir + 'trained_model.ckpt'
 
         # save everything
         tf.train.Saver().save(tf_session, self._trained_model_file)

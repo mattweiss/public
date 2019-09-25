@@ -24,12 +24,12 @@ params['hidden_dims'] = [ 128, 64, 1 ]
 params['output_activation'] = tf.nn.sigmoid
 params['activation'] = tf.nn.sigmoid
 params['use_bias'] = True
-params['kernel_initializer'] = 'glorot_uniform'
-params['bias_initializer'] = 'zeros'
-params['kernel_regularizer'] = None
+params['weight_initializer'] = tf.initializers.glorot_uniform
+params['bias_initializer'] = tf.initializers.zeros
+params['weight_regularizer'] = None
 params['bias_regularizer'] = None
 params['activity_regularizer'] = None
-params['kernel_constraint'] = None
+params['weight_constraint'] = None
 params['bias_constraint'] = None
 
 # loss

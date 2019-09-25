@@ -68,7 +68,15 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
 
         # encoder
-        self._encoder = Dense(self._hidden_layer_dict).build(self._X, self._hidden_dims, scope='encoder')
+
+        # backwards compatibility
+        try:
+
+            self._encoder = Dense(self._hidden_layer_dict).build(self._X, self._hidden_dims, scope='encoder', dropout_rate=self._dropout_rate)
+
+        except:
+
+            self._encoder = Dense(self._hidden_layer_dict).build(self._X, self._hidden_dims, scope='encoder')
 
         # learn z
         self._z = Dense(self._affine_layer_dict).build(self._encoder, [self._hidden_dims[-1]], scope='z')
@@ -91,7 +99,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._post_kf_affine = Dense(self._affine_layer_dict).build(self._z_hat_pri, [self._hidden_dims[-1]], scope='post_kf_affine')
 
         # decoder
-        self._decoder = Dense(self.__dict__).build(self._post_kf_affine, self._hidden_dims[::-1][1:], scope='decoder')
+        self._decoder = Dense(self._hidden_layer_dict).build(self._post_kf_affine, self._hidden_dims[::-1][1:], scope='decoder')
 
         # output layer
         self._y_hat = Dense(self._output_layer_dict).build(self._decoder, [self._output_dim], scope='y_hat')

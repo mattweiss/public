@@ -39,6 +39,7 @@ class DomainRandomizationDataset(AbstractDataset):
         # list to hold either training of testing datasets.
         x_list = list()
         y_list = list()
+        noise_types = list()
         
         # If training include list for validation data
         if self._ds_type == 'train':
@@ -59,24 +60,31 @@ class DomainRandomizationDataset(AbstractDataset):
             # loop twice if training to generate validation set
             for dataset_ctr in range(n_datasets):
 
-                param_list = list()
+                y_feature_list = list()
+                
+                for _ in range(self._n_features):
 
-                for param in self._fn_params:
+                    param_list = list()
 
-                    if isinstance(param, tuple):
+                    for param in self._fn_params:
 
-                        param_list.append(np.random.uniform(param[0], param[1]))
+                        if isinstance(param, tuple):
 
-                    else:
+                            param_list.append(np.random.uniform(param[0], param[1]))
 
-                        param_list.append(param)
+                        else:
 
-                y = self._fn_def(t, param_list)
+                            param_list.append(param)
+
+                    y_feature_list.append(self._fn_def(t, param_list))
+
+                #y =  self._fn_def(t, param_list)
+                y = np.hstack(y_feature_list)
 
                 try:
                     
                     y = MinMaxScaler(feature_range=self._feature_range).fit_transform(y)
-
+                    
                 except:
 
                     pass
@@ -85,8 +93,9 @@ class DomainRandomizationDataset(AbstractDataset):
 
                 # randomly select training noise and parameters
                 self._noise_name, self._noise_dist, self._noise_params = random.choice(self._noise)
-
-                y_noise = y + self._noise_dist(**self._noise_params, size=(self._n_samples,1))
+                noise_types.append(self._noise_name)
+                
+                y_noise = y + self._noise_dist(**self._noise_params, size=(self._n_samples,self._n_features))
 
                 if dataset_ctr == 0:
 
@@ -97,22 +106,23 @@ class DomainRandomizationDataset(AbstractDataset):
 
                     x_val_list.append(y_noise)
                     y_val_list.append(y)
-
+        
         # set dataset_dict
+        self._data['t'] = t
+        self._data['noise_type'] = noise_types
+
         if self._ds_type == 'train':
             
             self._data['x_train'] = np.asarray(x_list)
             self._data['y_train'] = np.asarray(y_list)
             self._data['x_val'] = np.asarray(x_val_list)
             self._data['y_val'] = np.asarray(y_val_list)
-            self._data['t'] = t
 
         else:
 
             self._data['x_test'] = np.asarray(x_list)
             self._data['y_test'] = np.asarray(y_list)
-            self._data['t'] = t
-            
+
         # save dataset logic
         if getattr(self, '_save_path', None) is not None:
 

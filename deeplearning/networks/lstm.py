@@ -91,7 +91,7 @@ class LSTM(AbstractNetwork):
             
             if save_model:
 
-                pass
+                self._saveModel()
 
         return self._history
                 
@@ -100,8 +100,29 @@ class LSTM(AbstractNetwork):
         pass
         
     def evaluate(self, x=None, y=None, t=None, save_results=True):
+        
+        self._model.load_weights( weights_file )
 
-        pass
+        trial_pred_list = list()
+
+        for trial in range( X.shape[0] ):
+
+            sensor_pred_list = list()
+            
+            for sensor in range( X.shape[2] ):
+
+                sensor_data = X[trial:trial+1,:,sensor:sensor+1]
+
+                X_signal, _ = self._generate_dataset( sensor_data, sensor_data )
+
+                pred = self._model.predict( X_signal, batch_size = X.shape[1] )
+
+                sensor_pred_list.append( pred )
+                
+            stacked_sensor_pred = np.hstack( sensor_pred_list )
+            trial_pred_list.append( stacked_sensor_pred )
+
+        return X, np.asarray( trial_pred_list )
     
     ###################
     # Private Methods #
@@ -128,10 +149,9 @@ class LSTM(AbstractNetwork):
                 self._model.add(LSTM_LAYER(
                                      units = self._hidden_dims[layer],
                                      activation = self._activation,
-                                     #batch_input_shape=(self._mbsize-self._seq_len,self._seq_len,self._input_dim),
                                      batch_input_shape = (self._seq_len, input_timesteps, input_dim),
                                      bias_initializer = initializers.Constant(value=self._bias_initializer),
-                                     kernel_regularizer = self._kernel_regularizer,
+                                     kernel_regularizer = self._weight_regularizer,
                                      recurrent_regularizer = self._recurrent_regularizer,
                                      return_sequences = return_seq,
                                      stateful = self._stateful))
@@ -144,7 +164,7 @@ class LSTM(AbstractNetwork):
                                      activation = self._activation,
                                      input_shape = (input_timesteps, input_dim),
                                      bias_initializer = initializers.Constant(value=self._bias_initializer),
-                                     kernel_regularizer = self._kernel_regularizer,
+                                     kernel_regularizer = self._weight_regularizer,
                                      recurrent_regularizer = self._recurrent_regularizer,
                                      return_sequences = return_seq,
                                      stateful = self._stateful))
@@ -163,7 +183,8 @@ class LSTM(AbstractNetwork):
 
     def _saveModel(self):
 
-        pass
+        self._trained_model_file = os.getcwd() + self._results_dir + 'keras_model.h5'
+        self._model.save_weights(self._trained_model_file)
 
     def _generate_dataset( self, x, y ):
 

@@ -22,10 +22,10 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
-experiment_name = 'kf_gaussian_KILLME_taylor'
+experiment_name = 'kf_gaussian_nca_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
-test_dataset_file = 'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_1_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
+test_dataset_file = 'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
 ####################################
 
 meta_params = dict()
@@ -62,7 +62,7 @@ dr_params['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/e
 # Kalman Filter Parameters
 ####################################
 
-kf_params['dimensions'] = (1,2)
+kf_params['dimensions'] = (1,3)
 kf_params['n_signals'] = 1
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0

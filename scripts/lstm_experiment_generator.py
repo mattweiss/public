@@ -24,7 +24,7 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'lstm_gaussian_KILLME_taylor'
+experiment_name = 'lstm_allnoise_100k_taylor_SAVEMODEL_TEST'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = 'pengy'
 ####################################
@@ -51,20 +51,20 @@ meta_params['network'] = LSTM
  
 model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 1
-model_params['output_dim'] = 1
+model_params['output_dim'] = model_params['input_dim']
 model_params['hidden_dims'] = (256,64)
 model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
-model_params['kernel_initializer'] = 'glorot_uniform'
+model_params['weight_initializer'] = 'glorot_uniform'
 model_params['bias_initializer'] = 0.0
-model_params['kernel_regularizer'] = None
+model_params['weight_regularizer'] = None
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
-model_params['kernel_constraint'] = None
+model_params['weight_constraint'] = None
 model_params['bias_constraint'] = None
 
-model_params['seq_len'] = 10
+model_params['seq_len'] = [1,10,15,20,25]
 model_params['recurrent_regularizer'] = None
 model_params['stateful'] = False
 model_params['return_seq'] = True
@@ -73,10 +73,10 @@ model_params['return_seq'] = True
 model_params['loss'] = losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100
+model_params['epochs'] = 10
 model_params['mbsize'] = 100
 model_params['optimizer'] = optimizers.Adam
-model_params['learning_rate'] = 1e-3
+model_params['learning_rate'] = list(np.logspace(-3,-5,20))
 
 # testing
 model_params['history_size'] = 100
@@ -100,8 +100,8 @@ dr_params['fns'] = [
 
 dr_params['noise'] = (
     ['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
-    #['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
-    #['cauchy', np.random.standard_cauchy, {}],
+    ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
+    ['cauchy', np.random.standard_cauchy, {}],
 )
 
 ####################################

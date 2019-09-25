@@ -153,6 +153,9 @@ if TRAINING:
         'val_mse':np.asarray(history['val_loss']).mean(),
         'runtime':history['runtime']
     }
+
+    print('Training MSE: {train_mse}, Validation MSE: {val_mse}'.format(train_mse=np.asarray(history['train_loss']).mean(),
+                                                                        val_mse=np.asarray(history['val_loss']).mean()))
         
 else:
 
