@@ -3,9 +3,13 @@
     
     networks/ - Feed Forward, Autoencoder, etc.
       
-      base.py - AbstractNetwork, FeedForwardNetwork
-      autoencoder.py - Autoencoder, AutoencoderKalmanFilter
-      lstm.py - LSTM
+        base.py - AbstractNetwork, FeedForwardNetwork
+        autoencoder.py - Autoencoder, AutoencoderKalmanFilter
+        lstm.py - LSTM
+      
+    layers/ - Network Layer Classes
+    
+        base.py - Dense layer class
       
 ## datasets/
 
