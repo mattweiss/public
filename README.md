@@ -5,7 +5,7 @@
       
       base.py - AbstractNetwork, FeedForwardNetwork
       autoencoder.py - Autoencoder, AutoencoderKalmanFilter
-      lst.py - LSTM
+      lstm.py - LSTM
       
 ## datasets/
 
