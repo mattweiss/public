@@ -3,7 +3,7 @@ import tensorflow as tf
 from pdb import set_trace as st
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 import dovebirdia.utilities.dr_functions as drfns
-import dovebirdia.utilities.distributions as distributions
+import dovebirdia.stats.distributions as distributions
 
 # define domain randomization parameters
 # dr_fns is a dictionary with a single key whose value is a list.

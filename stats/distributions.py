@@ -1,6 +1,7 @@
 # modules
 import sys
 import numpy as np
+from scipy.stats import levy_stable
 
 def bimodal( loc1, scale1, loc2, scale2, size ):
 
@@ -34,3 +35,10 @@ def bimodal( loc1, scale1, loc2, scale2, size ):
     return noise
 
 ###############################################################################
+
+def stable(alpha, size, beta=0.0, loc=0.0, scale=1.0):
+
+    assert alpha is not None
+    assert size is not None
+
+    return levy_stable(alpha=alpha,beta=beta,loc=loc,scale=scale).rvs(size=size)

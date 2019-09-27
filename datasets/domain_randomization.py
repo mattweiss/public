@@ -7,6 +7,7 @@ from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
 from dovebirdia.utilities.base import saveAttrDict, loadDict
 from sklearn.preprocessing import MinMaxScaler
+from scipy.stats import shapiro
 
 class DomainRandomizationDataset(AbstractDataset):
 
@@ -94,8 +95,20 @@ class DomainRandomizationDataset(AbstractDataset):
                 # randomly select training noise and parameters
                 self._noise_name, self._noise_dist, self._noise_params = random.choice(self._noise)
                 noise_types.append(self._noise_name)
-                
-                y_noise = y + self._noise_dist(**self._noise_params, size=(self._n_samples,self._n_features))
+
+                # randomly select noise params if tuple
+                noise_param_dict = dict()
+                for param_key, param in self._noise_params.items():
+
+                        if isinstance(param, tuple):
+
+                            noise_param_dict[param_key] = np.random.uniform(param[0], param[1])
+
+                        else:
+
+                            noise_param_dict[param_key] = param
+
+                y_noise = y + self._noise_dist(**noise_param_dict, size=(self._n_samples,self._n_features))
 
                 if dataset_ctr == 0:
 

@@ -16,7 +16,7 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.filtering.kalman_filter import KalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
-import dovebirdia.utilities.distributions as distributions
+import dovebirdia.stats.distributions as distributions
 
 ####################################
 # Test Name and Description
@@ -24,18 +24,16 @@ import dovebirdia.utilities.distributions as distributions
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
 experiments = [
-    ('kf_gaussian_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_gaussian_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_gaussian_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_bimodal_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_bimodal_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_bimodal_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_cauchy_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_cauchy_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
-    ('kf_cauchy_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_gaussian_ncv_taylor_FIT_TEST',(1,2),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_gaussian_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_gaussian_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_bimodal_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_bimodal_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_bimodal_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_cauchy_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_cauchy_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    # ('kf_cauchy_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
     ]
-#kf_dims = (1,3)
-#test_dataset_file = 'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
 #****************************************************************************************************************************
 #experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()

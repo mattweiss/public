@@ -91,7 +91,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
         # Kalman Filter a priori measurement estimate
-        self._kf_results = self._kalman_filter.filter([self._z,self._R])
+        self._kf_results = self._kalman_filter.fit([self._z,self._R])
 
         self._z_hat_pri = tf.squeeze(self._kf_results['z_hat_pri'],axis=-1)
         self._z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)

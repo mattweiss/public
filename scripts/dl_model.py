@@ -140,12 +140,15 @@ if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
 else:
 
     nn = config_dicts['meta']['network'](config_dicts['model'])
+
+# Compile network
+nn.compile()
     
 print(nn.__class__)
 
 if TRAINING:
 
-    history = nn.fitDomainRandomization(config_dicts['dr'], save_model=True)
+    history = nn.fit(dr_params=config_dicts['dr'], save_model=True)
 
     results_dict = {
         'train_mse':np.asarray(history['train_loss']).mean(),

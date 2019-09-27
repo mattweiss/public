@@ -16,7 +16,7 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
-import dovebirdia.utilities.distributions as distributions
+import dovebirdia.stats.distributions as distributions
 
 ####################################
 # Test Name and Description

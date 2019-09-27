@@ -18,7 +18,7 @@ class AbstractFilter(ABC):
     ##################
     
     @abstractmethod
-    def filter(self):
+    def fit(self):
 
         pass
         

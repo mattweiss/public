@@ -16,15 +16,15 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
-import dovebirdia.utilities.distributions as distributions
+import dovebirdia.stats.distributions as distributions
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_allnoise_ncv_100k_taylor_EVAL_TEST'
+experiment_name = 'aekf_stable_ncv_100k_taylor_FIT_TEST'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-machine = 'pengy'
+machine = socket.gethostname()
 ####################################
 
 meta_params = dict()
@@ -72,7 +72,7 @@ model_params['loss'] = tf.losses.mean_squared_error
 model_params['epochs'] = 10
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['learning_rate'] = list(np.logspace(-3,-5,10))
+model_params['learning_rate'] = list(np.logspace(-3,-4,2))
                                      
 # testing
 model_params['history_size'] = 100
@@ -96,9 +96,10 @@ dr_params['fns'] = (
 )
 
 dr_params['noise'] = (
-    ['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
-    ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
-    ['cauchy', np.random.standard_cauchy, {}],
+    #['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
+    # ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
+    # ['cauchy', np.random.standard_cauchy, {}],
+    ['stable', distributions.stable, {'alpha':(0.5,2.0)}],
 )
 
 ####################################

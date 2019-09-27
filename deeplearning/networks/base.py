@@ -72,6 +72,12 @@ class AbstractNetwork(ABC):
             'test_loss':list(),
             }
         
+    ##################
+    # Public Methods #
+    ##################
+
+    def compile(self):
+
         """ 
         Build Network
         """
@@ -90,11 +96,7 @@ class AbstractNetwork(ABC):
         # Set Optimizer
         ############################
         self._setOptimizer()
-
-    ##################
-    # Public Methods #
-    ##################
-            
+    
     @abstractmethod
     def fit(self, dataset=None, save_model=False):
 
@@ -109,10 +111,6 @@ class AbstractNetwork(ABC):
     def evaluate(self, x=None, y=None, t=None, save_results=True):
 
         pass
-
-    def getAttributeNames(self):
-
-        return self.__dict__.keys()
     
     ###################
     # Private Methods #
@@ -122,11 +120,6 @@ class AbstractNetwork(ABC):
     def _buildNetwork(self):
 
         pass
-
-    # @abstractmethod
-    # def _buildLayers(self):
-
-    #     pass
         
     @abstractmethod
     def _setLoss(self):
@@ -157,7 +150,52 @@ class FeedForwardNetwork(AbstractNetwork):
     # Public Methods #
     ##################
 
-    def fit(self, dataset=None, save_model=False):
+    def fit(self, dataset=None, dr_params=None, save_model=False):
+
+        if dataset is not None:
+
+            return self._fit(dataset, save_model)
+
+        elif dr_params is not None:
+
+            return self._fitDomainRandomization(dr_params, save_model)
+            
+    def predict(self, dataset=None):
+
+        pass
+        
+    def evaluate(self, x=None, y=None, t=None, save_results=True):
+
+        pass
+                
+    ###################
+    # Private Methods #
+    ###################
+
+    def _buildNetwork(self):
+
+        # input and output placeholders
+        self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
+        self._y = tf.placeholder(dtype=tf.int64, shape=(None), name='y')
+
+        #self._y_hat = self._buildLayers(self._X, self._hidden_dims)
+        self._y_hat = Dense(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
+    
+    def _setLoss(self):
+
+        self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
+            
+    def _setOptimizer(self):
+
+        if self._optimizer.__name__ == 'AdamOptimizer':
+
+            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate).minimize(self._loss_op)
+
+        elif self._optimizer.__name__ == 'MomentumOptimizer':
+
+            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate, momentum=self._momentum).minimize(self._loss_op)
+
+    def _fit(self, dataset=None, save_model=False):
         
         dictToAttributes(self,dataset)
 
@@ -190,7 +228,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
             self._saveModel()
 
-    def fitDomainRandomization(self, dr_params=None, save_model=False):
+    def _fitDomainRandomization(self, dr_params=None, save_model=False):
 
         # create domainRandomizationDataset object
         self._dr_dataset = DomainRandomizationDataset(dr_params)
@@ -250,9 +288,9 @@ class FeedForwardNetwork(AbstractNetwork):
                 #     train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
                 #     val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
 
-                #     plt.figure(figsize=(12,12))
+                #     plt.figure(figsize=(12,6))
 
-                #     plt.subplot(221)
+                #     plt.subplot(121)
 
                 #     for sensor in range(x_train.shape[1]):
                     
@@ -263,7 +301,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 #     plt.grid()
                 #     plt.legend()
 
-                #     plt.subplot(222)
+                #     plt.subplot(122)
 
                 #     for sensor in range(x_val.shape[1]):
                         
@@ -281,7 +319,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 #         plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
 
                 #     plt.grid()
-                #     #plt.legend()
+                #     plt.legend()
                     
                 #     plt.subplot(224)
                 #     for dim in range(z_hat_post_val.shape[1]):
@@ -290,10 +328,10 @@ class FeedForwardNetwork(AbstractNetwork):
                 #         plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
                         
                 #     plt.grid()
-                #     #plt.legend()
+                #     plt.legend()
                     
-                #     plt.show()
-                #     plt.close()
+                    # plt.show()
+                    # plt.close()
 
             self._history['runtime'] = (time() - start_time) / 60.0
             z, z_hat_post = sess.run([self._z,self._z_hat_post], feed_dict={self._X:x_train, self._y:y_train})
@@ -303,43 +341,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 self._saveModel(sess)
 
         return self._history
-
-            
-    def predict(self, dataset=None):
-
-        pass
-        
-    def evaluate(self, x=None, y=None, t=None, save_results=True):
-
-        pass
-                
-    ###################
-    # Private Methods #
-    ###################
-
-    def _buildNetwork(self):
-
-        # input and output placeholders
-        self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
-        self._y = tf.placeholder(dtype=tf.int64, shape=(None), name='y')
-
-        #self._y_hat = self._buildLayers(self._X, self._hidden_dims)
-        self._y_hat = Dense(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
     
-    def _setLoss(self):
-
-        self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
-            
-    def _setOptimizer(self):
-
-        if self._optimizer.__name__ == 'AdamOptimizer':
-
-            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate).minimize(self._loss_op)
-
-        elif self._optimizer.__name__ == 'MomentumOptimizer':
-
-            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate, momentum=self._momentum).minimize(self._loss_op)
-
     def _generateMinibatches(self, X, y):
 
         X_mb = [X[i * self._mbsize:(i + 1) * self._mbsize,:] for i in range((X.shape[0] + self._mbsize - 1) // self._mbsize )]

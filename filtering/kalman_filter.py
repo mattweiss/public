@@ -28,6 +28,41 @@ class KalmanFilter(AbstractFilter):
 
 ################################################################################
 
+    def fit(self, inputs):
+
+        """ 
+        Apply Kalman Filter, Using Wrapper Functions
+        inputs is a list.  First element is z, second (optional) element is R
+        """
+
+        if isinstance(inputs,list):
+            
+            # extract z and (possibly) R from inputs list
+            z = tf.convert_to_tensor(inputs[0])
+            self._R = inputs[1]
+
+        else:
+
+            # if R is not passed set z
+            z = tf.convert_to_tensor(inputs)
+
+        x_hat_pri, x_hat_post,\
+        z_hat_pri, z_hat_post,\
+        P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
+                                                                  z,
+                                                                  initializer = [ self._x0, self._x0,
+                                                                                  self._z0, self._z0,
+                                                                                  self._P0, self._P0,
+                                                                                  tf.constant(0) ], name='kfScan')
+
+        return {
+                 'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
+                 'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
+                 'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,\
+                 'z':z }
+    
+################################################################################
+
     def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True, with_np=False):
 
         assert x is not None
@@ -42,7 +77,7 @@ class KalmanFilter(AbstractFilter):
         
         for X,Y in zip(x,y):
 
-            filter_result = self.filter(X)
+            filter_result = self.fit(X)
 
             try:
             
@@ -79,41 +114,6 @@ class KalmanFilter(AbstractFilter):
             saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
 
         return {'test_loss':test_loss,'sw':sw}
-
-################################################################################
-
-    def filter(self, inputs):
-
-        """ 
-        Apply Kalman Filter, Using Wrapper Functions
-        inputs is a list.  First element is z, second (optional) element is R
-        """
-
-        if isinstance(inputs,list):
-            
-            # extract z and (possibly) R from inputs list
-            z = tf.convert_to_tensor(inputs[0])
-            self._R = inputs[1]
-
-        else:
-
-            # if R is not passed set z
-            z = tf.convert_to_tensor(inputs)
-
-        x_hat_pri, x_hat_post,\
-        z_hat_pri, z_hat_post,\
-        P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
-                                                                  z,
-                                                                  initializer = [ self._x0, self._x0,
-                                                                                  self._z0, self._z0,
-                                                                                  self._P0, self._P0,
-                                                                                  tf.constant(0) ], name='kfScan')
-
-        return {
-                 'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
-                 'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
-                 'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,\
-                 'z':z }
             
 ################################################################################
 
