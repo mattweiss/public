@@ -1,10 +1,11 @@
 import numpy as np
 import tensorflow as tf
+from scipy import stats
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.layers.base import Dense
 from dovebirdia.filtering.kalman_filter import KalmanFilter
-from dovebirdia.utilities.base import dictToAttributes
+from dovebirdia.utilities.base import dictToAttributes, saveDict
 
 class Autoencoder(FeedForwardNetwork):
 
@@ -104,6 +105,63 @@ class AutoencoderKalmanFilter(Autoencoder):
         # output layer
         self._y_hat = Dense(self._output_layer_dict).build(self._decoder, [self._output_dim], scope='y_hat')
 
+    def evaluate(self, x=None, y=None, t=None, save_results=True):
+
+        assert x is not None
+        assert y is not None
+        assert t is not None
+
+        # model predictions
+        x_hat_list = list()
+        z_list = list()
+        z_hat_post_list = list()
+        self._history['sw'] = list()
+        
+        with tf.Session() as sess:
+
+            # backwards compatibility
+            try:
+
+                model_results_path = './results/trained_model.ckpt'
+                tf.train.Saver().restore(sess, model_results_path)
+
+            except:
+
+                model_results_path = './results/tensorflow_model.ckpt'
+                tf.train.Saver().restore(sess, model_results_path)
+
+            for X,Y in zip(x,y):
+
+                test_loss, x_hat, z, z_hat_post = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post], feed_dict={self._X:X, self._y:Y})
+                self._history['test_loss'].append(test_loss)
+                x_hat_list.append(x_hat)
+                z_list.append(z)
+                z_hat_post_list.append(z_hat_post)
+
+                for sensor in range(z.shape[1]):
+                    
+                    w,p = stats.shapiro(np.subtract(z[:,sensor],z_hat_post[:,sensor]))
+                    self._history['sw'].append(p)
+                
+        x_hat = np.asarray(x_hat_list)
+        z = np.asarray(z)
+        z_hat_post = np.asarray(z_hat_post_list)
+        
+        # save predictions
+        if save_results:
+
+            test_results_dict = {
+                'x':x,
+                'y':y,
+                'x_hat':x_hat,
+                't':t,
+                'z':z,
+                'z_hat_post':z_hat_post,
+                }
+            
+            saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
+            
+        return self._history
         
     def _generate_spd_cov_matrix(self, R):
 

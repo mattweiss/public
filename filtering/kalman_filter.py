@@ -28,7 +28,7 @@ class KalmanFilter(AbstractFilter):
 
 ################################################################################
 
-    def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True):
+    def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True, with_np=False):
 
         assert x is not None
         assert y is not None
@@ -37,20 +37,32 @@ class KalmanFilter(AbstractFilter):
         test_loss = list()
         x_hat_list = list()
         sw_list = list()
+        filter_results = list()
+        ctr = 1
         
         for X,Y in zip(x,y):
-        
-            filter_results = self.filter(X)
 
-            x_hat = filter_results[x_key][:,:,0]
+            filter_result = self.filter(X)
+
+            try:
             
-            test_loss.append(np.square(np.subtract(x_hat,Y)).mean())
-            x_hat_list.append(x_hat)
+                sess = tf.InteractiveSession()
+                x_hat = sess.run(filter_result[x_key][:,:,0])
+                sess.close()
+                
+            except:
 
-            # Shapiro-Wilk test
-            w, p = stats.shapiro(x-x_hat)
-            sw_list.append(p)
-        
+                x_hat = filter_result[x_key][:,:,0]
+
+            x_hat_list.append(x_hat)
+            test_loss.append(np.square(np.subtract(x_hat,Y)).mean())
+
+            for sensor in range(X.shape[1]):
+                    
+                # Shapiro-Wilk test
+                w, p = stats.shapiro(X[:,sensor]-x_hat[:,sensor])
+                sw_list.append(p)
+            
         x_hat = np.asarray(x_hat_list)
         sw = np.asarray(sw_list)
         
@@ -62,13 +74,11 @@ class KalmanFilter(AbstractFilter):
                 'y':y,
                 'x_hat':x_hat,
                 't':t,
-                'sw':sw,
                 }
             
-
             saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
 
-        return {'test_loss':test_loss}
+        return {'test_loss':test_loss,'sw':sw}
 
 ################################################################################
 
@@ -79,45 +89,31 @@ class KalmanFilter(AbstractFilter):
         inputs is a list.  First element is z, second (optional) element is R
         """
 
-        try:
+        if isinstance(inputs,list):
             
             # extract z and (possibly) R from inputs list
-            z, R = inputs
-            self._z = tf.convert_to_tensor(inputs[0])
+            z = tf.convert_to_tensor(inputs[0])
             self._R = inputs[1]
 
-        except:
+        else:
 
             # if R is not passed set z
-            z = inputs
-            self._z = tf.convert_to_tensor(inputs)
+            z = tf.convert_to_tensor(inputs)
 
-        self._x_hat_pri, self._x_hat_post,\
-        self._z_hat_pri, self._z_hat_post,\
-        self._P_hat_pri, self._P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
-                                                                  self._z,
+        x_hat_pri, x_hat_post,\
+        z_hat_pri, z_hat_post,\
+        P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
+                                                                  z,
                                                                   initializer = [ self._x0, self._x0,
                                                                                   self._z0, self._z0,
                                                                                   self._P0, self._P0,
                                                                                   tf.constant(0) ], name='kfScan')
 
-        # if z is numpy array run session
-        if not isinstance(z,tf.Tensor):
-
-            with tf.Session() as sess:
-
-                self._x_hat_pri = sess.run(self._x_hat_pri)
-                self._x_hat_post = sess.run(self._x_hat_post)
-                self._z_hat_pri = sess.run(self._z_hat_pri)
-                self._z_hat_post = sess.run(self._z_hat_post)
-                self._P_hat_pri = sess.run(self._P_hat_pri)
-                self._P_hat_post = sess.run(self._P_hat_post)
-                self._z = sess.run(self._z)
-            
-        return { 'x_hat_pri':self._x_hat_pri, 'x_hat_post':self._x_hat_post,\
-                 'z_hat_pri':self._z_hat_pri, 'z_hat_post':self._z_hat_post,\
-                 'P_hat_pri':self._P_hat_pri, 'P_hat_post':self._P_hat_post,\
-                 'z':self._z }
+        return {
+                 'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
+                 'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
+                 'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,\
+                 'z':z }
             
 ################################################################################
 

@@ -91,10 +91,21 @@ x_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], datase
 filter = config_dicts['meta']['filter'](config_dicts['kf'])
 print(filter.__class__)
 
-history = filter.evaluate(x_test,y_test,t)
+history = filter.evaluate(x_test,y_test,t,with_np=True)
+
+sw = np.asarray(history['sw'])
+sw_min = sw.min()
+sw_max = sw.max()
+
+n_sw_lt_min = sw[sw < (0.05/sw.shape[0])].shape[0]
+per_sw_lt_min = float(n_sw_lt_min / sw.shape[0]) * 100
 
 results_dict = {
-'test_mse':np.asarray(history['test_loss']).mean(),
+    'test_mse':np.asarray(history['test_loss']).mean(),
+    'sw_min':sw_min,
+    'sw_max':sw_max,
+    'n_sw_lt_min':n_sw_lt_min,
+    'per_sw_lt_min':per_sw_lt_min,
 }
 
 ################################################################################

@@ -100,30 +100,44 @@ class LSTM(AbstractNetwork):
         pass
         
     def evaluate(self, x=None, y=None, t=None, save_results=True):
+
+        assert x is not None
+        assert y is not None
+        assert t is not None
+
+        x_hat_list = list()
         
-        self._model.load_weights( weights_file )
+        model_results_path = './results/keras_model.h5'
+        self._model.load_weights(model_results_path)
+        
+        x_test, y_test = self._generate_dataset(x,y)
 
-        trial_pred_list = list()
+        X_list = list()
+        
+        for n in range(0,x_test.shape[0],x.shape[1]-self._seq_len):
 
-        for trial in range( X.shape[0] ):
+            X = x_test[n:n+(x.shape[1]-self._seq_len)]
+            Y = y_test[n:n+(x.shape[1]-self._seq_len)]
 
-            sensor_pred_list = list()
+            self._history['test_loss'].append(self._model.evaluate(x=X, y=Y, batch_size=X.shape[0]))
+            x_hat_list.append(self._model.predict(x=X, batch_size=X.shape[0]))
+
+        x_hat = np.asarray(x_hat_list)
+
+        # save predictions
+        if save_results:
+
+            test_results_dict = {
+                'x':x,
+                'y':y,
+                'x_hat':x_hat,
+                't':t,
+                }
             
-            for sensor in range( X.shape[2] ):
+        saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
 
-                sensor_data = X[trial:trial+1,:,sensor:sensor+1]
-
-                X_signal, _ = self._generate_dataset( sensor_data, sensor_data )
-
-                pred = self._model.predict( X_signal, batch_size = X.shape[1] )
-
-                sensor_pred_list.append( pred )
-                
-            stacked_sensor_pred = np.hstack( sensor_pred_list )
-            trial_pred_list.append( stacked_sensor_pred )
-
-        return X, np.asarray( trial_pred_list )
-    
+        return self._history
+        
     ###################
     # Private Methods #
     ###################
@@ -191,14 +205,14 @@ class LSTM(AbstractNetwork):
         x_wins = list()
         y_wins = list()
 
-        for trial_idx in range( x.shape[0] ):
+        for trial_idx in range(x.shape[0]):
 
-            for sample_idx in range( x.shape[1] - self._seq_len ):
+            for sample_idx in range(x.shape[1]-self._seq_len):
 
-                x_wins.append( x[ trial_idx, sample_idx:sample_idx + self._seq_len, : ] )
-                y_wins.append( y[ trial_idx, sample_idx + self._seq_len, : ] )
+                x_wins.append(x[trial_idx,sample_idx:sample_idx+self._seq_len,:])
+                y_wins.append(y[trial_idx,sample_idx+self._seq_len,:])
 
-        x_out = np.array( x_wins )
-        y_out = np.array( y_wins )
+        x_out = np.array(x_wins)
+        y_out = np.array(y_wins)
 
         return x_out, y_out

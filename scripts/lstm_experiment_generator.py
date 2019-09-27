@@ -24,9 +24,9 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'lstm_allnoise_100k_taylor_SAVEMODEL_TEST'
+experiment_name = 'lstm_allnoise_100k_taylor'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
-machine = 'pengy'
+machine = socket.gethostname()
 ####################################
 
 meta_params = dict()
@@ -54,7 +54,7 @@ model_params['input_dim'] = 1
 model_params['output_dim'] = model_params['input_dim']
 model_params['hidden_dims'] = (256,64)
 model_params['output_activation'] = None
-model_params['activation'] = tf.nn.leaky_relu
+model_params['activation'] = tf.nn.relu
 model_params['use_bias'] = True
 model_params['weight_initializer'] = 'glorot_uniform'
 model_params['bias_initializer'] = 0.0
@@ -73,7 +73,7 @@ model_params['return_seq'] = True
 model_params['loss'] = losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10
+model_params['epochs'] = 100000
 model_params['mbsize'] = 100
 model_params['optimizer'] = optimizers.Adam
 model_params['learning_rate'] = list(np.logspace(-3,-5,20))

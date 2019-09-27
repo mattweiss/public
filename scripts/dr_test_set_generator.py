@@ -11,10 +11,10 @@ import dovebirdia.utilities.distributions as distributions
 # if parameters is a tuple that is the range from which the parameter is drawn
 
 dr_params = dict()
-dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_10_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
+dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_20_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
 dr_params['ds_type'] = 'test'
 dr_params['x_range'] = (-1,1)
-dr_params['n_trials'] = 10
+dr_params['n_trials'] = 20
 dr_params['n_samples'] = 100
 dr_params['n_features'] = 1
 n = 10.0

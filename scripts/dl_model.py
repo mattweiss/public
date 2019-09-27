@@ -131,7 +131,6 @@ else:
 # Network
 config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
 
-
 # if using AEKF
 if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
     
@@ -161,10 +160,31 @@ else:
 
     history = nn.evaluate(x=x_test, y=y_test, t=t)
 
-    results_dict = {
-    'test_mse':np.asarray(history['test_loss']).mean(),
-    }
-    
+    # aekf
+    try:
+
+        sw = np.asarray(history['sw'])
+        sw_min = sw.min()
+        sw_max = sw.max()
+
+        n_sw_lt_min = sw[sw < (0.05/sw.shape[0])].shape[0]
+        per_sw_lt_min = float(n_sw_lt_min / sw.shape[0]) * 100
+        
+        results_dict = {
+            'test_mse':np.asarray(history['test_loss']).mean(),
+            'sw_min':sw_min,
+            'sw_max':sw_max,
+            'n_sw_lt_min':n_sw_lt_min,
+            'per_sw_lt_min':per_sw_lt_min,
+        }
+
+    # lstm
+    except:
+
+        results_dict = {
+            'test_mse':np.asarray(history['test_loss']).mean(),
+        }
+        
 ################################################################################
 # CSV
 ################################################################################

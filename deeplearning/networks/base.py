@@ -311,49 +311,7 @@ class FeedForwardNetwork(AbstractNetwork):
         
     def evaluate(self, x=None, y=None, t=None, save_results=True):
 
-        assert x is not None
-        assert y is not None
-        assert t is not None
-
-        # model predictions
-        x_hat_list = list()
-        z_list = list()
-        z_hat_post_list = list()
-                
-        # load trained model
-        model_results_path = './results/tensorflow_model.ckpt'
-        
-        with tf.Session() as sess:
-            
-            tf.train.Saver().restore(sess, model_results_path)
-
-            for X,Y in zip(x,y):
-
-                test_loss, x_hat, z, z_hat_post = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post], feed_dict={self._X:X, self._y:Y})
-                self._history['test_loss'].append(test_loss)
-                x_hat_list.append(x_hat)
-                z_list.append(z)
-                z_hat_post_list.append(z_hat_post)
-                
-        x_hat = np.asarray(x_hat_list)
-        z = np.asarray(z)
-        z_hat_post = np.asarray(z_hat_post_list)
-                
-        # save predictions
-        if save_results:
-
-            test_results_dict = {
-                'x':x,
-                'y':y,
-                'x_hat':x_hat,
-                't':t,
-                'z':z,
-                'z_hat_post':z_hat_post,
-                }
-            
-            saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
-            
-        return self._history
+        pass
                 
     ###################
     # Private Methods #

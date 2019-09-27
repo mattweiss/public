@@ -22,10 +22,23 @@ import dovebirdia.utilities.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
-experiment_name = 'kf_gaussian_nca_taylor'
-experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
+#****************************************************************************************************************************
+experiments = [
+    ('kf_gaussian_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_gaussian_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_gaussian_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_bimodal_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_bimodal_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_bimodal_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_cauchy_ncv_taylor',(1,2),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_cauchy_nca_taylor',(1,3),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ('kf_cauchy_jerk_taylor',(1,4),'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'),
+    ]
+#kf_dims = (1,3)
+#test_dataset_file = 'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
+#****************************************************************************************************************************
+#experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
-test_dataset_file = 'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl'
 ####################################
 
 meta_params = dict()
@@ -56,13 +69,13 @@ model_params['results_dir'] = '/results/'
 # Domain Randomization Parameters
 ####################################
 
-dr_params['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/' + test_dataset_file
+#dr_params['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/' + test_dataset_file
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
-kf_params['dimensions'] = (1,3)
+#kf_params['dimensions'] = kf_dims
 kf_params['n_signals'] = 1
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0
@@ -124,49 +137,58 @@ for dict_name, params_dict in params_dicts.items():
 # Write Config Files
 #######################
 
-cfg_ctr = 1
+for experiment in experiments:
 
-for config_params in itertools.product(config_params_dicts['meta'],
-                                       config_params_dicts['model'],
-                                       config_params_dicts['dr'],
-                                       config_params_dicts['kf']):
-
-    # Create Directories
-    model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'
-    model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
-    results_dir = model_dir + '/results/'
-    out_dir = model_dir + '/out'
-    config_dir = model_dir + '/config/'
+    experiment_name, kf_dims, test_dataset_file = experiment
     
-    if not os.path.exists(results_dir): os.makedirs(results_dir)
-    if not os.path.exists(out_dir): os.makedirs(out_dir)
-    if not os.path.exists(config_dir): os.makedirs(config_dir)
+    cfg_ctr = 1
 
-    # Write Config Files
-    for name, config_param in zip(config_params_dicts.keys(), config_params):
+    for config_params in itertools.product(config_params_dicts['meta'],
+                                           config_params_dicts['model'],
+                                           config_params_dicts['dr'],
+                                           config_params_dicts['kf']):
 
-        cfg_file_name = model_dir_name[:-1] +  '_' + name + '.cfg'
 
-        with open(config_dir + cfg_file_name, 'wb') as handle:
-
-            dill.dump(config_param, handle)
+        config_params[2]['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/' + test_dataset_file
+        config_params[3]['dimensions'] = kf_dims
         
-    out_file_name = model_dir_name[:-1] + '.out'
-    res_file_name = model_dir_name[:-1]
+        # Create Directories
+        experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
+        model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'
+        model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
+        results_dir = model_dir + '/results/'
+        out_dir = model_dir + '/out'
+        config_dir = model_dir + '/config/'
 
-    # bash-batch script
-    if machine == 'pengy':
+        if not os.path.exists(results_dir): os.makedirs(results_dir)
+        if not os.path.exists(out_dir): os.makedirs(out_dir)
+        if not os.path.exists(config_dir): os.makedirs(config_dir)
 
-        batch_string_prefix = 'python3 '
+        # Write Config Files
+        for name, config_param in zip(config_params_dicts.keys(), config_params):
 
-    else:
+            cfg_file_name = model_dir_name[:-1] +  '_' + name + '.cfg'
 
-        batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
-        
-    batch_str = batch_string_prefix + script + ' -c ./config/' + ' -r ./results//\n'
-    batch_file_name = model_dir + 'test_model.sh'
-    batch_file = open(batch_file_name, 'w')
-    batch_file.write(batch_str)
-    batch_file.close()
-    
-    cfg_ctr += 1
+            with open(config_dir + cfg_file_name, 'wb') as handle:
+
+                dill.dump(config_param, handle)
+
+        out_file_name = model_dir_name[:-1] + '.out'
+        res_file_name = model_dir_name[:-1]
+
+        # bash-batch script
+        if machine == 'pengy':
+
+            batch_string_prefix = 'python3 '
+
+        else:
+
+            batch_string_prefix = 'sbatch -o ./out/' + out_file_name + ' '
+
+        batch_str = batch_string_prefix + script + ' -c ./config/' + ' -r ./results//\n'
+        batch_file_name = model_dir + 'test_model.sh'
+        batch_file = open(batch_file_name, 'w')
+        batch_file.write(batch_str)
+        batch_file.close()
+
+        cfg_ctr += 1
