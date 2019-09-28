@@ -8,7 +8,7 @@ from pdb import set_trace as st
 from abc import ABC, abstractmethod
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
-from dovebirdia.deeplearning.layers.base import Dense
+from dovebirdia.deeplearning.layers.base import DenseLayer
 
 try:
 
@@ -96,7 +96,7 @@ class AbstractNetwork(ABC):
         # Set Optimizer
         ############################
         self._setOptimizer()
-    
+
     @abstractmethod
     def fit(self, dataset=None, save_model=False):
 
@@ -115,7 +115,7 @@ class AbstractNetwork(ABC):
     ###################
     # Private Methods #
     ###################
-
+        
     @abstractmethod
     def _buildNetwork(self):
 
@@ -256,6 +256,13 @@ class FeedForwardNetwork(AbstractNetwork):
                 # train on all trials
                 for x_train, y_train in zip(dr_data['x_train'],dr_data['y_train']):
 
+                    # plt.plot(x_train,label='x')
+                    # plt.plot(y_train,label='y')
+                    # plt.grid()
+                    # plt.legend()
+                    # plt.show()
+                    # plt.close()
+                    
                     # training op
                     _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
 
@@ -282,56 +289,56 @@ class FeedForwardNetwork(AbstractNetwork):
                                                                                             train_loss=self._history['train_loss'][-1],
                                                                                             val_loss=self._history['val_loss'][-1]))
 
-                # if epoch == self._epochs:
+                #if epoch == self._epochs:
 
-                #     # plot using last x_train and x_val
-                #     train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
-                #     val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
+                #plot using last x_train and x_val
+                # train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
+                # val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
 
-                #     plt.figure(figsize=(12,6))
+                # plt.figure(figsize=(12,6))
 
-                #     plt.subplot(121)
+                # plt.subplot(121)
 
-                #     for sensor in range(x_train.shape[1]):
-                    
-                #         plt.scatter(range(x_train.shape[0]), x_train[:,sensor], label='train', color='green')
-                #         plt.plot(y_train[:,sensor], label='train_gt')
-                #         plt.plot(train_pred[:,sensor], label='train_pred')
+                # for sensor in range(x_train.shape[1]):
 
-                #     plt.grid()
-                #     plt.legend()
+                #     plt.scatter(range(x_train.shape[0]), x_train[:,sensor], label='train', color='green')
+                #     plt.plot(y_train[:,sensor], label='train_gt')
+                #     plt.plot(train_pred[:,sensor], label='train_pred')
 
-                #     plt.subplot(122)
+                # plt.grid()
+                # plt.legend()
 
-                #     for sensor in range(x_val.shape[1]):
-                        
-                #         plt.scatter(range(x_val.shape[0]), x_val[:,sensor], label='val', color='green')
-                #         plt.plot(y_val[:,sensor], label='val_gt')
-                #         plt.plot(val_pred[:,sensor], label='val_pred')
+                # plt.subplot(122)
 
-                #     plt.grid()
-                #     plt.legend()
-                    
-                #     plt.subplot(223)
-                #     for dim in range(z_hat_post_train.shape[1]):
-                        
-                #         plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
-                #         plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
+                # for sensor in range(x_val.shape[1]):
 
-                #     plt.grid()
-                #     plt.legend()
-                    
-                #     plt.subplot(224)
-                #     for dim in range(z_hat_post_val.shape[1]):
-                        
-                #         plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
-                #         plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
-                        
-                #     plt.grid()
-                #     plt.legend()
-                    
-                    # plt.show()
-                    # plt.close()
+                #     plt.scatter(range(x_val.shape[0]), x_val[:,sensor], label='val', color='green')
+                #     plt.plot(y_val[:,sensor], label='val_gt')
+                #     plt.plot(val_pred[:,sensor], label='val_pred')
+
+                # plt.grid()
+                # plt.legend()
+
+                # plt.subplot(223)
+                # for dim in range(z_hat_post_train.shape[1]):
+
+                #     plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
+                #     plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
+
+                # plt.grid()
+                # plt.legend()
+
+                # plt.subplot(224)
+                # for dim in range(z_hat_post_val.shape[1]):
+
+                #     plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
+                #     plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
+
+                # plt.grid()
+                # plt.legend()
+
+                # plt.show()
+                # plt.close()
 
             self._history['runtime'] = (time() - start_time) / 60.0
             z, z_hat_post = sess.run([self._z,self._z_hat_post], feed_dict={self._X:x_train, self._y:y_train})

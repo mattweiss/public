@@ -21,7 +21,17 @@ class AbstractFilter(ABC):
     def fit(self):
 
         pass
-        
+
+    @abstractmethod
+    def evaluate(self):
+
+        pass
+
+    @abstractmethod
+    def predict(self):
+
+        pass
+    
     ###################
     # Private Methods #
     ###################

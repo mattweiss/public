@@ -24,7 +24,7 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'lstm_allnoise_100k_taylor'
+experiment_name = 'lstm_cauchy_100k_sine_TEST'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -54,7 +54,7 @@ model_params['input_dim'] = 1
 model_params['output_dim'] = model_params['input_dim']
 model_params['hidden_dims'] = (256,64)
 model_params['output_activation'] = None
-model_params['activation'] = tf.nn.relu
+model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
 model_params['weight_initializer'] = 'glorot_uniform'
 model_params['bias_initializer'] = 0.0
@@ -73,7 +73,7 @@ model_params['return_seq'] = True
 model_params['loss'] = losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100000
+model_params['epochs'] = 100
 model_params['mbsize'] = 100
 model_params['optimizer'] = optimizers.Adam
 model_params['learning_rate'] = list(np.logspace(-3,-5,20))
@@ -86,21 +86,23 @@ model_params['history_size'] = 100
 ####################################
 
 dr_params['ds_type'] = 'train'
-dr_params['x_range'] = (-1,1)
+dr_params['x_range'] = (0,100)
 dr_params['n_trials'] = 1
+dr_params['n_baseline_samples'] = 10
 dr_params['n_samples'] = 100
 dr_params['n_features'] = 1
 n = 10.0
 dr_params['fns'] = [
     #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
-    ['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
+    ['sine', drfns.sine, [(0.0,100.0),(0.04,0.1)]],
+    #['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
     #['legendre_poly', drfns.legendre_poly, [1.0,(-n,n),(-n,n),(-n,n)]],
 ]
 
 dr_params['noise'] = (
-    ['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
-    ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
+    #['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
+    #['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
     ['cauchy', np.random.standard_cauchy, {}],
 )
 

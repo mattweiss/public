@@ -128,7 +128,7 @@ else:
 # Model
 ################################################################################
 
-# Network
+# Hidden dimensions
 config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
 
 # if using AEKF
@@ -141,10 +141,8 @@ else:
 
     nn = config_dicts['meta']['network'](config_dicts['model'])
 
-# Compile network
-nn.compile()
-    
 print(nn.__class__)
+nn.compile()
 
 if TRAINING:
 

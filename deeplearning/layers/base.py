@@ -2,7 +2,7 @@ import tensorflow as tf
 from dovebirdia.utilities.base import dictToAttributes
 from pdb import set_trace as st
 
-class Dense():
+class DenseLayer():
 
     def __init__(self, params=None):
 

@@ -114,7 +114,13 @@ class KalmanFilter(AbstractFilter):
             saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
 
         return {'test_loss':test_loss,'sw':sw}
-            
+
+################################################################################
+
+    def predict(self, x=None, t=None, x_key='z_hat_post', save_results=True, with_np=False):
+
+        pass
+    
 ################################################################################
 
     def _kfScan(self, state, z):
@@ -161,14 +167,14 @@ class KalmanFilter(AbstractFilter):
 
 ###############################################################################
 
-    def _dictToAttributes(self,params):
+    # def _dictToAttributes(self,params):
 
-        # Assign Attributes
-        for key, value in params.items():
+    #     # Assign Attributes
+    #     for key, value in params.items():
 
-            #if isinstance(value,int) or value is None:
+    #         #if isinstance(value,int) or value is None:
 
-            setattr(self, '_' + key, value)
+    #         setattr(self, '_' + key, value)
 
             # else:
 
@@ -179,11 +185,6 @@ class KalmanFilter(AbstractFilter):
         """
         Builds F, Q, H and R based on inputs
         """
-
-        # F = tf.constant(np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt],[0.0,1.0]], dtype=np.float64)), dtype=tf.float64, name='F')
-        # Q = tf.constant(np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]], dtype=np.float64)), dtype=tf.float64, name='Q')
-        # H = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._h, dtype=np.float64)), dtype=tf.float64, name='H')
-
         # ZV
         if self._dimensions[1] == 1:
 

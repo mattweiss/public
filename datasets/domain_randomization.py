@@ -8,6 +8,7 @@ from dovebirdia.datasets.base import AbstractDataset
 from dovebirdia.utilities.base import saveAttrDict, loadDict
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import shapiro
+import matplotlib.pyplot as plt
 
 class DomainRandomizationDataset(AbstractDataset):
 
@@ -61,8 +62,8 @@ class DomainRandomizationDataset(AbstractDataset):
             # loop twice if training to generate validation set
             for dataset_ctr in range(n_datasets):
 
-                y_feature_list = list()
-                
+                y_loop_list = list()
+               
                 for _ in range(self._n_features):
 
                     param_list = list()
@@ -77,10 +78,10 @@ class DomainRandomizationDataset(AbstractDataset):
 
                             param_list.append(param)
 
-                    y_feature_list.append(self._fn_def(t, param_list))
-
-                #y =  self._fn_def(t, param_list)
-                y = np.hstack(y_feature_list)
+                    y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
+                    #y_loop_list.append(self._fn_def(t, param_list))
+                    
+                y = np.hstack(y_loop_list)
 
                 try:
                     
@@ -108,7 +109,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
                             noise_param_dict[param_key] = param
 
-                y_noise = y + self._noise_dist(**noise_param_dict, size=(self._n_samples,self._n_features))
+                y_noise = y + self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_features))
 
                 if dataset_ctr == 0:
 

@@ -9,13 +9,13 @@ from keras.layers.recurrent import LSTM as LSTM_LAYER
 from keras.models import Sequential
 from keras import optimizers, regularizers, initializers, losses
 
-from dovebirdia.deeplearning.networks.base import AbstractNetwork
+from dovebirdia.deeplearning.networks.base import AbstractNetwork, FeedForwardNetwork
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 
 import matplotlib.pyplot as plt
 
-class LSTM(AbstractNetwork):
+class LSTM(FeedForwardNetwork):
 
     """
     LSTM Class
@@ -24,21 +24,72 @@ class LSTM(AbstractNetwork):
     def __init__(self, params=None):
 
         super().__init__(params=params)
+        
+    ##################
+    # Public Methods #
+    ##################
 
+    def compile(self):
+
+        super().compile()
+        
+        assert self._loss_op is not None
+        assert self._optimizer_op is not None
+        
         # compile model
-        self._model.compile( loss = self._loss_op, optimizer=self._optimizer_op )
+        self._model.compile(loss = self._loss_op, optimizer=self._optimizer_op)
 
         print(self._model.summary())
         
+    def evaluate(self, x=None, y=None, t=None, save_results=True):
+
+        assert x is not None
+        assert y is not None
+        assert t is not None
+
+        x_hat_list = list()
+        
+        model_results_path = './results/keras_model.h5'
+        self._model.load_weights(model_results_path)
+        
+        x_test, y_test = self._generateDataset(x,y)
+
+        X_list = list()
+        
+        for X,Y in zip(x_test,y_test):
+
+            self._history['test_loss'].append(self._model.evaluate(x=X, y=Y, batch_size=X.shape[0]))
+            x_hat_list.append(self._model.predict(x=X, batch_size=X.shape[0]))
+
+        x_hat = np.asarray(x_hat_list)
+        
+        # save predictions
+        if save_results:
+
+            test_results_dict = {
+                'x':x,
+                'y':y,
+                'x_hat':x_hat,
+                't':t,
+                }
+            
+        saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
+
+        return self._history
+    
+    def predict(self, x=None):
+
+        pass
+    
     ###################
     # Private Methods #
     ###################
-
-    def fit(self, dataset=None, save_model=False):
+    
+    def _fit(self, dataset=None, save_model=False):
 
         pass
 
-    def fitDomainRandomization(self, dr_params=None, save_model=False):
+    def _fitDomainRandomization(self, dr_params=None, save_model=False):
 
         # create domainRandomizationDataset object
         self._dr_dataset = DomainRandomizationDataset(dr_params)
@@ -50,11 +101,19 @@ class LSTM(AbstractNetwork):
             # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
             dr_data = self._dr_dataset.generateDataset()
 
-            x_train, y_train = self._generate_dataset(dr_data['x_train'],dr_data['y_train'])
-            x_val, y_val = self._generate_dataset(dr_data['x_val'],dr_data['y_val'])
+            x_train, y_train = self._generateDataset(dr_data['x_train'],dr_data['y_train'])
+            x_val, y_val = self._generateDataset(dr_data['x_val'],dr_data['y_val'])
 
+            x_train = np.squeeze(x_train,axis=0)
+            y_train = np.squeeze(y_train,axis=0)
+            x_val = np.squeeze(x_val,axis=0)
+            y_val = np.squeeze(y_val,axis=0)
+
+            print('Epoch {epoch}'.format(epoch=epoch))
+            
             history = self._model.fit(x_train, y_train,
                                       batch_size=x_train.shape[0]-self._seq_len,
+                                      verbose=2,
                                       epochs=1,
                                       validation_data=(x_val, y_val))
 
@@ -94,53 +153,6 @@ class LSTM(AbstractNetwork):
                 self._saveModel()
 
         return self._history
-                
-    def predict(self, x=None):
-
-        pass
-        
-    def evaluate(self, x=None, y=None, t=None, save_results=True):
-
-        assert x is not None
-        assert y is not None
-        assert t is not None
-
-        x_hat_list = list()
-        
-        model_results_path = './results/keras_model.h5'
-        self._model.load_weights(model_results_path)
-        
-        x_test, y_test = self._generate_dataset(x,y)
-
-        X_list = list()
-        
-        for n in range(0,x_test.shape[0],x.shape[1]-self._seq_len):
-
-            X = x_test[n:n+(x.shape[1]-self._seq_len)]
-            Y = y_test[n:n+(x.shape[1]-self._seq_len)]
-
-            self._history['test_loss'].append(self._model.evaluate(x=X, y=Y, batch_size=X.shape[0]))
-            x_hat_list.append(self._model.predict(x=X, batch_size=X.shape[0]))
-
-        x_hat = np.asarray(x_hat_list)
-
-        # save predictions
-        if save_results:
-
-            test_results_dict = {
-                'x':x,
-                'y':y,
-                'x_hat':x_hat,
-                't':t,
-                }
-            
-        saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
-
-        return self._history
-        
-    ###################
-    # Private Methods #
-    ###################
 
     def _buildNetwork(self):
 
@@ -200,7 +212,7 @@ class LSTM(AbstractNetwork):
         self._trained_model_file = os.getcwd() + self._results_dir + 'keras_model.h5'
         self._model.save_weights(self._trained_model_file)
 
-    def _generate_dataset( self, x, y ):
+    def _generateDataset( self, x, y ):
 
         x_wins = list()
         y_wins = list()
@@ -212,7 +224,7 @@ class LSTM(AbstractNetwork):
                 x_wins.append(x[trial_idx,sample_idx:sample_idx+self._seq_len,:])
                 y_wins.append(y[trial_idx,sample_idx+self._seq_len,:])
 
-        x_out = np.array(x_wins)
-        y_out = np.array(y_wins)
+        x_out = np.array(x_wins).reshape((x.shape[0],-1,self._seq_len,x.shape[-1]))
+        y_out = np.array(y_wins).reshape((x.shape[0],-1,x.shape[-1]))
 
         return x_out, y_out

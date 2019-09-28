@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?><diagram program="umlet" version="13.3">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>570</x>
+      <y>140</y>
+      <w>210</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>/AbstractNetwork/
+--
+compile()
+/fit()/
+/evaluate()/
+/predict()/
+--
+/_buildNetwork()/
+/_setLoss()/
+/_setOptimizer()/
+/_saveModel()/
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>660</x>
+      <y>300</y>
+      <w>30</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;40.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>570</x>
+      <y>580</y>
+      <w>210</w>
+      <h>50</h>
+    </coordinates>
+    <panel_attributes>Autoencoder
+--
+_buildNetwork()</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>660</x>
+      <y>530</y>
+      <w>30</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;50.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>570</x>
+      <y>340</y>
+      <w>210</w>
+      <h>200</h>
+    </coordinates>
+    <panel_attributes>FeedForwardNetwork
+--
+fit()
+evaluate()
+predict()
+--
+_buildNetwork()
+_setLoss()
+_setOptimizer()
+_fit()
+_fitDomainRandomization()
+_generateMinibatches()
+_saveModel()</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>570</x>
+      <y>670</y>
+      <w>210</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>AutoencoderKalmanFilter
+--
+evaluate()
+--
+_buildNetwork()
+_generate_spd_cov_matrix()</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>660</x>
+      <y>620</y>
+      <w>30</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;50.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1010</x>
+      <y>140</y>
+      <w>210</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>/AbstractFilter/
+--
+/fit()/
+/evaluate()/
+/predict()/
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1010</x>
+      <y>250</y>
+      <w>210</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>/KalmanFilter/
+--
+fit()
+evaluate()
+predict()
+--
+_kfScan()
+_buildModel()</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1100</x>
+      <y>210</y>
+      <w>30</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;40.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>770</x>
+      <y>250</y>
+      <w>260</w>
+      <h>450</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>240.0;10.0;120.0;10.0;120.0;430.0;10.0;430.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>300</x>
+      <y>340</y>
+      <w>210</w>
+      <h>200</h>
+    </coordinates>
+    <panel_attributes>LSTM
+--
+compile()
+evaluate()
+predict()
+--
+_buildNetwork()
+_setLoss()
+_setOptimizer()
+_fit()
+_fitDomainRandomization()
+_generateDataset()
+_saveModel()</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>500</x>
+      <y>430</y>
+      <w>90</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>70.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1010</x>
+      <y>430</y>
+      <w>210</w>
+      <h>50</h>
+    </coordinates>
+    <panel_attributes>DenseLayer
+--
+build()</panel_attributes>
+    <additional_attributes/>
+  </element>
+</diagram>
