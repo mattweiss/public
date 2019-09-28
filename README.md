@@ -37,3 +37,7 @@
     kf_experiment_generator.py - creates configuration files to run Kalman Filter models
     filter_model.py - scripts used to test filter models
     lstm_experiment_generator.py - creates configuration files to train lstm models
+    
+## uml/
+
+    uml diagrams for dovebirdia
