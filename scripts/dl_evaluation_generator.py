@@ -24,7 +24,7 @@ import dovebirdia.stats.distributions as distributions
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
 experiments = [
-    ('lstm_allnoise_100k_taylor',[9]),
+    ('lstm_cauchy_100k_sine',list(range(1,101))),
     #('aekf_allnoise_ncv_100k_taylor',[5]),
     #('aekf_allnoise_nca_100k_taylor',[25]),
     #('aekf_allnoise_jerk_100k_taylor',[16]),
@@ -33,7 +33,8 @@ experiments = [
 test_dataset_files = [
     #'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
     #'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
-    'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
+    #'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
+    'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
 ]
 
 machine = socket.gethostname()

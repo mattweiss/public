@@ -4,7 +4,10 @@ from scipy import stats
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.layers.base import DenseLayer
+
 from dovebirdia.filtering.kalman_filter import KalmanFilter
+#from kalmanfilter.kalmanfiltertf import KalmanFilterTF as KalmanFilter
+
 from dovebirdia.utilities.base import dictToAttributes, saveDict
 
 class Autoencoder(FeedForwardNetwork):
@@ -51,7 +54,26 @@ class AutoencoderKalmanFilter(Autoencoder):
         # instantiate Kalman Filter before parent constructor as
         # the parent calls _buildNetwork()
         self._kalman_filter = KalmanFilter(params=kf_params)
-                
+
+        ######################################
+        # KalmanFilter Used Before Dovebirdia
+        ######################################
+        # kf_params['dt'] = 1.0
+        # dt = kf_params['dt']
+        # q = kf_params['q']
+        # h = kf_params['h']
+        # latent_dims = kf_params['n_signals']
+        # kf_params['F'] = np.kron(np.eye(latent_dims,dtype=np.float64), np.array([[1.0,dt],[0.0,1.0]],dtype=np.float64))
+        # kf_params['Q'] = np.kron(np.eye(latent_dims,dtype=np.float64), np.array([[q,0.0],[0.0,q]],dtype=np.float64))
+        # kf_params['H'] = np.kron(np.eye(latent_dims,dtype=np.float64), np.array( [ [1.0,0.0] ],dtype=np.float64))
+        # kf_params['mb_size'] = 110
+        # kf_params['n_samples'] = 110
+        # kf_params['x0'] = np.zeros((kf_params['dimensions'][1]*latent_dims,1), dtype=np.float64)
+        # #kf_params['P0'] = make_spd_matrix( kf_params['dimensions'][1]*latent_dims )
+        # kf_params['P0'] = np.eye( kf_params['dimensions'][1] * latent_dims, dtype=np.float64 )
+        # kf_params['K0'] = np.zeros( shape = kf_params['H'].T.shape, dtype = np.float64 )
+        # self._my_kf_params = kf_params
+        
         super().__init__(params=params)
 
     ##################
@@ -127,30 +149,29 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
 
         # encoder
-
-        # backwards compatibility
-        try:
-
-            self._encoder = DenseLayer(self._hidden_layer_dict).build(self._X, self._hidden_dims, scope='encoder', dropout_rate=self._dropout_rate)
-
-        except:
-
-            self._encoder = DenseLayer(self._hidden_layer_dict).build(self._X, self._hidden_dims, scope='encoder')
+        self._encoder = DenseLayer(self._hidden_layer_dict).build(self._X, self._hidden_dims, scope='encoder')
 
         # learn z
         self._z = DenseLayer(self._affine_layer_dict).build(self._encoder, [self._hidden_dims[-1]], scope='z')
 
-
         # learn L, which is vector from which SPD matrix R is formed 
         self._L_dims = np.sum(np.arange(1, self._hidden_dims[-1] + 1))
-        self._L = DenseLayer(self._affine_layer_dict).build(self._encoder, [self._L_dims], scope='L')
+        self._L = DenseLayer(self._L_layer_dict).build(self._encoder, [self._L_dims], scope='L')
         
         # learned noise covariance
         self._R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
+        ######################################
+        # KalmanFilter Used Before Dovebirdia
+        ######################################
+        # self._my_kf_params['R'] = self._R
+        # self._kalman_filter = KalmanFilter(self._my_kf_params)        
+        # kf_results = self._kalman_filter.filter( self._z, fixed_R = False )
+        # self._z_hat_pri = kf_results['z_hat_apri']           
+        # self._z_hat_post = kf_results['z_hat_apost']
         # Kalman Filter a priori measurement estimate
-        self._kf_results = self._kalman_filter.fit([self._z,self._R])
 
+        self._kf_results = self._kalman_filter.fit([self._z,self._R])
         self._z_hat_pri = tf.squeeze(self._kf_results['z_hat_pri'],axis=-1)
         self._z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)
 
@@ -158,7 +179,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._post_kf_affine = DenseLayer(self._affine_layer_dict).build(self._z_hat_pri, [self._hidden_dims[-1]], scope='post_kf_affine')
 
         # decoder
-        self._decoder = DenseLayer(self._hidden_layer_dict).build(self._post_kf_affine, self._hidden_dims[::-1][1:], scope='decoder')
+        self._decoder = DenseLayer(self._hidden_layer_dict).build(self._post_kf_affine, self._hidden_dims[::-1][1:], scope='decoder', dropout_rate=self._dropout_rate)
 
         # output layer
         self._y_hat = DenseLayer(self._output_layer_dict).build(self._decoder, [self._output_dim], scope='y_hat')
@@ -178,7 +199,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         eps = 1e-1
 
         # initial upper triangular matrix
-        L = tf.contrib.distributions.fill_triangular( R, upper = False )
+        L = tf.contrib.distributions.fill_triangular(R, upper = False)
         X = tf.matmul(L,L,transpose_b=True) + eps * tf.eye(tf.shape(L)[0],dtype=tf.float64)
 
         return X

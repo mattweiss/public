@@ -15,7 +15,7 @@ class DenseLayer():
         assert x is not None
         assert isinstance(dims, list)
         assert scope is not None
-        
+
         for dim_idx, dim in enumerate(dims):
 
             w_name = 'W{dim_idx}'.format(dim_idx = dim_idx + 1)
@@ -27,6 +27,7 @@ class DenseLayer():
                 W = tf.get_variable(name=w_name,
                                     shape=(x.get_shape()[1],dim),
                                     initializer=self._weight_initializer,
+                                    trainable=True,
                                     dtype=tf.float64)
 
             if self._use_bias:
@@ -40,11 +41,8 @@ class DenseLayer():
                     b = tf.get_variable(name=b_name,
                                         shape=dim,
                                         initializer=self._bias_initializer,
+                                        trainable=True,
                                         dtype=tf.float64)
-
-            if dropout_rate is not 0.0:
-
-                x = tf.nn.dropout(x, rate=dropout_rate)
                     
             x = tf.matmul(x,W)
 
@@ -56,4 +54,8 @@ class DenseLayer():
 
                 x = self._activation(x)
 
+            if dropout_rate is not 0.0:
+
+                x = tf.nn.dropout(x, rate=dropout_rate)
+            
         return x

@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-#from sklearn.datasets import make_spd_matrix
+from sklearn.datasets import make_spd_matrix
 from scipy import stats
 from pdb import set_trace as st
 from dovebirdia.filtering.base import AbstractFilter
@@ -20,11 +20,11 @@ class KalmanFilter(AbstractFilter):
 
         # constructs matrices based on NCV, NCA, etc.
         self._F, self._Q, self._H, self._R = self._buildModel()
-        
+
         self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
-        self._z0 = tf.constant(np.zeros((self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='z0')
-        self._P0 = tf.constant(np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
-        #self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
+        #self._z0 = tf.constant(np.zeros((self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='z0')
+        #self._P0 = tf.constant(np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
+        self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
 
 ################################################################################
 
@@ -46,15 +46,13 @@ class KalmanFilter(AbstractFilter):
             # if R is not passed set z
             z = tf.convert_to_tensor(inputs)
 
-        x_hat_pri, x_hat_post,\
-        z_hat_pri, z_hat_post,\
-        P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
-                                                                  z,
-                                                                  initializer = [ self._x0, self._x0,
-                                                                                  self._z0, self._z0,
-                                                                                  self._P0, self._P0,
-                                                                                  tf.constant(0) ], name='kfScan')
-
+        x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
+                                                                             z,
+                                                                             initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
+        
+        z_hat_pri  = tf.matmul(self._H, x_hat_pri, name='z_pri', transpose_b=False)
+        z_hat_post = tf.matmul(self._H, x_hat_post, name='z_post', transpose_b=False)
+        
         return {
                  'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
                  'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
@@ -127,17 +125,17 @@ class KalmanFilter(AbstractFilter):
         
         """ This is where the acutal Kalman Filter is implemented. """
 
-        x_pri, x_post, z_pri, z_post, P_pri, P_post, self._kf_ctr = state
+        x_pri, x_post, P_pri, P_post, self._kf_ctr = state
 
         # reset state estimate each minibatch
-        x_pri, x_post, z_pri, z_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
-                                                                             lambda: [ x_pri, x_post, z_pri, z_post, P_pri, P_post, self._kf_ctr ],
-                                                                             lambda: [ self._x0, self._x0, self._z0, self._z0, self._P0, self._P0, tf.constant(0) ])
+        x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
+                                                                             lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
+                                                                             lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
 
-        z = tf.expand_dims( z, axis = -1 )
+        z = tf.expand_dims(z, axis=-1)
 
         # Predict
-        x_pri = tf.matmul( self._F, x_post, name='x_pri' )
+        x_pri = tf.matmul(self._F, x_post, name='x_pri' )
         P_pri = tf.add( tf.matmul( self._F, tf.matmul( P_post, self._F, transpose_b=True ) ), self._Q, name='P_pri' )
 
         # assume R is scalar
@@ -150,9 +148,9 @@ class KalmanFilter(AbstractFilter):
             R = self._R
 
         S = tf.matmul(self._H, tf.matmul(P_pri, self._H, transpose_b=True)) + R
-        S_inv = tf.linalg.inv( S )
+        S_inv = tf.linalg.inv(S)
 
-        K = tf.matmul( P_pri, tf.matmul( self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
+        K = tf.matmul(P_pri,tf.matmul(self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
 
         # Update
         innov_plus = tf.subtract( z, tf.matmul( self._H, x_pri ), name='innov_plus' )
@@ -160,25 +158,12 @@ class KalmanFilter(AbstractFilter):
         P_post = tf.matmul( tf.subtract( tf.eye( tf.shape( P_pri )[0], dtype=tf.float64), tf.matmul( K, self._H ) ), P_pri, name = 'P_post' )
 
         # map state estimates to measurement space
-        z_pri  = tf.matmul(self._H, x_pri, name='z_pri', transpose_b=False)
-        z_post = tf.matmul(self._H, x_post, name='z_post', transpose_b=False)
+        # z_pri  = tf.matmul(self._H, x_pri, name='z_pri', transpose_b=False)
+        # z_post = tf.matmul(self._H, x_post, name='z_post', transpose_b=False)
         
-        return [ x_pri, x_post, z_pri, z_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
+        return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
 
 ###############################################################################
-
-    # def _dictToAttributes(self,params):
-
-    #     # Assign Attributes
-    #     for key, value in params.items():
-
-    #         #if isinstance(value,int) or value is None:
-
-    #         setattr(self, '_' + key, value)
-
-            # else:
-
-            #     setattr(self, '_' + key, tf.constant(value, name=key, dtype=tf.float64) )
 
     def _buildModel(self):
 

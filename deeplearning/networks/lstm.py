@@ -58,8 +58,8 @@ class LSTM(FeedForwardNetwork):
         
         for X,Y in zip(x_test,y_test):
 
-            self._history['test_loss'].append(self._model.evaluate(x=X, y=Y, batch_size=X.shape[0]))
-            x_hat_list.append(self._model.predict(x=X, batch_size=X.shape[0]))
+            self._history['test_loss'].append(self._model.evaluate(x=X, y=Y, batch_size=1))
+            x_hat_list.append(self._model.predict(x=X, batch_size=1))
 
         x_hat = np.asarray(x_hat_list)
         
@@ -110,9 +110,9 @@ class LSTM(FeedForwardNetwork):
             y_val = np.squeeze(y_val,axis=0)
 
             print('Epoch {epoch}'.format(epoch=epoch))
-            
+
             history = self._model.fit(x_train, y_train,
-                                      batch_size=x_train.shape[0]-self._seq_len,
+                                      batch_size=x_train.shape[0],
                                       verbose=2,
                                       epochs=1,
                                       validation_data=(x_val, y_val))

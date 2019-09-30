@@ -79,7 +79,6 @@ class DomainRandomizationDataset(AbstractDataset):
                             param_list.append(param)
 
                     y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
-                    #y_loop_list.append(self._fn_def(t, param_list))
                     
                 y = np.hstack(y_loop_list)
 
@@ -122,7 +121,7 @@ class DomainRandomizationDataset(AbstractDataset):
                     y_val_list.append(y)
         
         # set dataset_dict
-        self._data['t'] = t
+        self._data['t'] = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_baseline_samples+self._n_samples), axis=-1)
         self._data['noise_type'] = noise_types
 
         if self._ds_type == 'train':

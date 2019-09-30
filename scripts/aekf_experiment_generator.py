@@ -15,6 +15,7 @@ import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 import dovebirdia.utilities.dr_functions as drfns 
 import dovebirdia.stats.distributions as distributions
 
@@ -22,8 +23,9 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-experiment_name = 'aekf_cauchy_ncv_100k_sine_TEST'
-experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
+project_dir = 'testing'
+experiment_name = 'aekf_cauchy_ncv_100k_sine'
+experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project_dir + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
 
@@ -56,8 +58,8 @@ model_params['hidden_dims'] = (256,64) # if using AEKF append number of signals 
 model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
-model_params['weight_initializer'] = tf.initializers.glorot_uniform #'glorot_uniform'
-model_params['bias_initializer'] = tf.initializers.zeros #'zeros'
+model_params['weight_initializer'] = tf.initializers.glorot_uniform
+model_params['bias_initializer'] = tf.initializers.zeros
 model_params['weight_regularizer'] = None
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
@@ -69,10 +71,11 @@ model_params['dropout_rate'] = 0.0
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100
+model_params['epochs'] = 10000
 model_params['mbsize'] = 100
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['learning_rate'] = list(np.logspace(-3,-5,10))
+model_params['learning_rate'] = 1e-3
+#list(np.logspace(-3,-5,10))
                                      
 # testing
 model_params['history_size'] = 100
@@ -84,7 +87,7 @@ model_params['history_size'] = 100
 dr_params['ds_type'] = 'train'
 dr_params['x_range'] = (0,100)
 dr_params['n_trials'] = 1
-dr_params['n_baseline_samples'] = 10
+dr_params['n_baseline_samples'] = 0
 dr_params['n_samples'] = 100
 dr_params['n_features'] = model_params['input_dim']
 dr_params['feature_range'] = None
@@ -113,7 +116,8 @@ kf_params['n_signals'] = 16
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0
 kf_params['h'] = 1.0
-kf_params['q'] = list(np.logspace(-8,1,10))
+kf_params['q'] = 1e-4
+#list(np.logspace(-8,1,10))
 
 ####################################
 # Determine scaler and vector parameters

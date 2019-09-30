@@ -48,7 +48,7 @@ class AbstractNetwork(ABC):
 
         except:
 
-            self._hidden_layer_dict = {
+           self._hidden_layer_dict = {
 
             'weight_initializer':self.__dict__['_kernel_initializer'],
             'weight_regularizer':self.__dict__['_kernel_regularizer'],
@@ -61,9 +61,15 @@ class AbstractNetwork(ABC):
             
         self._affine_layer_dict = copy.deepcopy(self._hidden_layer_dict)
         self._affine_layer_dict['activation'] = None
+        self._affine_layer_dict['_weight_regularizer'] = None
 
+        self._L_layer_dict = copy.deepcopy(self._hidden_layer_dict)
+        self._L_layer_dict['activation'] = tf.nn.tanh
+        self._L_layer_dict['_weight_regularizer'] = None
+        
         self._output_layer_dict = copy.deepcopy(self._hidden_layer_dict)
         self._output_layer_dict['activation'] = self._output_activation
+        self._output_layer_dict['_weight_regularizer'] = None
         
         # hold, etc.
         self._history = {
@@ -176,15 +182,14 @@ class FeedForwardNetwork(AbstractNetwork):
 
         # input and output placeholders
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
-        self._y = tf.placeholder(dtype=tf.int64, shape=(None), name='y')
+        self._y = tf.placeholder(dtype=tf.float64, shape=(None), name='y')
 
-        #self._y_hat = self._buildLayers(self._X, self._hidden_dims)
-        self._y_hat = Dense(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
+        self._y_hat = DenseLayer(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
     
     def _setLoss(self):
 
         self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
-            
+        
     def _setOptimizer(self):
 
         if self._optimizer.__name__ == 'AdamOptimizer':
@@ -253,30 +258,46 @@ class FeedForwardNetwork(AbstractNetwork):
                 # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
                 dr_data = self._dr_dataset.generateDataset()
                 
-                # train on all trials
-                for x_train, y_train in zip(dr_data['x_train'],dr_data['y_train']):
-
-                    # plt.plot(x_train,label='x')
-                    # plt.plot(y_train,label='y')
-                    # plt.grid()
-                    # plt.legend()
-                    # plt.show()
-                    # plt.close()
-                    
-                    # training op
-                    _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
-
                 # train and val loss lists
                 train_loss = list()
                 val_loss = list()
-
-                # compute loss on all training and validation trials
+                
+                # train on all trials
                 for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
+                    
+                    # training op
+                    _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
 
                     # loss op
                     train_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train}))
                     val_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val}))
 
+                    # weight_names = [ v.name for v in tf.trainable_variables() if 'weight' in v.name ]
+
+                    # weights = sess.run(weight_names)
+
+                    # print('****************************************')
+                    
+                    # for k, v in zip(weight_names, weights):
+
+                    #     norm = np.linalg.norm(np.dot(v.T,v)-np.eye(v.shape[1]))
+                        
+                    #     print(k, norm)
+
+                # compute loss on all training and validation trials
+                # for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
+
+                #     # loss op
+                #     train_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train}))
+                #     val_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val}))
+
+                #     R = sess.run(self._R, feed_dict={self._X:x_val, self._y:y_val})
+
+                #     print(R.mean())
+                    
+                #     R_list.append(R)
+                    
+                    
                 self._history['train_loss'].append(np.asarray(train_loss).mean())
                 self._history['val_loss'].append(np.asarray(val_loss).mean())
 
@@ -341,7 +362,6 @@ class FeedForwardNetwork(AbstractNetwork):
                 # plt.close()
 
             self._history['runtime'] = (time() - start_time) / 60.0
-            z, z_hat_post = sess.run([self._z,self._z_hat_post], feed_dict={self._X:x_train, self._y:y_train})
 
             if save_model:
 
