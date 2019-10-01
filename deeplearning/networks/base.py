@@ -50,8 +50,8 @@ class AbstractNetwork(ABC):
 
            self._hidden_layer_dict = {
 
-            'weight_initializer':self.__dict__['_kernel_initializer'],
-            'weight_regularizer':self.__dict__['_kernel_regularizer'],
+            'weight_initializer':self.__dict__['_weight_initializer'],
+            'weight_regularizer':self.__dict__['_weight_regularizer'],
             'bias_initializer':self.__dict__['_bias_initializer'],
             'bias_regularizer':self.__dict__['_bias_regularizer'],
             'activation':self.__dict__['_activation'],
@@ -264,39 +264,13 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                 # train on all trials
                 for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
-                    
+
                     # training op
                     _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
 
                     # loss op
                     train_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train}))
                     val_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val}))
-
-                    # weight_names = [ v.name for v in tf.trainable_variables() if 'weight' in v.name ]
-
-                    # weights = sess.run(weight_names)
-
-                    # print('****************************************')
-                    
-                    # for k, v in zip(weight_names, weights):
-
-                    #     norm = np.linalg.norm(np.dot(v.T,v)-np.eye(v.shape[1]))
-                        
-                    #     print(k, norm)
-
-                # compute loss on all training and validation trials
-                # for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
-
-                #     # loss op
-                #     train_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train}))
-                #     val_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val}))
-
-                #     R = sess.run(self._R, feed_dict={self._X:x_val, self._y:y_val})
-
-                #     print(R.mean())
-                    
-                #     R_list.append(R)
-                    
                     
                 self._history['train_loss'].append(np.asarray(train_loss).mean())
                 self._history['val_loss'].append(np.asarray(val_loss).mean())
@@ -312,7 +286,6 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 #if epoch == self._epochs:
 
-                #plot using last x_train and x_val
                 # train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
                 # val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
 
@@ -358,6 +331,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 # plt.grid()
                 # plt.legend()
 
+                #plt.savefig('./new_code_{epoch}'.format(epoch=epoch))
                 # plt.show()
                 # plt.close()
 
@@ -387,3 +361,30 @@ class FeedForwardNetwork(AbstractNetwork):
 
         # save everything
         tf.train.Saver().save(tf_session, self._trained_model_file)
+
+    def _buildDenseLayers(self, input=None, hidden_dims=None, name=None):
+
+        assert input is not None
+        assert hidden_dims is not None
+
+        # loop over hidden layers
+        for dim_index, dim in enumerate(hidden_dims):
+
+            # pass input parameter on first pass
+            output = input if dim_index == 0 else output
+
+            # hidden layer
+            output = tf.keras.layers.Dense(units=dim,
+                                           activation=self._activation,
+                                           use_bias=self._use_bias,
+                                           kernel_initializer=self._weight_initializer,
+                                           bias_initializer=self._bias_initializer,
+                                           kernel_regularizer=self._weight_regularizer,
+                                           bias_regularizer=self._bias_regularizer,
+                                           activity_regularizer=self._activity_regularizer,
+                                           kernel_constraint=self._weight_constraint,
+                                           bias_constraint=self._bias_constraint)(output)
+
+            print(output)
+            
+        return output

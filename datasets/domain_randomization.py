@@ -20,12 +20,12 @@ class DomainRandomizationDataset(AbstractDataset):
     # Public Methods #
     ##################
 
-    def getDataset(self):
+    def getDataset(self, load_path):
 
-        assert self._load_path is not None
+        assert load_path is not None
         
         # load dataset using load_path attribute
-        self._data = loadDict(self._load_path)
+        self._data = loadDict(load_path)
 
         return self._data
         

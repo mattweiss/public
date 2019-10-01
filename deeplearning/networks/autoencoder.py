@@ -54,25 +54,6 @@ class AutoencoderKalmanFilter(Autoencoder):
         # instantiate Kalman Filter before parent constructor as
         # the parent calls _buildNetwork()
         self._kalman_filter = KalmanFilter(params=kf_params)
-
-        ######################################
-        # KalmanFilter Used Before Dovebirdia
-        ######################################
-        # kf_params['dt'] = 1.0
-        # dt = kf_params['dt']
-        # q = kf_params['q']
-        # h = kf_params['h']
-        # latent_dims = kf_params['n_signals']
-        # kf_params['F'] = np.kron(np.eye(latent_dims,dtype=np.float64), np.array([[1.0,dt],[0.0,1.0]],dtype=np.float64))
-        # kf_params['Q'] = np.kron(np.eye(latent_dims,dtype=np.float64), np.array([[q,0.0],[0.0,q]],dtype=np.float64))
-        # kf_params['H'] = np.kron(np.eye(latent_dims,dtype=np.float64), np.array( [ [1.0,0.0] ],dtype=np.float64))
-        # kf_params['mb_size'] = 110
-        # kf_params['n_samples'] = 110
-        # kf_params['x0'] = np.zeros((kf_params['dimensions'][1]*latent_dims,1), dtype=np.float64)
-        # #kf_params['P0'] = make_spd_matrix( kf_params['dimensions'][1]*latent_dims )
-        # kf_params['P0'] = np.eye( kf_params['dimensions'][1] * latent_dims, dtype=np.float64 )
-        # kf_params['K0'] = np.zeros( shape = kf_params['H'].T.shape, dtype = np.float64 )
-        # self._my_kf_params = kf_params
         
         super().__init__(params=params)
 
@@ -141,48 +122,86 @@ class AutoencoderKalmanFilter(Autoencoder):
     ###################
     # Private Methods #
     ###################
-    
+  
     def _buildNetwork(self):
-        
+
         # input and output placeholders
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
 
         # encoder
-        self._encoder = DenseLayer(self._hidden_layer_dict).build(self._X, self._hidden_dims, scope='encoder')
+        self._encoder = self._buildDenseLayers(self._X, self._hidden_dims[:-1])
 
         # learn z
-        self._z = DenseLayer(self._affine_layer_dict).build(self._encoder, [self._hidden_dims[-1]], scope='z')
+        self._z = tf.keras.layers.Dense(units=self._hidden_dims[-1],
+                                        activation=None,
+                                        use_bias=self._use_bias,
+                                        kernel_initializer=self._weight_initializer,
+                                        bias_initializer=self._bias_initializer,
+                                        kernel_regularizer=self._weight_regularizer,
+                                        bias_regularizer=self._bias_regularizer,
+                                        activity_regularizer=self._activity_regularizer,
+                                        kernel_constraint=self._weight_constraint,
+                                        bias_constraint=self._bias_constraint,
+                                        name='z')(self._encoder)
 
+        print('z', self._z)
+        
         # learn L, which is vector from which SPD matrix R is formed 
-        self._L_dims = np.sum(np.arange(1, self._hidden_dims[-1] + 1))
-        self._L = DenseLayer(self._L_layer_dict).build(self._encoder, [self._L_dims], scope='L')
+        self._L_dims = np.sum( np.arange( 1, self._hidden_dims[-1] + 1 ) )
+        self._L = tf.keras.layers.Dense(units=self._L_dims,
+                                        activation=None,
+                                        use_bias=self._use_bias,
+                                        kernel_initializer=self._weight_initializer,
+                                        bias_initializer=self._bias_initializer,
+                                        kernel_regularizer=self._weight_regularizer,
+                                        bias_regularizer=self._bias_regularizer,
+                                        activity_regularizer=self._activity_regularizer,
+                                        kernel_constraint=self._weight_constraint,
+                                        bias_constraint=self._bias_constraint,
+                                        name='L')(self._encoder)
+
+        print('L', self._L)
         
         # learned noise covariance
         self._R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
-
-        ######################################
-        # KalmanFilter Used Before Dovebirdia
-        ######################################
-        # self._my_kf_params['R'] = self._R
-        # self._kalman_filter = KalmanFilter(self._my_kf_params)        
-        # kf_results = self._kalman_filter.filter( self._z, fixed_R = False )
-        # self._z_hat_pri = kf_results['z_hat_apri']           
-        # self._z_hat_post = kf_results['z_hat_apost']
+        print('R', self._R)
+        
         # Kalman Filter a priori measurement estimate
-
         self._kf_results = self._kalman_filter.fit([self._z,self._R])
+
         self._z_hat_pri = tf.squeeze(self._kf_results['z_hat_pri'],axis=-1)
         self._z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)
-
+        print('z_hat_pri', self._z_hat_pri)
+        
         # post kf affine transformation
-        self._post_kf_affine = DenseLayer(self._affine_layer_dict).build(self._z_hat_pri, [self._hidden_dims[-1]], scope='post_kf_affine')
-
+        self._post_kf_affine = tf.keras.layers.Dense(units=self._hidden_dims[-2],
+                                                     activation=None,
+                                                     use_bias=self._use_bias,
+                                                     kernel_initializer=self._weight_initializer,
+                                                     bias_initializer=self._bias_initializer,
+                                                     kernel_regularizer=self._weight_regularizer,
+                                                     bias_regularizer=self._bias_regularizer,
+                                                     activity_regularizer=self._activity_regularizer,
+                                                     kernel_constraint=self._weight_constraint,
+                                                     bias_constraint=self._bias_constraint)(self._z_hat_pri)   
+        print('post kf affine', self._post_kf_affine)
+        
         # decoder
-        self._decoder = DenseLayer(self._hidden_layer_dict).build(self._post_kf_affine, self._hidden_dims[::-1][1:], scope='decoder', dropout_rate=self._dropout_rate)
-
+        self._decoder = self._buildDenseLayers(self._post_kf_affine, self._hidden_dims[::-1][2:]+[self._output_dim])
+        
         # output layer
-        self._y_hat = DenseLayer(self._output_layer_dict).build(self._decoder, [self._output_dim], scope='y_hat')
+        self._y_hat = tf.keras.layers.Dense(units=self._output_dim,
+                                            activation=self._output_activation,
+                                            use_bias=self._use_bias,
+                                            kernel_initializer=self._weight_initializer,
+                                            bias_initializer=self._bias_initializer,
+                                            kernel_regularizer=self._weight_regularizer,
+                                            bias_regularizer=self._bias_regularizer,
+                                            activity_regularizer=self._activity_regularizer,
+                                            kernel_constraint=self._weight_constraint,
+                                            bias_constraint=self._bias_constraint)(self._decoder)
+        print('y_hat', self._y_hat)
         
     def _generate_spd_cov_matrix(self, R):
 

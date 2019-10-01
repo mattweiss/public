@@ -119,8 +119,8 @@ else:
     # Load Test Dataset
     ################################################################################
 
-    config_dicts['dr']['load_path'] = test_dataset_path
-    dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset()
+    #config_dicts['dr']['load_path'] = test_dataset_path
+    dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(test_dataset_path)
 
     x_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
 

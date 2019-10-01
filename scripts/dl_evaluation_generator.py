@@ -23,8 +23,11 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
+project_dir = 'testing/'
+
 experiments = [
-    ('lstm_cauchy_100k_sine',list(range(1,101))),
+    ('aekf_cauchy_ncv_10k_sine_OLD_CODE_COMPARSION_2ND_RUN',list(range(1,101))),
+    #('lstm_cauchy_100k_sine',list(range(1,101))),
     #('aekf_allnoise_ncv_100k_taylor',[5]),
     #('aekf_allnoise_nca_100k_taylor',[25]),
     #('aekf_allnoise_jerk_100k_taylor',[16]),
@@ -34,7 +37,8 @@ test_dataset_files = [
     #'FUNC_taylor_poly_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
     #'FUNC_taylor_poly_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
     #'FUNC_taylor_poly_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_minus1_1_FEATURES_1_N_10.pkl',
-    'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    'cauchy_noise_sine_curves_100_sensors_1_freq_1_ymax_100_baseline_10_uniform_OLD_CODE.pkl',
 ]
 
 machine = socket.gethostname()
@@ -46,7 +50,7 @@ for experiment in experiments:
     experiment_name = experiment[0]
     model_ids = experiment[1]
      
-    experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + experiment_name + '/'
+    experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project_dir + experiment_name + '/'
     test_dataset_dir = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/'
 
     for test_dataset_file in test_dataset_files:
