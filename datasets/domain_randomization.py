@@ -15,7 +15,7 @@ class DomainRandomizationDataset(AbstractDataset):
     def __init__(self, params=None):
     
         super().__init__(params)
-    
+
     ##################
     # Public Methods #
     ##################
@@ -34,7 +34,7 @@ class DomainRandomizationDataset(AbstractDataset):
         """
         Generate domain randomization dataset.  Logic for whether to save to disk or return in in getDataset()
         """
-
+        
         # linspace for generating function values
         t = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_samples), axis=-1)
 
@@ -55,13 +55,13 @@ class DomainRandomizationDataset(AbstractDataset):
             n_datasets = 1
 
         for trial in range(self._n_trials):
-        
-            # randomly select training function and parameters
-            self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
-
+            
             # loop twice if training to generate validation set
             for dataset_ctr in range(n_datasets):
 
+                # randomly select training function and parameters
+                self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
+            
                 y_loop_list = list()
                
                 for _ in range(self._n_features):
@@ -109,7 +109,7 @@ class DomainRandomizationDataset(AbstractDataset):
                             noise_param_dict[param_key] = param
 
                 y_noise = y + self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_features))
-
+                
                 if dataset_ctr == 0:
 
                     x_list.append(y_noise)

@@ -23,9 +23,9 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project_dir = 'testing'
+project = 'testing'
 experiment_name = 'aekf_stable_ncv_100k_exp_sig_sine_KILLME'
-experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project_dir + '/' + experiment_name + '/'
+experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
 
@@ -71,10 +71,10 @@ model_params['dropout_rate'] = 0.0
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100
+model_params['epochs'] = 1500
 model_params['mbsize'] = 110
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['learning_rate'] = list(np.logspace(-2,-5,4))
+model_params['learning_rate'] = list(np.logspace(-3,-5,10))
                                      
 # testing
 model_params['history_size'] = 100

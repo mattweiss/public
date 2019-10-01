@@ -333,7 +333,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 #plt.savefig('./new_code_{epoch}'.format(epoch=epoch))
                 # plt.show()
-                # plt.close()
+                #plt.close()
 
             self._history['runtime'] = (time() - start_time) / 60.0
 
