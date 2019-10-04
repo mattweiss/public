@@ -23,30 +23,49 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'aistats_sdm'
+project = 'testing'
 
 experiments = [
 
-    ('aekf_stable_ncv_100k_exp_sig_sine',[29]),
-    #('lstm_cauchy_100k_sine',list(range(1,101))),
+    #('lstm_cauchy_100k_sine_old_code_retest',[4,30,55,74,99]),
+    ('aekf_cauchy_100k_ncv_sine_old_code_retest_no_keras',[6]),
+    #('aekf_cauchy_100k_nca_sine_old_code_retest',[8,7,12,16,17])
+
 ]                  
 
 test_dataset_files = [
     # exponential
-    # 'aistats_sdm/FUNC_exp_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    # 'aistats_sdm/FUNC_exp_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    # 'aistats_sdm/FUNC_exp_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'aistats_sdm/FUNC_exp_NOISE_stable_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_exp_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_exp_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_exp_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_exp_NOISE_stable_alpha_0-5_1_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+
     # sigmoid
-    #'aistats_sdm/FUNC_sig_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    #'aistats_sdm/FUNC_sig_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    #'aistats_sdm/FUNC_sig_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'aistats_sdm/FUNC_sig_NOISE_stable_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_sig_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_sig_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_sig_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_sig_NOISE_stable_alpha_0-5_1_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+
     # sine
-    #'aistats_sdm/FUNC_sine_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    #'aistats_sdm/FUNC_sine_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    #'aistats_sdm/FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'aistats_sdm/FUNC_sine_NOISE_stable_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_sine_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_sine_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_1.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_2.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_3.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_4.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_5.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_6.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_7.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_8.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_9.pkl',
+    # 'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_10.pkl',
+    'cauchy_noise_sine_curves_100_sensors_1_freq_1_ymax_100_baseline_10_uniform_OLD_CODE.pkl',
+    #'FUNC_sine_NOISE_stable_alpha_0-5_1_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_exp_sig_sine_NOISE_gc_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_exp_sig_sine_NOISE_stable_alpha_1_2_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_exp_sig_sine_NOISE_allnoise_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_exp_sig_sine_NOISE_stable_alpha_2_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_exp_sig_sine_NOISE_stable_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
 ]
 
 machine = socket.gethostname()

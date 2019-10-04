@@ -48,7 +48,7 @@ class LSTM(FeedForwardNetwork):
         assert t is not None
 
         x_hat_list = list()
-        
+
         model_results_path = './results/keras_model.h5'
         self._model.load_weights(model_results_path)
         
@@ -58,8 +58,8 @@ class LSTM(FeedForwardNetwork):
         
         for X,Y in zip(x_test,y_test):
 
-            self._history['test_loss'].append(self._model.evaluate(x=X, y=Y, batch_size=1))
-            x_hat_list.append(self._model.predict(x=X, batch_size=1))
+            self._history['test_loss'].append(self._model.evaluate(x=X, y=Y, batch_size=X.shape[0], verbose=0))
+            x_hat_list.append(self._model.predict(x=X, batch_size=X.shape[0]))
 
         x_hat = np.asarray(x_hat_list)
         

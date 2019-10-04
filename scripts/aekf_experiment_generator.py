@@ -24,7 +24,7 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'testing'
-experiment_name = 'aekf_stable_ncv_100k_exp_sig_sine_KILLME'
+experiment_name = 'aekf_gaussian_100k_ncv_sig_old_code_retest_no_keras'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -66,18 +66,19 @@ model_params['activity_regularizer'] = None
 model_params['weight_constraint'] = None
 model_params['bias_constraint'] = None
 model_params['dropout_rate'] = 0.0
+model_params['keras_layers'] = False
 
 # loss
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 1500
+model_params['epochs'] = 100000
 model_params['mbsize'] = 110
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
                                      
 # testing
-model_params['history_size'] = 100
+model_params['history_size'] = model_params['epochs'] // 100
 
 ####################################
 # Domain Randomization Parameters
@@ -90,20 +91,23 @@ dr_params['n_baseline_samples'] = 10
 dr_params['n_samples'] = 100
 dr_params['n_features'] = model_params['input_dim']
 dr_params['feature_range'] = None
-#n = 10.0
+n = 10.0
 dr_params['fns'] = (
-    ['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
+    #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     ['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
-    ['sine', drfns.sine, [(0.0,100.0),(0.04,0.1)]],
+    #['sine', drfns.sine, [(0.0,100.0),(0.04,0.1)]],
     #['taylor_poly', drfns.taylor_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
     #['legendre_poly', drfns.legendre_poly, [(-n,n),(-n,n),(-n,n),(-n,n)]],
 )
 
 dr_params['noise'] = (
-    #['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
+    ['gaussian', np.random.normal, {'loc':0.0, 'scale':5.0}],
     #['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
     #['cauchy', np.random.standard_cauchy, {}],
-    ['stable', distributions.stable, {'alpha':(0.5,2.0)}],
+    #['stable', distributions.stable, {'alpha':(1.0,2.0)}],
+    #['stable', distributions.stable, {'alpha':1.0}],
+    #['stable', distributions.stable, {'alpha':1.5}],
+    #['stable', distributions.stable, {'alpha':2.0}],
 )
 
 ####################################
@@ -112,10 +116,11 @@ dr_params['noise'] = (
 
 kf_params['dimensions'] = (1,2)
 kf_params['n_signals'] = 16
-kf_params['n_samples'] = 110
+kf_params['n_samples'] = dr_params['n_baseline_samples'] + dr_params['n_samples']
 kf_params['sample_freq'] = 1.0
 kf_params['h'] = 1.0
-kf_params['q'] = list(np.logspace(-8,1,10))
+kf_params['q'] = [1.0, 1e-2, 1e-4, 1e-6, 1e-8]
+#list(np.logspace(-8,1,10))
 
 ####################################
 # Determine scaler and vector parameters

@@ -22,7 +22,7 @@ class KalmanFilter(AbstractFilter):
         self._F, self._Q, self._H, self._R = self._buildModel()
 
         self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
-        #self._P0 = tf.constant(np.eye( self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
+        #self._P0 = tf.constant(np.eye(self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
         self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
 
 ################################################################################

@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.deeplearning.layers.base import DenseLayer
+from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 
 try:
 
@@ -61,15 +62,12 @@ class AbstractNetwork(ABC):
             
         self._affine_layer_dict = copy.deepcopy(self._hidden_layer_dict)
         self._affine_layer_dict['activation'] = None
-        self._affine_layer_dict['_weight_regularizer'] = None
 
-        self._L_layer_dict = copy.deepcopy(self._hidden_layer_dict)
-        self._L_layer_dict['activation'] = tf.nn.tanh
-        self._L_layer_dict['_weight_regularizer'] = None
+        self._z_layer_dict = copy.deepcopy(self._hidden_layer_dict)
+        self._z_layer_dict['activation'] = None
         
         self._output_layer_dict = copy.deepcopy(self._hidden_layer_dict)
         self._output_layer_dict['activation'] = self._output_activation
-        self._output_layer_dict['_weight_regularizer'] = None
         
         # hold, etc.
         self._history = {

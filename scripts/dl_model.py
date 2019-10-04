@@ -175,6 +175,7 @@ else:
         
         results_dict = {
             'test_mse':np.asarray(history['test_loss']).mean(),
+            'test_std':np.asarray(history['test_loss']).std(),
             'sw_min':sw_min,
             'sw_max':sw_max,
             'n_sw_lt_min':n_sw_lt_min,
@@ -186,6 +187,7 @@ else:
 
         results_dict = {
             'test_mse':np.asarray(history['test_loss']).mean(),
+            'test_std':np.asarray(history['test_loss']).std(),
         }
         
 ################################################################################
