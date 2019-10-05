@@ -8,7 +8,7 @@ from pdb import set_trace as st
 from abc import ABC, abstractmethod
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
-from dovebirdia.deeplearning.layers.base import DenseLayer
+from dovebirdia.deeplearning.layers.base import Dense
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 
 try:
@@ -34,40 +34,40 @@ class AbstractNetwork(ABC):
         dictToAttributes(self,params)
 
         # backwards compatibility
-        try:
+        # try:
 
-            self._hidden_layer_dict = {
+        #     self._hidden_layer_dict = {
 
-            'weight_initializer':self.__dict__['_weight_initializer'],
-            'weight_regularizer':self.__dict__['_weight_regularizer'],
-            'bias_initializer':self.__dict__['_bias_initializer'],
-            'bias_regularizer':self.__dict__['_bias_regularizer'],
-            'activation':self.__dict__['_activation'],
-            'use_bias':self.__dict__['_use_bias'],
+        #     'weight_initializer':self.__dict__['_weight_initializer'],
+        #     'weight_regularizer':self.__dict__['_weight_regularizer'],
+        #     'bias_initializer':self.__dict__['_bias_initializer'],
+        #     'bias_regularizer':self.__dict__['_bias_regularizer'],
+        #     'activation':self.__dict__['_activation'],
+        #     'use_bias':self.__dict__['_use_bias'],
 
-        }
+        # }
 
-        except:
+        # except:
 
-           self._hidden_layer_dict = {
+        #    self._hidden_layer_dict = {
 
-            'weight_initializer':self.__dict__['_weight_initializer'],
-            'weight_regularizer':self.__dict__['_weight_regularizer'],
-            'bias_initializer':self.__dict__['_bias_initializer'],
-            'bias_regularizer':self.__dict__['_bias_regularizer'],
-            'activation':self.__dict__['_activation'],
-            'use_bias':self.__dict__['_use_bias'],
+        #     'weight_initializer':self.__dict__['_weight_initializer'],
+        #     'weight_regularizer':self.__dict__['_weight_regularizer'],
+        #     'bias_initializer':self.__dict__['_bias_initializer'],
+        #     'bias_regularizer':self.__dict__['_bias_regularizer'],
+        #     'activation':self.__dict__['_activation'],
+        #     'use_bias':self.__dict__['_use_bias'],
 
-        }
+        # }
             
-        self._affine_layer_dict = copy.deepcopy(self._hidden_layer_dict)
-        self._affine_layer_dict['activation'] = None
+        # self._affine_layer_dict = copy.deepcopy(self._hidden_layer_dict)
+        # self._affine_layer_dict['activation'] = None
 
-        self._z_layer_dict = copy.deepcopy(self._hidden_layer_dict)
-        self._z_layer_dict['activation'] = None
+        # self._z_layer_dict = copy.deepcopy(self._hidden_layer_dict)
+        # self._z_layer_dict['activation'] = None
         
-        self._output_layer_dict = copy.deepcopy(self._hidden_layer_dict)
-        self._output_layer_dict['activation'] = self._output_activation
+        # self._output_layer_dict = copy.deepcopy(self._hidden_layer_dict)
+        # self._output_layer_dict['activation'] = self._output_activation
         
         # hold, etc.
         self._history = {
@@ -182,7 +182,7 @@ class FeedForwardNetwork(AbstractNetwork):
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float64, shape=(None), name='y')
 
-        self._y_hat = DenseLayer(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
+        self._y_hat = Dense(self.__dict__).build(self._X, self._hidden_dims, scope='layers')
     
     def _setLoss(self):
 
@@ -273,10 +273,10 @@ class FeedForwardNetwork(AbstractNetwork):
                 self._history['train_loss'].append(np.asarray(train_loss).mean())
                 self._history['val_loss'].append(np.asarray(val_loss).mean())
 
-                if len(self._history['train_loss']) > self._history_size:
+                # if len(self._history['train_loss']) > self._history_size:
 
-                    self._history['train_loss'].pop(0)
-                    self._history['val_loss'].pop(0)
+                #     self._history['train_loss'].pop(0)
+                #     self._history['val_loss'].pop(0)
                 
                 print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch,
                                                                                             train_loss=self._history['train_loss'][-1],
@@ -359,30 +359,3 @@ class FeedForwardNetwork(AbstractNetwork):
 
         # save everything
         tf.train.Saver().save(tf_session, self._trained_model_file)
-
-    def _buildDenseLayers(self, input=None, hidden_dims=None, name=None):
-
-        assert input is not None
-        assert hidden_dims is not None
-
-        # loop over hidden layers
-        for dim_index, dim in enumerate(hidden_dims):
-
-            # pass input parameter on first pass
-            output = input if dim_index == 0 else output
-
-            # hidden layer
-            output = tf.keras.layers.Dense(units=dim,
-                                           activation=self._activation,
-                                           use_bias=self._use_bias,
-                                           kernel_initializer=self._weight_initializer,
-                                           bias_initializer=self._bias_initializer,
-                                           kernel_regularizer=self._weight_regularizer,
-                                           bias_regularizer=self._bias_regularizer,
-                                           activity_regularizer=self._activity_regularizer,
-                                           kernel_constraint=self._weight_constraint,
-                                           bias_constraint=self._bias_constraint)(output)
-
-            print(output)
-            
-        return output
