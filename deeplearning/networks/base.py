@@ -273,10 +273,10 @@ class FeedForwardNetwork(AbstractNetwork):
                 self._history['train_loss'].append(np.asarray(train_loss).mean())
                 self._history['val_loss'].append(np.asarray(val_loss).mean())
 
-                # if len(self._history['train_loss']) > self._history_size:
+                if len(self._history['train_loss']) > self._history_size:
 
-                #     self._history['train_loss'].pop(0)
-                #     self._history['val_loss'].pop(0)
+                    self._history['train_loss'].pop(0)
+                    self._history['val_loss'].pop(0)
                 
                 print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch,
                                                                                             train_loss=self._history['train_loss'][-1],

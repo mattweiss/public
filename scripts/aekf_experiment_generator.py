@@ -77,7 +77,7 @@ model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
                                      
 # testing
-#model_params['history_size'] = model_params['epochs']
+model_params['history_size'] = model_params['epochs']
 
 ####################################
 # Domain Randomization Parameters

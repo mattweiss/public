@@ -11,10 +11,10 @@ import dovebirdia.stats.distributions as distributions
 # if parameters is a tuple that is the range from which the parameter is drawn
 
 dr_params = dict()
-dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/evaluation/FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na_10.pkl'
+dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/evaluation/FUNC_sine_NOISE_gaussian_LOC_0_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'
 dr_params['ds_type'] = 'test'
 dr_params['x_range'] = (0,100)
-dr_params['n_trials'] = 1000
+dr_params['n_trials'] = 100
 dr_params['n_baseline_samples'] = 10
 dr_params['n_samples'] = 100
 dr_params['n_features'] = 1
@@ -29,9 +29,9 @@ dr_params['fns'] = (
 )
 
 dr_params['noise'] = (
-    #['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
-    # ['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
-    ['cauchy', np.random.standard_cauchy, {}],
+    ['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
+    #['bimodal', distributions.bimodal, {'loc1':3.0, 'scale1':1.0, 'loc2':-3.0, 'scale2':1.0}],
+    #['cauchy', np.random.standard_cauchy, {}],
     #['stable', distributions.stable, {'alpha':(1.0,2.0)}],
     #['stable', distributions.stable, {'alpha':1.0}],
     # ['stable', distributions.stable, {'alpha':1.5}],
