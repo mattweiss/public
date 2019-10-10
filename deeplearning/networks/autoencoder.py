@@ -58,7 +58,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         super().__init__(params=params)
 
     ##################
-    # Public Methods #
+   # Public Methods #
     ##################
  
     def evaluate(self, x=None, y=None, t=None, save_results=True):
@@ -86,7 +86,7 @@ class AutoencoderKalmanFilter(Autoencoder):
                 model_results_path = './results/tensorflow_model.ckpt'
                 tf.train.Saver().restore(sess, model_results_path)
 
-            for X,Y in zip(x,y):
+            for trial, (X,Y) in enumerate(zip(x,y)):
 
                 test_loss, x_hat, z, z_hat_post = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post], feed_dict={self._X:X, self._y:Y})
                 self._history['test_loss'].append(test_loss)
@@ -94,11 +94,14 @@ class AutoencoderKalmanFilter(Autoencoder):
                 z_list.append(z)
                 z_hat_post_list.append(z_hat_post)
 
+                # add array to sw list to hold each sensor's sw p-value
+                self._history['sw'].append(np.empty(shape=z.shape[1]))
+                
                 for sensor in range(z.shape[1]):
                     
                     w,p = stats.shapiro(np.subtract(z[:,sensor],z_hat_post[:,sensor]))
-                    self._history['sw'].append(p)
-                
+                    self._history['sw'][-1][sensor] = p
+
         x_hat = np.asarray(x_hat_list)
         z = np.asarray(z)
         z_hat_post = np.asarray(z_hat_post_list)
@@ -129,16 +132,25 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
 
+        # weight regularizer
+        try:
+
+            weight_regularizer = self._weight_regularizer(self._weight_regularizer_scale)
+
+        except:
+
+            weight_regularizer = self._weight_regularizer
+        
         # encoder
         self._encoder = Dense(name='encoder',
                               weight_initializer=self._weight_initializer,
-                              weight_regularizer=self._weight_regularizer,
+                              weight_regularizer=weight_regularizer,
                               bias_initializer=self._bias_initializer,
                               activation=self._activation).build(self._X, self._hidden_dims[:-1])
 
         self._z = Dense(name='z',
                         weight_initializer=self._weight_initializer,
-                        weight_regularizer=self._weight_regularizer,
+                        weight_regularizer=weight_regularizer,
                         bias_initializer=self._bias_initializer,
                         activation=self._activation).build(self._encoder, [self._hidden_dims[-1]])
 
@@ -146,7 +158,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._L_dims = np.sum( np.arange( 1, self._hidden_dims[-1] + 1 ) )
         self._L = Dense(name='L',
                         weight_initializer=self._weight_initializer,
-                        weight_regularizer=self._weight_regularizer,
+                        weight_regularizer=weight_regularizer,
                         bias_initializer=self._bias_initializer,
                         activation=self._activation).build(self._encoder, [self._L_dims])
 
@@ -160,19 +172,19 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         self._post_kf_affine = Dense(name='post_kf_affine',
                                      weight_initializer=self._weight_initializer,
-                                     weight_regularizer=self._weight_regularizer,
+                                     weight_regularizer=weight_regularizer,
                                      bias_initializer=self._bias_initializer,
                                      activation=self._activation).build(self._z_hat_pri, [self._hidden_dims[-2]])
 
         self._decoder = Dense(name='decoder',
                               weight_initializer=self._weight_initializer,
-                              weight_regularizer=self._weight_regularizer,
+                              weight_regularizer=weight_regularizer,
                               bias_initializer=self._bias_initializer,
                               activation=self._activation).build(self._post_kf_affine, self._hidden_dims[::-1][2:]+[self._output_dim])
 
         self._y_hat = Dense(name='y_hat',
                             weight_initializer=self._weight_initializer,
-                            weight_regularizer=self._weight_regularizer,
+                            weight_regularizer=weight_regularizer,
                             bias_initializer=self._bias_initializer,
                             activation=self._activation).build(self._decoder, [self._output_dim])
         

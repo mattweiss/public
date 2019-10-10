@@ -61,25 +61,25 @@ class DomainRandomizationDataset(AbstractDataset):
 
                 # randomly select training function and parameters
                 self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
-            
+                
                 y_loop_list = list()
                
                 for _ in range(self._n_features):
 
                     param_list = list()
-
+                    
                     for param in self._fn_params:
 
                         if isinstance(param, tuple):
 
                             param_list.append(np.random.uniform(param[0], param[1]))
-
+                            
                         else:
 
                             param_list.append(param)
 
                     y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
-                    
+
                 y = np.hstack(y_loop_list)
 
                 try:

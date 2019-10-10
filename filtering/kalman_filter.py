@@ -127,10 +127,20 @@ class KalmanFilter(AbstractFilter):
         x_pri, x_post, P_pri, P_post, self._kf_ctr = state
 
         # reset state estimate each minibatch
-        x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
-                                                                             lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
-                                                                             lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
 
+        # backwards compatibility - n_measurements may not be an attribute
+        try:
+            
+            x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_measurements ),
+                                                                  lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
+                                                                  lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
+
+        except:
+
+             x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
+                                                                  lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
+                                                                  lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
+            
         z = tf.expand_dims(z, axis=-1)
 
         # Predict

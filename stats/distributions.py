@@ -41,4 +41,4 @@ def stable(alpha, size, beta=0.0, loc=0.0, scale=1.0):
     assert alpha is not None
     assert size is not None
 
-    return levy_stable.rvs(alpha=alpha, beta=0.0, size=size)
+    return levy_stable.rvs(alpha=alpha, beta=0.0, size=size, loc=loc, scale=scale)

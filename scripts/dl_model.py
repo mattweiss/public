@@ -27,6 +27,10 @@ from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 from dovebirdia.deeplearning.networks.lstm import LSTM
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 
+import matplotlib
+matplotlib.use('Agg') 
+import matplotlib.pyplot as plt
+
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
 ################################################################################
@@ -167,19 +171,34 @@ else:
     try:
 
         sw = np.asarray(history['sw'])
-        sw_min = sw.min()
-        sw_max = sw.max()
 
-        n_sw_lt_min = sw[sw < (0.05/sw.shape[0])].shape[0]
-        per_sw_lt_min = float(n_sw_lt_min / sw.shape[0]) * 100
+        # loop over each sensor
+        for sensor in range(1,sw.shape[-1]+1):
+        
+            # plot of Shapiro-Wilk results
+            plt.figure(figsize=(6,6))
+            plt.scatter(range(sw.shape[0]),sw[:,sensor])
+            plt.title('Sensor {sensor}\n{info} {mean_mse}'.format(sensor=sensor,info=test_dataset_path.split('/')[-1].split('_')[:4],mean_mse=sw.mean()))
+            plt.xlabel('Sample')
+            plt.ylabel('SW p-value')
+            plot_file_path = os.getcwd() + config_dicts['model']['results_dir'] + test_dataset_path.split('/')[-1].split('.')[0] + '_sensor_{sensor}_shapiro-wilk'.format(sensor=sensor)
+            #plt.show()
+            plt.savefig(plot_file_path)
+            plt.close()
+
+        # sw_min = sw.min()
+        # sw_max = sw.max()
+
+        # n_sw_lt_min = sw[sw < (0.05/sw.shape[0])].shape[0]
+        # per_sw_lt_min = float(n_sw_lt_min / sw.shape[0]) * 100
         
         results_dict = {
             'test_mse':np.asarray(history['test_loss']).mean(),
             'test_std':np.asarray(history['test_loss']).std(),
-            'sw_min':sw_min,
-            'sw_max':sw_max,
-            'n_sw_lt_min':n_sw_lt_min,
-            'per_sw_lt_min':per_sw_lt_min,
+            #'sw_min':sw_min,
+            #'sw_max':sw_max,
+            #'n_sw_lt_min':n_sw_lt_min,
+            #'per_sw_lt_min':per_sw_lt_min,
         }
 
     # lstm

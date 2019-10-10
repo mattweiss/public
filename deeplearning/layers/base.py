@@ -9,6 +9,7 @@ class Dense():
                  name=None,
                  weight_initializer=None,
                  weight_regularizer=None,
+                 weight_regularizer_scale=None,
                  bias_initializer=None,
                  bias_regularizer=None,
                  activation=None,

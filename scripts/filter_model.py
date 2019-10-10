@@ -26,6 +26,10 @@ import pandas as pd
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.filtering.kalman_filter import KalmanFilter
 
+import matplotlib
+matplotlib.use('Agg') 
+import matplotlib.pyplot as plt
+
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
 ################################################################################
@@ -74,14 +78,13 @@ res_file = res_dir.split('/')[-2]
 
 if not os.path.exists(res_dir):
 
-    os.makedirs( res_dir )
+    os.makedirs(res_dir)
 
 ################################################################################
 # Dataset
 ################################################################################
 
-dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset()
-
+dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
 x_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
 
 ################################################################################
@@ -94,6 +97,18 @@ print(filter.__class__)
 history = filter.evaluate(x_test,y_test,t,with_np=True)
 
 sw = np.asarray(history['sw'])
+
+# plot of Shapiro-Wilk results
+plt.figure(figsize=(6,6))
+plt.scatter(range(sw.shape[0]),sw)
+plt.title('{info}\n{mean_mse}'.format(info=config_dicts['dr']['load_path'].split('/')[-1].split('_')[:4],mean_mse=sw.mean()))
+plt.xlabel('Sample')
+plt.ylabel('SW p-value')
+plot_file_path = os.getcwd() + config_dicts['model']['results_dir'] + config_dicts['dr']['load_path'].split('/')[-1].split('.')[0] + '_shapiro-wilk'
+plt.savefig(plot_file_path)
+#plt.show()
+plt.close()
+
 sw_min = sw.min()
 sw_max = sw.max()
 

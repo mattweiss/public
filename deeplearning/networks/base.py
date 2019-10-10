@@ -33,42 +33,6 @@ class AbstractNetwork(ABC):
 
         dictToAttributes(self,params)
 
-        # backwards compatibility
-        # try:
-
-        #     self._hidden_layer_dict = {
-
-        #     'weight_initializer':self.__dict__['_weight_initializer'],
-        #     'weight_regularizer':self.__dict__['_weight_regularizer'],
-        #     'bias_initializer':self.__dict__['_bias_initializer'],
-        #     'bias_regularizer':self.__dict__['_bias_regularizer'],
-        #     'activation':self.__dict__['_activation'],
-        #     'use_bias':self.__dict__['_use_bias'],
-
-        # }
-
-        # except:
-
-        #    self._hidden_layer_dict = {
-
-        #     'weight_initializer':self.__dict__['_weight_initializer'],
-        #     'weight_regularizer':self.__dict__['_weight_regularizer'],
-        #     'bias_initializer':self.__dict__['_bias_initializer'],
-        #     'bias_regularizer':self.__dict__['_bias_regularizer'],
-        #     'activation':self.__dict__['_activation'],
-        #     'use_bias':self.__dict__['_use_bias'],
-
-        # }
-            
-        # self._affine_layer_dict = copy.deepcopy(self._hidden_layer_dict)
-        # self._affine_layer_dict['activation'] = None
-
-        # self._z_layer_dict = copy.deepcopy(self._hidden_layer_dict)
-        # self._z_layer_dict['activation'] = None
-        
-        # self._output_layer_dict = copy.deepcopy(self._hidden_layer_dict)
-        # self._output_layer_dict['activation'] = self._output_activation
-        
         # hold, etc.
         self._history = {
             'train_loss':list(),
@@ -331,7 +295,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 #plt.savefig('./new_code_{epoch}'.format(epoch=epoch))
                 # plt.show()
-                #plt.close()
+                # plt.close()
 
             self._history['runtime'] = (time() - start_time) / 60.0
 
