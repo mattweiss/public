@@ -75,7 +75,7 @@ model_params['loss'] = losses.mean_squared_error
 
 # training
 model_params['epochs'] = 100000
-#model_params['mbsize'] = 100
+model_params['mbsize'] = 100
 model_params['optimizer'] = optimizers.Adam
 model_params['learning_rate'] = list(np.logspace(-3,-5,10))
 

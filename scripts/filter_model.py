@@ -15,6 +15,7 @@
 
 # Python
 import numpy as np
+import tensorflow as tf
 import os
 import dill
 from datetime import datetime
@@ -25,6 +26,7 @@ import pandas as pd
 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.filtering.kalman_filter import KalmanFilter
+from dovebirdia.utilities.base import saveDict
 
 import matplotlib
 matplotlib.use('Agg') 
@@ -85,42 +87,39 @@ if not os.path.exists(res_dir):
 ################################################################################
 
 dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
-x_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
+z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
 
 ################################################################################
 # Model
 ################################################################################
 
-filter = config_dicts['meta']['filter'](config_dicts['kf'])
-print(filter.__class__)
+z_hat_list = list()
+R_list = list()
 
-history = filter.evaluate(x_test,y_test,t,with_np=True)
+for z,y in zip(z_test,y_test):
 
-sw = np.asarray(history['sw'])
+    filter = config_dicts['meta']['filter'](config_dicts['kf'])
+    #print(filter.__class__)
+    z_hat, R = filter.evaluate(z,y,t)
+    z_hat_list.append(z_hat)
+    R_list.append(np.tile(R,(z.shape[0],z.shape[-1],z.shape[-1])))
+    tf.reset_default_graph()
 
-# plot of Shapiro-Wilk results
-plt.figure(figsize=(6,6))
-plt.scatter(range(sw.shape[0]),sw)
-plt.title('{info}\n{mean_mse}'.format(info=config_dicts['dr']['load_path'].split('/')[-1].split('_')[:4],mean_mse=sw.mean()))
-plt.xlabel('Sample')
-plt.ylabel('SW p-value')
-plot_file_path = os.getcwd() + config_dicts['model']['results_dir'] + config_dicts['dr']['load_path'].split('/')[-1].split('.')[0] + '_shapiro-wilk'
-plt.savefig(plot_file_path)
-#plt.show()
-plt.close()
+# save kf data
+test_results_dict = {
+    'z':z_test,
+    'y':y_test,
+    'z_hat':np.asarray(z_hat_list),
+    'R':np.asarray(R_list),
+    't':t,
+}
 
-sw_min = sw.min()
-sw_max = sw.max()
+evaluate_save_path = config_dicts['dr']['load_path'].split('/')[-1].split('.')[0]
+saveDict(save_dict=test_results_dict, save_path='./results/' + evaluate_save_path + '.pkl')
 
-n_sw_lt_min = sw[sw < (0.05/sw.shape[0])].shape[0]
-per_sw_lt_min = float(n_sw_lt_min / sw.shape[0]) * 100
-
+test_mse = np.square(np.subtract(np.asarray(z_hat_list),y_test)).mean()
 results_dict = {
-    'test_mse':np.asarray(history['test_loss']).mean(),
-    'sw_min':sw_min,
-    'sw_max':sw_max,
-    'n_sw_lt_min':n_sw_lt_min,
-    'per_sw_lt_min':per_sw_lt_min,
+    'test_mse':test_mse,
 }
 
 ################################################################################

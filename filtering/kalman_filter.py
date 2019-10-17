@@ -22,8 +22,8 @@ class KalmanFilter(AbstractFilter):
         self._F, self._Q, self._H, self._R = self._buildModel()
 
         self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
-        #self._P0 = tf.constant(np.eye(self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
-        self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
+        self._P0 = tf.constant(np.eye(self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
+        #self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
 
 ################################################################################
 
@@ -44,7 +44,8 @@ class KalmanFilter(AbstractFilter):
 
             # if R is not passed set z
             z = tf.convert_to_tensor(inputs)
-
+            #z = inputs
+            
         x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
                                                                              z,
                                                                              initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
@@ -60,61 +61,53 @@ class KalmanFilter(AbstractFilter):
     
 ################################################################################
 
-    def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True, with_np=False):
+    def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True):
 
         assert x is not None
         assert y is not None
         assert t is not None
 
-        test_loss = list()
-        x_hat_list = list()
-        sw_list = list()
-        filter_results = list()
-        ctr = 1
-        
-        for X,Y in zip(x,y):
+        #test_loss = list()
+        #x_hat_list = list()
+        #filter_results = list()
 
-            filter_result = self.fit(X)
-
-            try:
+        #for X,Y in zip(x,y):
             
-                sess = tf.InteractiveSession()
-                x_hat = sess.run(filter_result[x_key][:,:,0])
-                sess.close()
-                
-            except:
+        filter_result = self.fit(x)
 
-                x_hat = filter_result[x_key][:,:,0]
-
-            x_hat_list.append(x_hat)
-            test_loss.append(np.square(np.subtract(x_hat,Y)).mean())
-
-            for sensor in range(X.shape[1]):
-                    
-                # Shapiro-Wilk test
-                w, p = stats.shapiro(X[:,sensor]-x_hat[:,sensor])
-                sw_list.append(p)
+        try:
             
-        x_hat = np.asarray(x_hat_list)
-        sw = np.asarray(sw_list)
+            sess = tf.InteractiveSession()
+            x_hat, R = sess.run([filter_result[x_key][:,:,0],self._R])
+            sess.close()
+            
+        except:
+
+            x_hat = filter_result[x_key][:,:,0]
+            R = self._R
+            
+        #x_hat_list.append(x_hat)
+        #test_loss.append(np.square(np.subtract(x_hat,Y)).mean())
+            
+        #x_hat = np.asarray(x_hat_list)
         
         # save predictions
-        if save_results:
+        # if save_results:
 
-            test_results_dict = {
-                'x':x,
-                'y':y,
-                'x_hat':x_hat,
-                't':t,
-                }
+        #     test_results_dict = {
+        #         'x':x,
+        #         'y':y,
+        #         'x_hat':x_hat,
+        #         't':t,
+        #         }
             
-            saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
+        #     saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
 
-        return {'test_loss':test_loss,'sw':sw}
+        return x_hat, R
 
 ################################################################################
 
-    def predict(self, x=None, t=None, x_key='z_hat_post', save_results=True, with_np=False):
+    def predict(self, x=None, t=None, x_key='z_hat_post', save_results=True):
 
         pass
     

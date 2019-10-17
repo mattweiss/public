@@ -127,8 +127,8 @@ class LSTM(FeedForwardNetwork):
                 
             if epoch == self._epochs:
 
-                train_pred = self._model.predict(x_train, batch_size = 100-self._seq_len)
-                val_pred = self._model.predict(x_val, batch_size = 100-self._seq_len)
+                train_pred = self._model.predict(x_train, batch_size = self._mbsize-self._seq_len)
+                val_pred = self._model.predict(x_val, batch_size = self._mbsize-self._seq_len)
 
                 plt.figure(figsize=(12,6))
                 plt.subplot(121)

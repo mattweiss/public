@@ -23,36 +23,23 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'sdm'
+project = 'icassp'
 
 experiments = [
 
-    #('aekf_allnoise_100k_ncv_allcurves',[18]),
-    ('aekf_allnoise_100k_nca_allcurves',[28]),
-    ('aekf_allnoise_100k_jerk_allcurves',[43]),
-    # ('lstm_allnoise_100k_allcurves',[19,39,59,80,95])
+    ('aekf_bimodal_100k_ncv_taylor',[51]),
+    ('aekf_bimodal_100k_ncv_taylor_FIXED_R',[17]),
 
 ]                  
 
 test_dataset_files = [
 
-    # exponential
-    'FUNC_exp_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'FUNC_exp_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'FUNC_exp_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    
-    
-    # sigmoid
-    'FUNC_sig_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'FUNC_sig_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'FUNC_sig_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    # taylor, Gaussian and Cauchy
+    #'FUNC_taylor_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    'FUNC_taylor_NOISE_bimodal_LOC_0-25_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
+    #'FUNC_taylor_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'
 
-    # sine
-    'FUNC_sine_NOISE_bimodal_LOC_3_SCALE_1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'FUNC_sine_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
-    'FUNC_sine_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl',
 ]
-
 machine = socket.gethostname()
 
 #****************************************************************************************************************************

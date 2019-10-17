@@ -1,7 +1,8 @@
 import os
 from time import time
-import copy
+#import copy
 import numpy as np
+from scipy import stats
 import tensorflow as tf
 from pdb import set_trace as st
 
@@ -11,7 +12,7 @@ from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.deeplearning.layers.base import Dense
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 
-try:
+try:                            
 
     import matplotlib.pyplot as plt
 
@@ -151,7 +152,7 @@ class FeedForwardNetwork(AbstractNetwork):
     def _setLoss(self):
 
         self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
-        
+
     def _setOptimizer(self):
 
         if self._optimizer.__name__ == 'AdamOptimizer':
@@ -162,6 +163,10 @@ class FeedForwardNetwork(AbstractNetwork):
 
             self._optimizer_op = self._optimizer(learning_rate=self._learning_rate, momentum=self._momentum).minimize(self._loss_op)
 
+        elif self._optimizer.__name__ == 'GradientDescentOptimizer':
+
+            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate).minimize(self._loss_op)
+            
     def _fit(self, dataset=None, save_model=False):
         
         dictToAttributes(self,dataset)
@@ -214,6 +219,8 @@ class FeedForwardNetwork(AbstractNetwork):
 
             # start time
             start_time = time()
+
+            self._history['p_value'] = list()
             
             for epoch in range(1, self._epochs+1):
 
@@ -226,7 +233,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 
                 # train on all trials
                 for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
-
+                    
                     # training op
                     _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
 
@@ -241,62 +248,62 @@ class FeedForwardNetwork(AbstractNetwork):
 
                     self._history['train_loss'].pop(0)
                     self._history['val_loss'].pop(0)
-                
-                print('Epoch {epoch} training loss {train_loss} Val Loss {val_loss}'.format(epoch=epoch,
-                                                                                            train_loss=self._history['train_loss'][-1],
-                                                                                            val_loss=self._history['val_loss'][-1]))
 
-                #if epoch == self._epochs:
+                print('Epoch {epoch} training loss {train_loss:.4f} Val Loss {val_loss:.4f}'.format(epoch=epoch,
+                                                                                                    train_loss=self._history['train_loss'][-1],
+                                                                                                    val_loss=self._history['val_loss'][-1]))
 
-                # train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
-                # val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
+                # if epoch == self._epochs:
 
-                # plt.figure(figsize=(12,6))
+                    #train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
+                    #val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
 
-                # plt.subplot(121)
+                    #plt.figure(figsize=(6,6))
 
-                # for sensor in range(x_train.shape[1]):
+                    #plt.subplot(121)
 
-                #     plt.scatter(range(x_train.shape[0]), x_train[:,sensor], label='train', color='green')
-                #     plt.plot(y_train[:,sensor], label='train_gt')
-                #     plt.plot(train_pred[:,sensor], label='train_pred')
+                    # for sensor in range(x_train.shape[1]):
 
-                # plt.grid()
-                # plt.legend()
+                    #     plt.scatter(range(x_train.shape[0]), x_train[:,sensor], label='train', color='green')
+                    #     plt.plot(y_train[:,sensor], label='train_gt')
+                    #     #plt.plot(train_pred[:,sensor], label='train_pred')
 
-                # plt.subplot(122)
+                    #     plt.grid()
+                    #     plt.legend()
 
-                # for sensor in range(x_val.shape[1]):
+                #     plt.subplot(122)
 
-                #     plt.scatter(range(x_val.shape[0]), x_val[:,sensor], label='val', color='green')
-                #     plt.plot(y_val[:,sensor], label='val_gt')
-                #     plt.plot(val_pred[:,sensor], label='val_pred')
+                #     for sensor in range(x_val.shape[1]):
 
-                # plt.grid()
-                # plt.legend()
+                #         plt.scatter(range(x_val.shape[0]), x_val[:,sensor], label='val', color='green')
+                #         plt.plot(y_val[:,sensor], label='val_gt')
+                #         plt.plot(val_pred[:,sensor], label='val_pred')
 
-                # plt.subplot(223)
-                # for dim in range(z_hat_post_train.shape[1]):
+                #     plt.grid()
+                #     plt.legend()
 
-                #     plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
-                #     plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
+                    # plt.subplot(223)
+                    # for dim in range(z_hat_post_train.shape[1]):
 
-                # plt.grid()
-                # plt.legend()
+                    #     plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
+                    #     plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
 
-                # plt.subplot(224)
-                # for dim in range(z_hat_post_val.shape[1]):
+                    # plt.grid()
+                    # plt.legend()
 
-                #     plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
-                #     plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
+                    # plt.subplot(224)
+                    # for dim in range(z_hat_post_val.shape[1]):
 
-                # plt.grid()
-                # plt.legend()
+                    #     plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
+                    #     plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
 
-                #plt.savefig('./new_code_{epoch}'.format(epoch=epoch))
-                # plt.show()
-                # plt.close()
+                    # plt.grid()
+                    # plt.legend()
 
+                    #plt.savefig('./new_code_{epoch}'.format(epoch=epoch))
+                #plt.show()
+                #plt.close()
+            
             self._history['runtime'] = (time() - start_time) / 60.0
 
             if save_model:

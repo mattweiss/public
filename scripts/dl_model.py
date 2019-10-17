@@ -132,15 +132,26 @@ else:
 # Model
 ################################################################################
 
-# Hidden dimensions
-config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
+# not used for OrthoKalmanFilter
+try:
 
+    # Hidden dimensions
+    config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
+
+except:
+
+    pass
+    
 # if using AEKF
 if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
-    
+
     config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
 
+elif config_dicts['meta']['network'].__name__ == 'OrthoKalmanFilter':
+
+    nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
+        
 else:
 
     nn = config_dicts['meta']['network'](config_dicts['model'])
@@ -152,12 +163,24 @@ if TRAINING:
 
     history = nn.fit(dr_params=config_dicts['dr'], save_model=True)
 
-    results_dict = {
-        'train_mse':np.asarray(history['train_loss']).mean(),
-        'val_mse':np.asarray(history['val_loss']).mean(),
-        'runtime':history['runtime']
-    }
+    # aekf
+    try:
+    
+        results_dict = {
+            'train_mse':np.asarray(history['train_loss']).mean(),
+            'val_mse':np.asarray(history['val_loss']).mean(),
+            'runtime':history['runtime'],
+        }
 
+    # lstm
+    except:
+        
+        results_dict = {
+            'train_mse':np.asarray(history['train_loss']).mean(),
+            'val_mse':np.asarray(history['val_loss']).mean(),
+            'runtime':history['runtime']
+        }
+    
     print('Training MSE, STD: {train_mse}, {train_std}, Validation MSE, STD: {val_mse}, {val_std}'.format(train_mse=np.asarray(history['train_loss']).mean(),
                                                                                                           train_std=np.asarray(history['train_loss']).std(),
                                                                                                           val_mse=np.asarray(history['val_loss']).mean(),
@@ -165,50 +188,14 @@ if TRAINING:
         
 else:
 
-    history = nn.evaluate(x=x_test, y=y_test, t=t)
+    evaluate_save_path = test_dataset_path.split('/')[-1].split('.')[0]
+    history = nn.evaluate(x=x_test, y=y_test, t=t, save_results=evaluate_save_path)
 
-    # aekf
-    try:
+    results_dict = {
+        'test_mse':np.asarray(history['test_loss']).mean(),
+        'test_std':np.asarray(history['test_loss']).std(),
+    }
 
-        sw = np.asarray(history['sw'])
-
-        # loop over each sensor
-        for sensor in range(1,sw.shape[-1]+1):
-        
-            # plot of Shapiro-Wilk results
-            plt.figure(figsize=(6,6))
-            plt.scatter(range(sw.shape[0]),sw[:,sensor])
-            plt.title('Sensor {sensor}\n{info} {mean_mse}'.format(sensor=sensor,info=test_dataset_path.split('/')[-1].split('_')[:4],mean_mse=sw.mean()))
-            plt.xlabel('Sample')
-            plt.ylabel('SW p-value')
-            plot_file_path = os.getcwd() + config_dicts['model']['results_dir'] + test_dataset_path.split('/')[-1].split('.')[0] + '_sensor_{sensor}_shapiro-wilk'.format(sensor=sensor)
-            #plt.show()
-            plt.savefig(plot_file_path)
-            plt.close()
-
-        # sw_min = sw.min()
-        # sw_max = sw.max()
-
-        # n_sw_lt_min = sw[sw < (0.05/sw.shape[0])].shape[0]
-        # per_sw_lt_min = float(n_sw_lt_min / sw.shape[0]) * 100
-        
-        results_dict = {
-            'test_mse':np.asarray(history['test_loss']).mean(),
-            'test_std':np.asarray(history['test_loss']).std(),
-            #'sw_min':sw_min,
-            #'sw_max':sw_max,
-            #'n_sw_lt_min':n_sw_lt_min,
-            #'per_sw_lt_min':per_sw_lt_min,
-        }
-
-    # lstm
-    except:
-
-        results_dict = {
-            'test_mse':np.asarray(history['test_loss']).mean(),
-            'test_std':np.asarray(history['test_loss']).std(),
-        }
-        
 ################################################################################
 # CSV
 ################################################################################
@@ -232,6 +219,7 @@ else:
 merged_config_dicts.update({'model_id':os.getcwd().split('/')[-1].split('_')[-1]})
 
 # training results
+
 merged_config_dicts.update(results_dict)
 
 # change dictionary value to name if exists

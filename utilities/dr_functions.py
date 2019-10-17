@@ -52,14 +52,15 @@ def trig_poly(x,params=None):
     assert params is not None
 
     a0 = params[0]
-    m = len(params[1:])//2 + 1
+    m = len(params[1:-1])//2 + 1
     a_params = params[1:m]
-    b_params = params[m:]
-    
+    b_params = params[m:-1]
+    P = params[-1]
+
     y = a0
     
     for n, (a,b) in enumerate(zip(a_params,b_params)):
         
-        y += a*np.cos(n*x) + b*np.sin(n*x)
+        y += a*np.cos((2*np.pi*n*x)/P) + b*np.sin((2*np.pi*n*x)/P)
         
     return y
