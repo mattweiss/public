@@ -35,7 +35,6 @@ class Dense():
 
         assert x is not None
         assert isinstance(dims, list)
-        #assert scope is not None
 
         for dim_idx, dim in enumerate(dims):
 

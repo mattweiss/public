@@ -55,7 +55,7 @@ class AbstractNetwork(ABC):
         # Build Network
         ############################
         self._buildNetwork()
-        
+
         ############################
         # Set Optimizer
         ############################
@@ -230,16 +230,27 @@ class FeedForwardNetwork(AbstractNetwork):
                 # train and val loss lists
                 train_loss = list()
                 val_loss = list()
+
+                support = np.linspace(-1,1,100).reshape(1,-1)
                 
                 # train on all trials
                 for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
-                    
-                    # training op
-                    _ = sess.run(self._optimizer_op, feed_dict={self._X:x_train, self._y:y_train})
 
+                    train_feed_dict = {self._X:x_train, self._y:y_train}
+                    val_feed_dict = {self._X:x_val, self._y:y_val}
+
+                    # OAEKF
+                    if hasattr(self, '_support'):
+
+                        train_feed_dict[self._support] = support
+                        val_feed_dict[self._support] = support
+                        
+                    # training op
+                    _ = sess.run(self._optimizer_op, feed_dict=train_feed_dict)
+                    
                     # loss op
-                    train_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_train, self._y:y_train}))
-                    val_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_val, self._y:y_val}))
+                    train_loss.append(sess.run(self._loss_op, feed_dict=train_feed_dict))
+                    val_loss.append(sess.run(self._loss_op, feed_dict=val_feed_dict))
                     
                 self._history['train_loss'].append(np.asarray(train_loss).mean())
                 self._history['val_loss'].append(np.asarray(val_loss).mean())
@@ -252,57 +263,6 @@ class FeedForwardNetwork(AbstractNetwork):
                 print('Epoch {epoch} training loss {train_loss:.4f} Val Loss {val_loss:.4f}'.format(epoch=epoch,
                                                                                                     train_loss=self._history['train_loss'][-1],
                                                                                                     val_loss=self._history['val_loss'][-1]))
-
-                # if epoch == self._epochs:
-
-                    #train_pred, z_hat_post_train, z_train = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_train})
-                    #val_pred, z_hat_post_val, z_val = sess.run([self._y_hat,self._z_hat_post,self._z], feed_dict={self._X:x_val})
-
-                    #plt.figure(figsize=(6,6))
-
-                    #plt.subplot(121)
-
-                    # for sensor in range(x_train.shape[1]):
-
-                    #     plt.scatter(range(x_train.shape[0]), x_train[:,sensor], label='train', color='green')
-                    #     plt.plot(y_train[:,sensor], label='train_gt')
-                    #     #plt.plot(train_pred[:,sensor], label='train_pred')
-
-                    #     plt.grid()
-                    #     plt.legend()
-
-                #     plt.subplot(122)
-
-                #     for sensor in range(x_val.shape[1]):
-
-                #         plt.scatter(range(x_val.shape[0]), x_val[:,sensor], label='val', color='green')
-                #         plt.plot(y_val[:,sensor], label='val_gt')
-                #         plt.plot(val_pred[:,sensor], label='val_pred')
-
-                #     plt.grid()
-                #     plt.legend()
-
-                    # plt.subplot(223)
-                    # for dim in range(z_hat_post_train.shape[1]):
-
-                    #     plt.plot(range(z_train.shape[0]), z_hat_post_train[:,dim], label='z_hat_post_train', color='green')
-                    #     plt.scatter(range(z_train.shape[0]), z_train[:,dim], label='z_train')
-
-                    # plt.grid()
-                    # plt.legend()
-
-                    # plt.subplot(224)
-                    # for dim in range(z_hat_post_val.shape[1]):
-
-                    #     plt.plot(range(z_val.shape[0]), z_hat_post_val[:,dim], label='z_hat_post_val', color='green')
-                    #     plt.scatter(range(z_val.shape[0]), z_val[:,dim], label='z_val')
-
-                    # plt.grid()
-                    # plt.legend()
-
-                    #plt.savefig('./new_code_{epoch}'.format(epoch=epoch))
-                #plt.show()
-                #plt.close()
             
             self._history['runtime'] = (time() - start_time) / 60.0
 

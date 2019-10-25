@@ -125,26 +125,26 @@ class LSTM(FeedForwardNetwork):
                 self._history['train_loss'].pop(0)
                 self._history['val_loss'].pop(0)
                 
-            if epoch == self._epochs:
+            # if epoch == self._epochs:
 
-                train_pred = self._model.predict(x_train, batch_size = self._mbsize-self._seq_len)
-                val_pred = self._model.predict(x_val, batch_size = self._mbsize-self._seq_len)
+            #     train_pred = self._model.predict(x_train, batch_size = self._mbsize-self._seq_len)
+            #     val_pred = self._model.predict(x_val, batch_size = self._mbsize-self._seq_len)
 
-                plt.figure(figsize=(12,6))
-                plt.subplot(121)
-                plt.scatter(range(x_train.shape[0]), x_train[:,-1,:], label='train', color='green')
-                plt.plot(y_train, label='train_gt')
-                plt.plot(train_pred, label='train_pred')
-                plt.grid()
-                plt.legend()
-                plt.subplot(122)
-                plt.scatter(range(x_val.shape[0]), x_val[:,-1,:], label='val', color='green')
-                plt.plot(y_val, label='val_gt')
-                plt.plot(val_pred, label='val_pred')
-                plt.grid()
-                plt.legend()
-                plt.show()
-                plt.close()
+            #     plt.figure(figsize=(12,6))
+            #     plt.subplot(121)
+            #     plt.scatter(range(x_train.shape[0]), x_train[:,-1,:], label='train', color='green')
+            #     plt.plot(y_train, label='train_gt')
+            #     plt.plot(train_pred, label='train_pred')
+            #     plt.grid()
+            #     plt.legend()
+            #     plt.subplot(122)
+            #     plt.scatter(range(x_val.shape[0]), x_val[:,-1,:], label='val', color='green')
+            #     plt.plot(y_val, label='val_gt')
+            #     plt.plot(val_pred, label='val_pred')
+            #     plt.grid()
+            #     plt.legend()
+            #     plt.show()
+            #     plt.close()
 
             self._history['runtime'] = (time() - start_time) / 60.0
             

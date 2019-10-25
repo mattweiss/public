@@ -148,8 +148,9 @@ if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
     config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
 
-elif config_dicts['meta']['network'].__name__ == 'OrthoKalmanFilter':
+elif config_dicts['meta']['network'].__name__ == 'HilbertAutoencoderKalmanFilter':
 
+    config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
         
 else:

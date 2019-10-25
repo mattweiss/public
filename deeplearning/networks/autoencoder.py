@@ -99,7 +99,15 @@ class AutoencoderKalmanFilter(Autoencoder):
 
             for trial, (X,Y) in enumerate(zip(x,y)):
 
-                test_loss, x_hat, z, z_hat_post, R = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post,self._R], feed_dict={self._X:X, self._y:Y})
+                test_feed_dict = {self._X:X, self._y:Y}
+
+                # OKF
+                if hasattr(self, '_support'):
+
+                    support = np.linspace(-1,1,100).reshape(1,-1)
+                    test_feed_dict[self._support] = support
+                
+                test_loss, x_hat, z, z_hat_post, R = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post,self._R], feed_dict=test_feed_dict)
                 self._history['test_loss'].append(test_loss)
                 x_hat_list.append(x_hat)
                 z_list.append(z)
@@ -150,26 +158,27 @@ class AutoencoderKalmanFilter(Autoencoder):
         # encoder      
         self._encoder = Dense(name='encoder',
                               weight_initializer=self._weight_initializer,
-                              weight_regularizer=weight_regularizer,
+                              weight_regularizer=None,
                               bias_initializer=self._bias_initializer,
                               activation=self._activation).build(self._X, self._hidden_dims[:-1])
 
         self._z = Dense(name='z',
                         weight_initializer=self._weight_initializer,
-                        weight_regularizer=weight_regularizer,
+                        weight_regularizer=None,
                         bias_initializer=self._bias_initializer,
                         activation=None).build(self._encoder, [self._hidden_dims[-1]])
-        
+
+        # backwards compatibility
         try:
         
             # learned noise covariance
             if self._R_model == 'learned':
 
                 # learn L, which is vector from which SPD matrix R is formed 
-                self._L_dims = np.sum( np.arange( 1, self._hidden_dims[-1] + 1 ) )
+                self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
                 self._L = Dense(name='L',
                                 weight_initializer=self._weight_initializer,
-                                weight_regularizer=weight_regularizer,
+                                weight_regularizer=None,
                                 bias_initializer=self._bias_initializer,
                                 activation=None).build(self._encoder, [self._L_dims])
 
@@ -182,25 +191,25 @@ class AutoencoderKalmanFilter(Autoencoder):
         except:
 
             # learn L, which is vector from which SPD matrix R is formed 
-            self._L_dims = np.sum( np.arange( 1, self._hidden_dims[-1] + 1 ) )
+            self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
             self._L = Dense(name='L',
                             weight_initializer=self._weight_initializer,
-                            weight_regularizer=weight_regularizer,
+                            weight_regularizer=None,
                             bias_initializer=self._bias_initializer,
-                            activation=self._activation).build(self._encoder, [self._L_dims])
+                            activation=None).build(self._encoder, [self._L_dims])
 
             self._R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
-            # for backwards compatibility
-            try:
+        # for backwards compatibility
+        try:
 
-                if self._R_activation is not None:
+            if self._R_activation is not None:
 
-                    self._R = self._R_activation(self._R)
+                self._R = self._R_activation(self._R)
 
-            except:
+        except:
 
-                pass
+            pass
             
         # Kalman Filter a priori measurement estimate
         self._kf_results = self._kalman_filter.fit([self._z,self._R])
@@ -208,33 +217,23 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)
         
         self._post_kf_affine = Dense(name='post_kf_affine',
-                                     weight_initializer=self._weight_initializer,
-                                     weight_regularizer=weight_regularizer,
+                                     weight_initializer=None,
+                                     weight_regularizer=None,
                                      bias_initializer=self._bias_initializer,
-                                     activation=self._activation).build(self._z_hat_pri, [self._hidden_dims[-2]])
+                                     activation=None).build(self._z_hat_pri, [self._hidden_dims[-2]])
 
         self._decoder = Dense(name='decoder',
                               weight_initializer=self._weight_initializer,
-                              weight_regularizer=weight_regularizer,
+                              weight_regularizer=None,
                               bias_initializer=self._bias_initializer,
                               activation=self._activation).build(self._post_kf_affine, self._hidden_dims[::-1][2:]+[self._output_dim])
 
         self._y_hat = Dense(name='y_hat',
                             weight_initializer=self._weight_initializer,
-                            weight_regularizer=weight_regularizer,
+                            weight_regularizer=None,
                             bias_initializer=self._bias_initializer,
                             activation=None).build(self._decoder, [self._output_dim])
         
-        # N=3
-        # c = tf.get_variable(name='c',
-        #                     shape=(N+1,self._output_dim),
-        #                     initializer=self._weight_initializer,
-        #                     trainable=True,
-        #                     dtype=tf.float64)
-        
-        # P = Legendre(self._decoder, N).tensor
-        # self._y_hat = tf.matmul(P,c)
-
     def _generate_spd_cov_matrix(self, R):
 
         """ 
@@ -329,23 +328,38 @@ class AutoencoderKalmanFilter(Autoencoder):
         # return W, a, epsilon, u, m, m_i
         return W
 
-class OrthoKalmanFilter(AutoencoderKalmanFilter):
+class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
 
     """
-    Orthogonal Polynomial-KalmanFilter Class
+    Orthogonal Polynomial-Autoencoder KalmanFilter Class
     """
     
     def __init__(self, params=None, kf_params=None):
 
         super().__init__(params=params, kf_params=kf_params)
 
-        ###################
+    ###################
     # Private Methods #
     ###################
-  
+
+    def _polyVector(self,x):
+
+        #N = self._y_hat.get_shape()[1]
+        N = self._output_dim-1
+        try:
+        
+            poly = Legendre(x,N).tensor
+        
+        except:
+        
+            x = tf.expand_dims(x,axis=1)
+            poly = Legendre(x,N).tensor
+        
+        return poly
+    
     def _buildNetwork(self):
 
-        # input and output placeholders
+                # input and output placeholders
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
 
@@ -357,63 +371,99 @@ class OrthoKalmanFilter(AutoencoderKalmanFilter):
         except:
 
             weight_regularizer = self._weight_regularizer
-            
-        N=4
-        c_pre = tf.get_variable(name='c_pre',
-                            shape=(N+1,self._input_dim),
-                            initializer=self._weight_initializer,
-                            trainable=True,
-                            dtype=tf.float64)
         
-        P_pre = Legendre(self._X, N).tensor
-        self._z = tf.matmul(P_pre,c_pre)
+        # encoder      
+        self._encoder = Dense(name='encoder',
+                              weight_initializer=self._weight_initializer,
+                              weight_regularizer=None,
+                              bias_initializer=self._bias_initializer,
+                              activation=self._activation).build(self._X, self._hidden_dims[:-1])
 
+        self._z = Dense(name='z',
+                        weight_initializer=self._weight_initializer,
+                        weight_regularizer=None,
+                        bias_initializer=self._bias_initializer,
+                        activation=None).build(self._encoder, [self._hidden_dims[-1]])
+
+        # backwards compatibility
         try:
         
             # learned noise covariance
             if self._R_model == 'learned':
 
                 # learn L, which is vector from which SPD matrix R is formed 
-                self._L_dims = np.sum( np.arange( 1, self._input_dim + 1 ) )
+                self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
                 self._L = Dense(name='L',
                                 weight_initializer=self._weight_initializer,
-                                weight_regularizer=weight_regularizer,
+                                weight_regularizer=None,
                                 bias_initializer=self._bias_initializer,
-                                activation=self._activation).build(self._z, [self._L_dims])
+                                activation=None).build(self._encoder, [self._L_dims])
 
                 self._R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
             elif self._R_model == 'identity':
 
                 self._R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf.float64)
-
-            elif self._R_model == 'random':
-
-                dims = tf.fill(dims=(tf.shape(self._z)[0],), value=self._hidden_dims[-1])
-                self._R = tf.map_fn(self._make_spd_matrix, dims, dtype=tf.float64)
-
+                
         except:
 
             # learn L, which is vector from which SPD matrix R is formed 
-            self._L_dims = np.sum( np.arange( 1, self._input_dim + 1 ) )
+            self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
             self._L = Dense(name='L',
                             weight_initializer=self._weight_initializer,
-                            weight_regularizer=weight_regularizer,
+                            weight_regularizer=None,
                             bias_initializer=self._bias_initializer,
-                            activation=self._activation).build(self._encoder, [self._L_dims])
+                            activation=None).build(self._encoder, [self._L_dims])
 
             self._R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
-                
+
+        # for backwards compatibility
+        try:
+
+            if self._R_activation is not None:
+
+                self._R = self._R_activation(self._R)
+
+        except:
+
+            pass
+            
         # Kalman Filter a priori measurement estimate
         self._kf_results = self._kalman_filter.fit([self._z,self._R])
         self._z_hat_pri = tf.squeeze(self._kf_results['z_hat_pri'],axis=-1)
         self._z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)
+        
+        self._post_kf_affine = Dense(name='post_kf_affine',
+                                     weight_initializer=None,
+                                     weight_regularizer=None,
+                                     bias_initializer=self._bias_initializer,
+                                     activation=None).build(self._z_hat_pri, [self._hidden_dims[-2]])
 
-        c_post = tf.get_variable(name='c_post',
-                            shape=(N+1,self._input_dim),
-                            initializer=self._weight_initializer,
-                            trainable=True,
-                            dtype=tf.float64)
+        self._decoder = Dense(name='decoder',
+                              weight_initializer=self._weight_initializer,
+                              weight_regularizer=None,
+                              bias_initializer=self._bias_initializer,
+                              activation=self._activation).build(self._post_kf_affine, self._hidden_dims[::-1][2:]+[self._output_dim])
 
-        P_post = Legendre(self._z_hat_pri, N).tensor
-        self._y_hat = tf.matmul(P_post,c_post)
+        self._y_hat = Dense(name='y_hat',
+                            weight_initializer=self._weight_initializer,
+                            weight_regularizer=None,
+                            bias_initializer=self._bias_initializer,
+                            activation=None).build(self._decoder, [self._output_dim])
+
+        with tf.variable_scope(name_or_scope='RHS/weight',
+                                   regularizer=weight_regularizer,
+                                   reuse=tf.AUTO_REUSE):
+    
+            self._rhs = tf.get_variable(name='RHS',
+                                        shape=(1,100),
+                                        initializer=self._weight_initializer,
+                                        trainable=True,
+                                        dtype=tf.float64)
+
+        self._y_hat = tf.matmul(self._rhs,self._y_hat)
+        
+        self._support= tf.placeholder(dtype=tf.float64, shape=[1,None])
+        self._P = tf.map_fn(self._polyVector,self._support)
+        self._y_hat = tf.map_fn(lambda P: tf.matmul(self._y_hat,P), tf.transpose(self._P,perm=[1,2,0]),dtype=tf.float64)
+        self._y_hat = tf.squeeze(self._y_hat,axis=-1)

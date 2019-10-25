@@ -23,23 +23,13 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
-project = 'icassp'
+project = 'asilomar'
 
 experiments = [
-    # ('kf_gaussian_ncv_taylor',(1,2),'FUNC_taylor_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    #('kf_cauchy_ncv_taylor',(1,2),'FUNC_taylor_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    ('kf_bimodal_ncv_taylor',(1,2),'FUNC_taylor_NOISE_bimodal_LOC_2_SCALE_1_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    # ('kf_gaussian_ncv_exp',(1,2),'FUNC_exp_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    # ('kf_gaussian_ncv_sig',(1,2),'FUNC_sig_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    # ('kf_gaussian_ncv_sine',(1,2),'FUNC_sine_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
+    ('kf_gaussian_ncv_taylor',(1,2),'FUNC_taylor_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl'),
+    ('kf_bimodal_ncv_taylor',(1,2),'FUNC_taylor_NOISE_bimodal_LOC_0-25_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl'),
+    ('kf_cauchy_ncv_taylor',(1,2),'FUNC_taylor_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl'),
 
-    # ('kf_gaussian_ncv_exp',(1,3),'FUNC_exp_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    # ('kf_gaussian_ncv_sig',(1,3),'FUNC_sig_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    # ('kf_gaussian_ncv_sine',(1,3),'FUNC_sine_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-
-    # ('kf_gaussian_ncv_exp',(1,4),'FUNC_exp_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    # ('kf_gaussian_ncv_sig',(1,4),'FUNC_sig_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
-    # ('kf_gaussian_ncv_sine',(1,4),'FUNC_sine_NOISE_gaussian_LOC_0_SCALE_5_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_na.pkl'),
 ]
 
 #****************************************************************************************************************************
