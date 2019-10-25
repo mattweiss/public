@@ -41,3 +41,8 @@
 ## uml/
 
     uml diagrams for dovebirdia
+    
+## synthetic_data/
+
+    synthetic_sensor_data_generator.py - synthetic sensor data base class
+    piecewise_synthetic_sensor_data_generator.py - synthetic sensor data fit with parameters fit by piecewise, non-linear regression
