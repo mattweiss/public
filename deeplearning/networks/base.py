@@ -205,6 +205,10 @@ class FeedForwardNetwork(AbstractNetwork):
         # create domainRandomizationDataset object
         self._dr_dataset = DomainRandomizationDataset(dr_params)
 
+        # dictionaries to hold training and validation data
+        train_feed_dict = dict()
+        val_feed_dict = dict()
+        
         with tf.Session() as sess:
 
             # initialize variables
@@ -226,31 +230,63 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
                 dr_data = self._dr_dataset.generateDataset()
-                
+
                 # train and val loss lists
                 train_loss = list()
                 val_loss = list()
 
-                support = np.linspace(-1,1,100).reshape(1,-1)
-                
                 # train on all trials
-                for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
+                #for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
 
-                    train_feed_dict = {self._X:x_train, self._y:y_train}
-                    val_feed_dict = {self._X:x_val, self._y:y_val}
+                x_train, y_train, x_val, y_val = dr_data['x_train'], dr_data['y_train'], dr_data['x_val'], dr_data['y_val']
+                
+                # HAEKF
+                if hasattr(self, '_support'):
 
-                    # OAEKF
-                    if hasattr(self, '_support'):
+                    x_train = np.squeeze(x_train)
+                    y_train = np.squeeze(y_train)
+                    x_val = np.squeeze(x_val)
+                    y_val = np.squeeze(y_val)
 
-                        train_feed_dict[self._support] = support
-                        val_feed_dict[self._support] = support
-                        
-                    # training op
-                    _ = sess.run(self._optimizer_op, feed_dict=train_feed_dict)
+                    support = np.linspace(-1,1,self._input_dim).reshape(1,-1)
+                    train_feed_dict.update({self._support:support})
+                    val_feed_dict.update({self._support:support})
+
+                # AEKF
+                else:
+
+                    x_train = np.squeeze(x_train, axis=0)
+                    y_train = np.squeeze(y_train, axis=0)
+                    x_val = np.squeeze(x_val, axis=0)
+                    y_val = np.squeeze(y_val, axis=0)
+
+                train_feed_dict.update({self._X:x_train, self._y:y_train})
+                val_feed_dict.update({self._X:x_val, self._y:y_val})
+
+                # training op
+                x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train)
+
+                for x_mb, y_mb in zip(x_train_mb,y_train_mb):
+
+                    train_feed_dict[self._X] = x_mb
+                    train_feed_dict[self._y] = y_mb
                     
-                    # loss op
-                    train_loss.append(sess.run(self._loss_op, feed_dict=train_feed_dict))
-                    val_loss.append(sess.run(self._loss_op, feed_dict=val_feed_dict))
+                    #_, z,z_hat,decoder,y_hat = sess.run([self._optimizer_op, self._z, self._z_hat_pri,self._decoder,self._y_hat], feed_dict=train_feed_dict)
+                    sess.run(self._optimizer_op, feed_dict=train_feed_dict)
+
+                    # for idx, (x,y) in enumerate(zip(y_hat[:5],y_mb[:5])):
+
+                    #     plt.figure(figsize=(6,6))
+                    #     plt.plot(x,label='y_hat')
+                    #     plt.plot(y,label='y')
+                    #     plt.grid()
+                    #     plt.legend()
+                    #     plt.savefig('./{idx}'.format(idx=idx))
+                    #     plt.close()
+
+                # loss op
+                train_loss.append(sess.run(self._loss_op, feed_dict=train_feed_dict))
+                val_loss.append(sess.run(self._loss_op, feed_dict=val_feed_dict))
                     
                 self._history['train_loss'].append(np.asarray(train_loss).mean())
                 self._history['val_loss'].append(np.asarray(val_loss).mean())

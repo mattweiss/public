@@ -62,11 +62,12 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                 self._sensors[sensor] = sensor_labels.index(sensor)
 
             # list of sensor indices for slicing resistance
-            sensor_indices = list(self._sensors.values())
+            #sensor_indices = list(self._sensors.values())
 
             # resistance values for given label, 3 dimensional array (trials, samples, sensors)
-            resistance = np.asarray(list(label_data.resistance.values))[:,:,sensor_indices]
-
+            #resistance = np.asarray(list(label_data.resistance.values))[:,:,sensor_indices]
+            resistance = np.asarray(list(label_data.resistance.values))
+            
             # some resistance arrays are not 3d (?)
             if np.ndim(resistance) == 3:
                 
@@ -78,7 +79,7 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
             # standardize resistance to baseline
             resistance = np.asarray(list(map(self._baseline_shift,resistance)))
-            
+
             # Piecewise Curve Fit
             params, piecewise_func, trial_max_idx_dict = self._fitPiecewiseModel(resistance)
 
@@ -89,9 +90,15 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                 trial_max_idx_mean_dict[sensor] = int(np.asarray(max_res).mean())
             
             # max and min piecewise parameters
-            params_min = np.min(params, axis=0)
-            params_max = np.max(params, axis=0)
+            #params_min = np.min(params, axis=0)
+            #params_max = np.max(params, axis=0)
+            params_min = np.nanmin(params, axis=0)
+            params_max = np.nanmax(params, axis=0)
 
+            print(params)
+            print(np.where(np.isnan(params)))
+            print(params.shape)
+            
             # arrays of mean and std for each sample, all sensors
             resistance_std = resistance.std(axis=0)
 
@@ -120,20 +127,27 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                 # synthetic curve domain
                 t = np.linspace(0,resistance.shape[1],resistance.shape[1])
-                
-                # loop over sensors
-                for idx, sensor in enumerate(self._sensors.keys()):
 
-                    print(idx, sensor)
+                # loop over sensors
+                #for idx, sensor in enumerate(self._sensors.keys()):
+
+                for sensor, sensor_idx in self._sensors.items():
                     
                     param_list_syn = list()
                     
-                    for param_low, param_high in zip(params_min[:,idx],params_max[:,idx]):
+                    for param_low, param_high in zip(params_min[:,sensor_idx],params_max[:,sensor_idx]):
 
-                        param_list_syn.append(np.random.uniform(low=param_low, high=param_high))
+                        try:
 
+                            param_list_syn.append(np.random.uniform(low=param_low, high=param_high))
+
+                        except:
+
+                            print(param_low, param_high)
+                            
                     # fit piecewise function with current parameters
                     self._x_hat = trial_max_idx_mean_dict[sensor]
+                    
                     y = piecewise_func(t, *param_list_syn)
 
                     # Clip value in decay region that are larger than maximum in absorbtion region
@@ -141,13 +155,13 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                     y[np.where(y>abs_max)] = abs_max
                     
                     # Gaussian draw for synthetic sample
-                    noise = np.random.normal(loc=0.0, scale=mean_baseline_std_resistance[idx], size=y.shape)
+                    noise = np.random.normal(loc=0.0, scale=mean_baseline_std_resistance[sensor_idx], size=y.shape)
 
                     # center noise as np.random.normal results has large mean relative to 0.0
                     noise = noise-noise.mean(axis=0)
 
                     # insert synthetic sample into synthetic resistance array
-                    ssd_dict['resistance_z'][:,idx] = y + noise
+                    ssd_dict['resistance_z'][:,sensor_idx] = y + noise
 
                 # save synthetic data
                 synthetic_data_filename = label_data.iloc[0]['csv_file'].split('_')[0].replace('&','-') + '_synthetic_label_{label}_{syn_ctr}'.format(label=label, syn_ctr=str(synthetic_sensor_ctr))
@@ -163,21 +177,21 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                     syn_label_ctr = 0
                     
-                    for sensor_idx, sensor in enumerate(self._sensors.keys()):
+                    #for sensor_idx, sensor in enumerate(self._sensors.keys()):
+                    for sensor, sensor_idx in self._sensors.items():
                         
-                        fig = plt.figure(figsize=(12,6))
+                        fig = plt.figure(figsize=(6,6))
 
                         plt.suptitle('Label {label}, {sensor}'.format(label=label, sensor=sensor))
                         
                         # real data
-                        ax1 = fig.add_subplot(121)
+                        ax1 = fig.add_subplot(111)
 
                         trial_list = label_data.csv_file.values
                         
                         for trial_resistance in range(resistance.shape[0]):
-
-                            trial = int(trial_list[trial_resistance].split('_')[-1])
                             
+                            trial = int(trial_list[trial_resistance].split('_')[-1])
                             ax1.plot(resistance[trial_resistance,:,sensor_idx], label = trial )
                             syn_label_ctr = 1
 
@@ -187,14 +201,14 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                         ax1.set_title('Real Sensor Response with Synthetic Overlay')
                         plt.legend()
                         plt.grid()
-                        
+
                         # synthetic data
-                        ax2 = fig.add_subplot(122, sharey=ax1)
-                        ax2.plot(ssd_dict['resistance_z'][:,sensor_idx], label=None, color='black', zorder=10 )
-                        ax2.set_xlabel('Sample')
-                        ax2.set_ylabel('Standardized Resistance')
-                        ax2.set_title('Synthetic Sensor Response')
-                        plt.grid()
+                        # ax2 = fig.add_subplot(122, sharey=ax1)
+                        # ax2.plot(ssd_dict['resistance_z'][:,sensor_idx], label=None, color='black', zorder=10 )
+                        # ax2.set_xlabel('Sample')
+                        # ax2.set_ylabel('Standardized Resistance')
+                        # ax2.set_title('Synthetic Sensor Response')
+                        # plt.grid()
 
                         #plt.show()
                         plt.savefig(self._figure_dir + synthetic_data_filename + '_{sensor}'.format(sensor=sensor).replace(' ','_'))
@@ -209,49 +223,58 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
     def _fitPiecewiseModel(self, data=None):
 
         assert data is not None
-        
-        param_array = np.empty((data.shape[0],6,data.shape[-1]))
+
+        #param_array = np.empty((data.shape[0],6,data.shape[-1]))
+        #param_array = np.empty( (data.shape[0],6,len(list(self._sensors.keys()))))
+        param_array = np.full((data.shape[0],6,data.shape[-1]),np.nan)
+        #param_array = list()
         piecewise_func_list = list()
 
         # hold max. response indices for each sensor
         trial_max_idx_dict = dict()
         for sensor in self._sensors.keys():
-
+            
             trial_max_idx_dict[sensor] = list()
-        
+
         for trial, resistance in enumerate(data):
+
+            # sensor counter to populate param_array's 3rd dimension
+            sensor_ctr = 0
 
             #for sensor in range(resistance.shape[-1]):
             for sensor, sensor_idx in self._sensors.items():
                 
-                sensor_resistance = resistance[:,sensor_idx]
-                
+                sensor_resistance = resistance[:,sensor_idx].astype(np.float64)
+
                 ###############
                 # curve fitting
                 ###############
 
                 xdata = np.linspace(0,sensor_resistance.shape[0],sensor_resistance.shape[0])
-                ydata = sensor_resistance
 
+                ydata = sensor_resistance
+                
                 max_idx = np.where(sensor_resistance==np.max(sensor_resistance))[0][0]
                 self._x_hat = max_idx
                 trial_max_idx_dict[sensor].append(max_idx)
                 
                 try:
 
-                    popt, pcov = curve_fit(self._piecewise_sig, xdata, ydata, p0=[sensor_resistance[self._x_hat],0.1,0.0,10,0.1,0.0], maxfev=20000)
-                    piecewise_func = self._piecewise_sig
+                    popt, pcov = curve_fit(self._piecewise_sig, xdata, ydata, p0=[sensor_resistance[self._x_hat],0.01,700.0,1,0.1,0.0])
+                    
+                    if True not in np.isinf(pcov):
+
+                        piecewise_func = self._piecewise_sig
+                        param_array[trial,:,sensor_idx] = popt
 
                 except:
 
-                    # popt, pcov = curve_fit(self._piecewise_exp, xdata, ydata, p0=[sensor_resistance[max_idx]/10,0.1,0.0,10,0.1,0.0])
-                    # piecewise_func = self._piecewise_exp
-                    print('Index:{trial}, Sensor:{sensor} Did Not Converge'.format(trial=trial,sensor=sensor))
-                    sys.exit(1)
-                    
-                param_array[trial,:,sensor_idx] = popt
-                piecewise_func_list.append(piecewise_func)
+                    print('Trial:{trial}, Sensor:{sensor} Did Not Converge'.format(trial=trial,sensor=sensor))
+                    continue
 
+
+                param_array[trial,:,sensor_idx] = popt
+            
         return param_array, piecewise_func, trial_max_idx_dict
 
     def _piecewise_sig(self, x,
@@ -261,7 +284,7 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
         y = np.piecewise(x, 
                             [x <= self._x_hat], 
                             [
-                             lambda x: alpha_abs / (1 + np.exp(-beta_abs*(x+gamma_abs))),  # sigmoid
+                             lambda x: alpha_abs / (1 + np.exp(-beta_abs*(x-gamma_abs))),  # sigmoid
                              lambda x: alpha_des * np.exp(-beta_des*(x-self._x_hat)) + gamma_des  # exponential decay
                             ])
 
@@ -279,3 +302,6 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                              lambda x: alpha_des * np.exp(-beta_des*(x-self._x_hat)) + gamma_des  # exponential decay
                             ])
     
+    def _sig(self, x, alpha,beta,gamma):
+
+        return alpha / (1 + np.exp(-beta*(x-gamma))),  # sigmoid

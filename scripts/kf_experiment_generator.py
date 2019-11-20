@@ -23,13 +23,12 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
-project = 'asilomar'
+project = 'asilomar2'
 
 experiments = [
-    ('kf_gaussian_ncv_taylor',(1,2),'FUNC_taylor_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl'),
-    ('kf_bimodal_ncv_taylor',(1,2),'FUNC_taylor_NOISE_bimodal_LOC_0-25_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl'),
-    ('kf_cauchy_ncv_taylor',(1,2),'FUNC_taylor_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl'),
-
+    ('kf_gaussian_ncv_taylor',(1,2),'FUNC_taylor_NOISE_gaussian_LOC_0_SCALE_0.2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl'),
+    ('kf_bimodal_ncv_taylor',(1,2),'FUNC_taylor_NOISE_bimodal_LOC_0.5_SCALE_0.2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl'),
+    ('kf_cauchy_ncv_taylor',(1,2),'FUNC_taylor_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl'),
 ]
 
 #****************************************************************************************************************************

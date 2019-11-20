@@ -23,25 +23,25 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'asilomar'
+project = 'asilomar3'
 
 experiments = [
 
-    #('aekf_gaussian_100k_ncv_taylor',[14]),
-    #('aekf_bimodal_100k_ncv_taylor',[15]),
-    #('aekf_cauchy_100k_ncv_taylor',[20]),
-    #('lstm_gaussian_100k_taylor',[98]),
-    #('lstm_bimodal_100k_taylor',[41]),
-    ('lstm_cauchy_100k_taylor',[42]),
+    #('aekf_gaussian_100_ncv_taylor',[64]),
+    #('aekf_bimodal_100_ncv_taylor',[59]),
+    #('aekf_cauchy_100_ncv_taylor',[65]),
+    #('lstm_gaussian_100k_taylor',[96]),
+    #('lstm_bimodal_100k_taylor',[93]),
+    ('lstm_cauchy_100k_taylor',[32]),
 
 ]
 
 test_dataset_files = [
 
     # asilomar
-    #'FUNC_taylor_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl',
-    #'FUNC_taylor_NOISE_bimodal_LOC_0-25_SCALE_0-2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl',
-    'FUNC_taylor_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3.pkl',
+    #'FUNC_taylor_NOISE_gaussian_LOC_0_SCALE_0.2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl',
+    #'FUNC_taylor_NOISE_bimodal_LOC_0.5_SCALE_0.2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl',
+    'FUNC_taylor_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl',
     
 ]
 machine = socket.gethostname()

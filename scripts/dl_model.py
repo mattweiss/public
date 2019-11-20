@@ -150,7 +150,7 @@ if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
 
 elif config_dicts['meta']['network'].__name__ == 'HilbertAutoencoderKalmanFilter':
 
-    config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
+    #config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
         
 else:
@@ -158,6 +158,7 @@ else:
     nn = config_dicts['meta']['network'](config_dicts['model'])
 
 print(nn.__class__)
+
 nn.compile()
 
 if TRAINING:

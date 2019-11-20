@@ -1,3 +1,4 @@
+
 import os, errno
 import tensorflow as tf
 import numpy as np
@@ -78,6 +79,16 @@ class DomainRandomizationDataset(AbstractDataset):
 
                             param_list.append(param)
 
+                    # select the number of parameters if polynomial order is randomized
+                    try:
+                        
+                        param_max_index = np.random.randint(self._min_N,self._max_N+1) + 1
+                        param_list = param_list[:param_max_index]
+                        
+                    except:
+
+                        pass
+
                     y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
 
                 y = np.hstack(y_loop_list)
@@ -119,7 +130,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
                     x_val_list.append(y_noise)
                     y_val_list.append(y)
-        
+
         # set dataset_dict
         self._data['t'] = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_baseline_samples+self._n_samples), axis=-1)
         self._data['noise_type'] = noise_types

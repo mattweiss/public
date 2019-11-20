@@ -45,7 +45,7 @@ class KalmanFilter(AbstractFilter):
             # if R is not passed set z
             z = tf.convert_to_tensor(inputs)
             #z = inputs
-            
+
         x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
                                                                              z,
                                                                              initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
