@@ -1,3 +1,4 @@
+import sys
 import tensorflow as tf
 import numpy as np
 from sklearn.datasets import make_spd_matrix
@@ -10,32 +11,79 @@ class KalmanFilter(AbstractFilter):
 
     def __init__(self, params=None):
 
-        """ 
+        """
         Implement a Kalman Filter in Tensorflow
         """
 
+        # ncv
+        if params['dimensions'][1] == 2:
+
+            # F
+            if params['f_model'] == 'fixed':
+
+                params['F'] = np.kron(np.eye(params['n_signals']), np.array([[1.0,params['dt']],[0.0,1.0]]))
+
+            elif params['f_model'] == 'random':
+
+                params['F'] = np.random.normal(size=(params['n_signals']*params['dimensions'][1],params['n_signals']*params['dimensions'][1]))
+
+            # H
+            if params['h_model'] == 'fixed':
+
+                params['H'] = np.kron(np.eye(params['n_signals']), np.array([1.0,0.0]))
+
+            elif params['h_model'] == 'identity':
+
+                params['H'] = np.kron(np.eye(params['n_signals']), np.array([1.0,1.0]))
+
+            elif self._h_model == 'random':
+
+                params['H'] = np.random.normal(size=(params['n_signals'],params['n_signals']*params['dimensions'][1]))
+
+        # jerk
+        if params['dimensions'][1] == 3:
+
+            # F
+            if params['f_model'] == 'fixed':
+
+                params['F'] = np.kron(np.eye(params['n_signals']), np.array([[1.0,params['dt'],0.5*params['dt']**2],[0.0,1.0,params['dt']],[0.0,0.0,1.0]]))
+
+            elif params['f_model'] == 'random':
+
+                params['F'] = np.random.normal(size=(params['n_signals']*params['dimensions'][1],params['n_signals']*params['dimensions'][1]))
+
+            # H
+            if params['h_model'] == 'fixed':
+
+                params['H'] = np.kron(np.eye(params['n_signals']), np.array([1.0,0.0,0.0]))
+
+            elif params['h_model'] == 'random':
+
+                params['H'] = np.random.normal(size=(params['n_signals'],params['n_signals']*params['dimensions'][1]))
+
+        params['sample_freq'] = np.reciprocal(params['dt'])
+
         super().__init__(params)
 
-        self._dt = self._sample_freq**-1
+        #self._dt = self._sample_freq**-1
 
         # constructs matrices based on NCV, NCA, etc.
         self._F, self._Q, self._H, self._R = self._buildModel()
 
-        self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
-        self._P0 = tf.constant(np.eye(self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
-        #self._P0 = tf.constant(make_spd_matrix( self._dimensions[1]*self._n_signals ), dtype=tf.float64, name='P0')
+        # self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
+        # self._P0 = tf.constant(np.eye(self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
 
 ################################################################################
 
     def fit(self, inputs):
 
-        """ 
+        """
         Apply Kalman Filter, Using Wrapper Functions
         inputs is a list.  First element is z, second (optional) element is R
         """
 
         if isinstance(inputs,list):
-            
+
             # extract z and (possibly) R from inputs list
             z = tf.convert_to_tensor(inputs[0])
             self._R = inputs[1]
@@ -44,77 +92,80 @@ class KalmanFilter(AbstractFilter):
 
             # if R is not passed set z
             z = tf.convert_to_tensor(inputs)
-            #z = inputs
+
+        # set x0 to initial mesurement, set all derviatives to zero
+        x0_dots = tf.zeros( shape=(self._n_signals,self._dimensions[1]-1), dtype=tf.float64, name='x0_dots') # n_signals x 1
+        x0 = tf.expand_dims(z[0,:],axis=-1)
+        self._x0 = tf.reshape(tf.concat([x0,x0_dots],axis=1),[-1, tf.shape(x0)[1]])
+        self._P0 = tf.matmul(self._x0,self._x0,transpose_b=True)
 
         x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
                                                                              z,
                                                                              initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
-        
+
         z_hat_pri  = tf.matmul(self._H, x_hat_pri, name='z_pri', transpose_b=False)
         z_hat_post = tf.matmul(self._H, x_hat_post, name='z_post', transpose_b=False)
-        
-        return {
-                 'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
-                 'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
-                 'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,\
-                 'z':z }
-    
-################################################################################
 
-    def evaluate(self, x=None, y=None, t=None, x_key='z_hat_post', save_results=True):
+        filter_result = {
+            'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
+            'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
+            'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,\
+            'z':z,
+            'R':self._R}
 
-        assert x is not None
-        assert y is not None
-        assert t is not None
-
-        #test_loss = list()
-        #x_hat_list = list()
-        #filter_results = list()
-
-        #for X,Y in zip(x,y):
-            
-        filter_result = self.fit(x)
-
+        # if session is currently defined try will fail and tensors will be returned, otherwise evaluate tensors and return np arrays
         try:
-            
+
             sess = tf.InteractiveSession()
-            x_hat, R = sess.run([filter_result[x_key][:,:,0],self._R])
+            filter_result_np, R = sess.run([filter_result,self._R])
             sess.close()
-            
+
         except:
 
-            x_hat = filter_result[x_key][:,:,0]
-            R = self._R
-            
-        #x_hat_list.append(x_hat)
-        #test_loss.append(np.square(np.subtract(x_hat,Y)).mean())
-            
-        #x_hat = np.asarray(x_hat_list)
-        
-        # save predictions
-        # if save_results:
+            filter_result_np = filter_result
+            # x_hat = filter_result[x_key][:,:,0]
+            # R = self._R
 
-        #     test_results_dict = {
-        #         'x':x,
-        #         'y':y,
-        #         'x_hat':x_hat,
-        #         't':t,
-        #         }
-            
-        #     saveDict(save_dict=test_results_dict, save_path='./results/testing_results.pkl')
+        # return {
+        #          'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
+        #          'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
+        #          'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,\
+        #          'z':z }
 
-        return x_hat, R
+        return filter_result_np
+
+################################################################################
+
+    def evaluate(self, x=None, x_key='z_hat_post', save_results=True):
+
+        assert x is not None
+
+        filter_result = self.fit(x)
+
+        # try:
+
+        #     sess = tf.InteractiveSession()
+        #     x_hat, R = sess.run([filter_result[x_key][:,:,0],self._R])
+        #     sess.close()
+
+        # except:
+
+        #     x_hat = filter_result[x_key][:,:,0]
+        #     R = self._R
+
+        #return x_hat, R
+        return filter_result[x_key][:,:,0], filter_result['R']
 
 ################################################################################
 
     def predict(self, x=None, t=None, x_key='z_hat_post', save_results=True):
 
         pass
-    
+
 ################################################################################
 
     def _kfScan(self, state, z):
-        
+
         """ This is where the acutal Kalman Filter is implemented. """
 
         x_pri, x_post, P_pri, P_post, self._kf_ctr = state
@@ -122,18 +173,18 @@ class KalmanFilter(AbstractFilter):
         # reset state estimate each minibatch
 
         # backwards compatibility - n_measurements may not be an attribute
-        try:
-            
-            x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_measurements ),
-                                                                  lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
-                                                                  lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
+        # try:
+        #
+        #     x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_measurements ),
+        #                                                           lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
+        #                                                           lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
+        #
+        # except:
+        #
+        #      x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
+        #                                                           lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
+        #                                                           lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
 
-        except:
-
-             x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
-                                                                  lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
-                                                                  lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
-            
         z = tf.expand_dims(z, axis=-1)
 
         # Predict
@@ -154,6 +205,7 @@ class KalmanFilter(AbstractFilter):
 
         K = tf.matmul(P_pri,tf.matmul(self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
 
+
         # Update
         innov_plus = tf.subtract( z, tf.matmul( self._H, x_pri ), name='innov_plus' )
         x_post = tf.add( x_pri, tf.matmul( K, innov_plus ), name = 'x_post' )
@@ -162,7 +214,7 @@ class KalmanFilter(AbstractFilter):
         # map state estimates to measurement space
         # z_pri  = tf.matmul(self._H, x_pri, name='z_pri', transpose_b=False)
         # z_post = tf.matmul(self._H, x_post, name='z_post', transpose_b=False)
-        
+
         return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
 
 ###############################################################################
@@ -175,23 +227,126 @@ class KalmanFilter(AbstractFilter):
         # ZV
         if self._dimensions[1] == 1:
 
-            F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
+            if self._f_model == 'fixed':
+
+                F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
+
+            elif self._f_model == 'random':
+
+                F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
+
+            elif self._f_model == 'learned':
+
+                F = tf.get_variable(name='F',
+                                    shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+                                    initializer=tf.initializers.glorot_normal,
+                                    trainable=True,
+                                    dtype=tf.float64)
+
             Q = np.kron(np.eye(self._n_signals), np.array([[self._q]]))
             H = np.kron(np.eye(self._n_signals), np.array([self._h]))
 
         # NCV
         elif self._dimensions[1] == 2:
 
-            F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt],[0.0,1.0]]))
+            if hasattr(self,'_F'):
+
+                F = self._F
+
+            elif self._f_model == 'learned':
+
+                with tf.variable_scope(name_or_scope='KF',
+                                       regularizer=None,
+                                       reuse=tf.AUTO_REUSE):
+
+                    F = tf.get_variable(name='F',
+                                        shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+                                        initializer=self._weight_initializer,
+                                        trainable=True,
+                                        dtype=tf.float64)
+
+            # backwards compatibility
+            else:
+
+                F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._sample_freq**-1],[0.0,1.0]]))
+
+            if hasattr(self,'_H'):
+
+                H = self._H
+
+            elif self._h_model == 'learned':
+
+                with tf.variable_scope(name_or_scope='KF',
+                                       regularizer=None,
+                                       reuse=tf.AUTO_REUSE):
+
+                    H = tf.get_variable(name='H',
+                                        shape=(self._n_signals,self._n_signals*self._dimensions[1]),
+                                        initializer=self._weight_initializer,
+                                        trainable=True,
+                                        dtype=tf.float64)
+
+            # backwards compatibility
+            else:
+
+                H = np.kron(np.eye(self._n_signals), np.array([1.0,0.0]))
+
             Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]]))
-            H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0]))
 
         # NCA
         elif self._dimensions[1] == 3:
 
-            F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
+            if hasattr(self,'_F'):
+
+                F = self._F
+
+            elif self._f_model == 'learned':
+
+                with tf.variable_scope(name_or_scope='KF',
+                                       regularizer=None,
+                                       reuse=tf.AUTO_REUSE):
+
+                    F = tf.get_variable(name='F',
+                                        shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+                                        initializer=self._weight_initializer,
+                                        trainable=True,
+                                        dtype=tf.float64)
+
+            if hasattr(self,'_H'):
+
+                H = self._H
+
+            elif self._h_model == 'learned':
+
+                with tf.variable_scope(name_or_scope='KF',
+                                       regularizer=None,
+                                       reuse=tf.AUTO_REUSE):
+
+                    H = tf.get_variable(name='H',
+                                        shape=(self._n_signals,self._n_signals*self._dimensions[1]),
+                                        initializer=self._weight_initializer,
+                                        trainable=True,
+                                        dtype=tf.float64)
+
+            # if self._f_model == 'fixed':
+
+            #     F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
+
+            # elif self._f_model == 'random':
+
+            #     F = np.random.normal(size=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]))
+
+            # elif self._f_model == 'learned':
+
+            #     F = tf.get_variable(name='F',
+            #                         shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+            #                         initializer=tf.initializers.glorot_normal,
+            #                         trainable=True,
+            #                         dtype=tf.float64)
+
+            #F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
             Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0,0.0],[0.0,self._q,0.0],[0.0,0.0,self._q]]))
-            H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0]))
+            #H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0]))
 
         # jerk model
         elif self._dimensions[1] == 4:
@@ -208,7 +363,7 @@ class KalmanFilter(AbstractFilter):
 
             H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0,0.0]))
 
-                    
+
         # set R if parameter was passed
         try:
 

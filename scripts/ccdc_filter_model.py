@@ -24,13 +24,9 @@ from pdb import set_trace as st
 import csv
 import pandas as pd
 
-from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+from dovebirdia.datasets.ccdc_mixtures import ccdcMixturesDataset
 from dovebirdia.filtering.kalman_filter import KalmanFilter
 from dovebirdia.utilities.base import saveDict
-
-import matplotlib
-matplotlib.use('Agg') 
-import matplotlib.pyplot as plt
 
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
@@ -82,46 +78,63 @@ if not os.path.exists(res_dir):
 
     os.makedirs(res_dir)
 
+# create new split directory for Kalman Filtered data
+
+kf_split_base_dir = config_dicts['dataset']['dataset_dir'][:-1] + \
+                    '_kf_q_' + str(config_dicts['kf']['q']).replace('-','') + \
+                    '_r_' + str(int(config_dicts['kf']['r'])) + \
+                    config_dicts['dataset']['dataset_dir'][-1]
+
+try:
+    
+    os.makedirs(kf_split_base_dir + 'training')
+    os.makedirs(kf_split_base_dir + 'validation')
+    os.makedirs(kf_split_base_dir + 'testing')
+
+except:
+    
+    pass
+
 ################################################################################
-# Dataset
+# Filter and save to directory
 ################################################################################
 
-dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
-z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
+trials_to_filter = None
 
-################################################################################
-# Model
-################################################################################
+split_list = [
+    'training',
+    'validation',
+    'testing'
+    ]
 
-z_hat_list = list()
-R_list = list()
+for split_name in split_list:
 
-for z,y in zip(z_test,y_test):
+    # load pickle files into dataframe
+    split_dir = config_dicts['dataset']['dataset_dir'] + split_name + '/'
+    pickle_files = os.listdir(split_dir)
 
-    filter = config_dicts['meta']['filter'](config_dicts['kf'])
-    #print(filter.__class__)
-    filter_results = filter.fit(z)
-    z_hat, R = np.squeeze(filter_results['z_hat_post'],axis=-1), filter_results['R']
-    z_hat_list.append(z_hat)
-    R_list.append(np.tile(R,(z.shape[0],z.shape[-1],z.shape[-1])))
-    tf.reset_default_graph()
+    # loop over each pickle file
+    for pickle_file in pickle_files[:trials_to_filter]:
 
-# save kf data
-test_results_dict = {
-    'z':z_test,
-    'y':y_test,
-    'z_hat':np.asarray(z_hat_list),
-    'R':np.asarray(R_list),
-    't':t,
-}
+        # load df
+        df = np.load(split_dir+pickle_file, allow_pickle=True)
 
-evaluate_save_path = config_dicts['dr']['load_path'].split('/')[-1].split('.')[0]
-saveDict(save_dict=test_results_dict, save_path='./results/' + evaluate_save_path + '.pkl')
+        z = df['resistance_z']
 
-test_mse = np.square(np.subtract(np.asarray(z_hat_list),y_test)).mean()
-results_dict = {
-    'test_mse':test_mse,
-}
+        filter = config_dicts['meta']['filter'](config_dicts['kf'])
+        filter_results = filter.fit(z)
+        z_hat = np.squeeze(filter_results['z_hat_post'],axis=-1)
+
+        tf.reset_default_graph()
+
+        # add new key to dictionary
+        df['resistance_kf0'] = z_hat
+
+        # write dictionary to pickle file
+        dill_output_file = kf_split_base_dir + split_name + '/' + pickle_file
+        with open(dill_output_file, 'wb') as handle:
+
+            dill.dump(df, handle, protocol=dill.HIGHEST_PROTOCOL)
 
 ################################################################################
 # CSV
@@ -130,15 +143,13 @@ results_dict = {
 # merge dictionaries in config_dicts and training_results_dict
 merged_config_dicts = dict()
 
+# remove F and H from dictionary before writing to csv
+config_dicts['kf'].pop('F')
+config_dicts['kf'].pop('H')
+
 for config_dict in config_dicts.values():
 
     merged_config_dicts.update(config_dict)
-
-# training results
-merged_config_dicts.update(results_dict)
-
-# model id
-merged_config_dicts.update({'model_id':os.getcwd().split('/')[-1].split('_')[-1]})
 
 # change dictionary value to name if exists
 for k,v in merged_config_dicts.items():
@@ -151,7 +162,7 @@ for k,v in merged_config_dicts.items():
 
         pass
         
-results_file = os.getcwd() + config_dicts['model']['results_dir'] + 'testing_results.csv'
+results_file = kf_split_base_dir + 'kf_params.csv'
 
 try:
     

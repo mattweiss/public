@@ -15,8 +15,7 @@
 
 # Python
 import numpy as np
-import tensorflow as tf
-import os
+import os, sys
 import dill
 from datetime import datetime
 import argparse
@@ -24,13 +23,9 @@ from pdb import set_trace as st
 import csv
 import pandas as pd
 
-from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
-from dovebirdia.filtering.kalman_filter import KalmanFilter
-from dovebirdia.utilities.base import saveDict
-
-import matplotlib
-matplotlib.use('Agg') 
-import matplotlib.pyplot as plt
+from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+from dovebirdia.deeplearning.networks.lstm import LSTM
+from dovebirdia.datasets.nyse_dataset import nyseDataset
 
 ################################################################################
 # PROCESS COMMAND LINE FLAGS
@@ -39,17 +34,13 @@ import matplotlib.pyplot as plt
 # define command line parser
 parser = argparse.ArgumentParser()
 
-# -cfg CONFIG_FILE
+# get train/test flag
 parser.add_argument("-c", "--config", dest = "config", help="Configuration File")
 parser.add_argument("-r", "--results", dest = "results", help="Results q File Description")
+parser.add_argument("-d", "--dataset", dest = "dataset", help="Test Dataset Path")
 
 # parse options from commandline and copy to dictionary
 flag_dict = parser.parse_args().__dict__
-
-# display config_diction
-for k,v in flag_dict.items():
-
-    print('{}: {}'.format(k,v))
 
 # read flag_dict values
 config_dir = flag_dict['config']
@@ -67,7 +58,7 @@ for config_file in config_files:
         config_dicts[config_name] = dill.load(handle)
 
 ################################################################################
-# SET DIRECTORIES
+# Create Directories
 ################################################################################
 
 # create results directory
@@ -76,69 +67,102 @@ current_day = datetime.now().strftime("%m%d") + '/'
 res_dir = flag_dict['results']
 
 res_file = res_dir.split('/')[-2]
-# print('Results file: %s' % (res_file))
 
 if not os.path.exists(res_dir):
 
-    os.makedirs(res_dir)
+    os.makedirs( res_dir )
 
 ################################################################################
-# Dataset
+# Load Test Dataset
 ################################################################################
 
-dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
-z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
+dataset = nyseDataset(config_dicts['ds']).getDataset()
 
 ################################################################################
 # Model
 ################################################################################
 
-z_hat_list = list()
-R_list = list()
+# Hidden dimensions
+config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
 
-for z,y in zip(z_test,y_test):
+# if using AEKF
+if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
 
-    filter = config_dicts['meta']['filter'](config_dicts['kf'])
-    #print(filter.__class__)
-    filter_results = filter.fit(z)
-    z_hat, R = np.squeeze(filter_results['z_hat_post'],axis=-1), filter_results['R']
-    z_hat_list.append(z_hat)
-    R_list.append(np.tile(R,(z.shape[0],z.shape[-1],z.shape[-1])))
-    tf.reset_default_graph()
+    # append n_signals
+    config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
 
-# save kf data
-test_results_dict = {
-    'z':z_test,
-    'y':y_test,
-    'z_hat':np.asarray(z_hat_list),
-    'R':np.asarray(R_list),
-    't':t,
-}
+    nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
 
-evaluate_save_path = config_dicts['dr']['load_path'].split('/')[-1].split('.')[0]
-saveDict(save_dict=test_results_dict, save_path='./results/' + evaluate_save_path + '.pkl')
+elif config_dicts['meta']['network'].__name__ == 'HilbertAutoencoderKalmanFilter':
 
-test_mse = np.square(np.subtract(np.asarray(z_hat_list),y_test)).mean()
+    nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
+
+else:
+
+    nn = config_dicts['meta']['network'](config_dicts['model'])
+
+print(nn.__class__)
+
+nn.compile()
+
+history = nn.fit(dataset=dataset, save_model=True)
+
+train_mse = np.asarray(history['train_loss'][-1])
+val_mse = np.asarray(history['val_loss'][-1])
+test_mse = np.asarray(history['test_loss'])
+
+print('Training MSE: {train_mse:0.4}\nValidation MSE: {val_mse:0.4}\nTesting MSE: {test_mse:0.4}'.format(train_mse=train_mse,
+                                                                                                        val_mse=val_mse,
+                                                                                                        test_mse=test_mse))
+
 results_dict = {
+    'train_mse':train_mse,
+    'val_mse':val_mse,
     'test_mse':test_mse,
+    'runtime':history['runtime'],
 }
+
+# save test predictions to disk
+test_pred_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_pred'
+np.save(test_pred_file_path,history['test_pred'])
+
+test_true_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_true'
+np.save(test_true_file_path,history['test_true'])
+
+# train_pred_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'train_pred'
+# np.save(train_pred_file_path,history['train_pred'])
+#
+# train_true_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'train_true'
+# np.save(train_true_file_path,history['train_true'])
 
 ################################################################################
 # CSV
 ################################################################################
 
+# Remove F and H from config_dicts['kf']
+try:
+
+    del config_dicts['kf']['F']
+    del config_dicts['kf']['H']
+
+except:
+
+    pass
+
 # merge dictionaries in config_dicts and training_results_dict
 merged_config_dicts = dict()
 
+# config dictionaries
 for config_dict in config_dicts.values():
 
     merged_config_dicts.update(config_dict)
 
-# training results
-merged_config_dicts.update(results_dict)
-
 # model id
 merged_config_dicts.update({'model_id':os.getcwd().split('/')[-1].split('_')[-1]})
+
+# training results
+
+merged_config_dicts.update(results_dict)
 
 # change dictionary value to name if exists
 for k,v in merged_config_dicts.items():
@@ -150,16 +174,18 @@ for k,v in merged_config_dicts.items():
     except:
 
         pass
-        
-results_file = os.getcwd() + config_dicts['model']['results_dir'] + 'testing_results.csv'
+
+results_file = 'training_results.csv'
+
+results_file_path = os.getcwd() + config_dicts['model']['results_dir'] + results_file
 
 try:
-    
-    with open(results_file, 'a') as csvfile:
-        
+
+    with open(results_file_path, 'a') as csvfile:
+
         writer = csv.DictWriter(csvfile, fieldnames=sorted(merged_config_dicts.keys()))
 
-        if os.stat(results_file).st_size == 0:
+        if os.stat(results_file_path).st_size == 0:
 
             writer.writeheader()
 
@@ -167,5 +193,4 @@ try:
 
 except IOError:
 
-    print("I/O error") 
-
+    print("I/O error")

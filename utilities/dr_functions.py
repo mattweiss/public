@@ -27,8 +27,8 @@ def sine(x,params):
 
     assert x is not None
     assert params is not None
-    
-    a,b = params
+
+    a,b = params[:2]
 
     return a * np.sin(b*x)
 
@@ -64,3 +64,9 @@ def trig_poly(x,params=None):
         y += a*np.cos((2*np.pi*n*x)/P) + b*np.sin((2*np.pi*n*x)/P)
         
     return y
+
+def zeros(x,params=None):
+
+    assert x is not None
+
+    return np.zeros(shape=x.shape)

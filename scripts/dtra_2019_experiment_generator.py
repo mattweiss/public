@@ -21,78 +21,57 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 # Test Name and Description
 ####################################
-script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
-#****************************************************************************************************************************
-project = 'asilomar2'
+
+script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dtra_data_processing.py'
+
+project = 'dtra_2019'
 
 experiments = [
-    ('kf_gaussian_ncv_taylor_KILLME','FUNC_taylor_NOISE_bimodal_LOC_0.5_SCALE_0.2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl'),
-    #('ccdc_kf_ncv_alpha',(1,2),'07122019_DMMP_single_interferents_all_parts_trial_991_label_64.pkl.pkl'),
+    ('kf_z_ncv',(1,2)),
 ]
 
-#****************************************************************************************************************************
 machine = socket.gethostname()
-####################################
 
-meta_params = dict()
-dr_params = dict()
+########################
+# Parameter dictionaries
+########################
+
 kf_params = dict()
-model_params = dict()
+gen_params = dict()
 
 params_dicts = OrderedDict([
-    ('meta',meta_params),
-    ('model',model_params),
-    ('dr',dr_params),
+    ('gen',gen_params),
     ('kf',kf_params),
 ])
-
+        
 ####################################
-# Meta Parameters
-####################################
-
-meta_params['filter'] = KalmanFilter
-
-####################################
-# Model Parameters
+# General Parameters
 ####################################
 
-model_params['results_dir'] = '/results/'
-
-####################################
-# Domain Randomization Parameters
-####################################
-
-#dr_params['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/' + test_dataset_file
+gen_params['save_figures'] = True
+gen_params['results_dir'] = './results/'
+gen_params['num_colors'] = 15
+gen_params['max_samples'] = 5000
+gen_params['l2_norm_scale'] = 2
+gen_params['ml_dataset'] = 'resistance_z'
+gen_params['pickle_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark_orig/parsed/02_08_19/1031114533/02082019analytetrials/pickled/'
+gen_params['sklearn_random_state'] = 37
+gen_params['ml_pca_n_components'] = 10
+#[2,3,10,15,25]
+gen_params['x0'] = None
+gen_params['x1'] = [x1 for x1 in range(620,1020,20)]
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
-kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = 1
+kf_params['n_signals'] = 20
 kf_params['n_samples'] = 100
-kf_params['sample_freq'] = 1.0
-kf_params['dt'] = kf_params['sample_freq']**-1
+kf_params['sample_freq'] = 20.0
 kf_params['h'] = 1.0
 kf_params['q'] = list(np.logspace(-8,1,10))
-kf_params['r'] = list(np.linspace(1,100,10))
-
-# Build dynamical model
-if kf_params['dimensions'][1] == 2:
-
-    kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
-
-    # H
-    kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0]))
-
-if kf_params['dimensions'][1] == 3:
-
-    # F
-    kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
-        
-    # H
-    kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0,0.0]))
-
+kf_params['r'] = list(np.linspace(0.1,10,10))
+                      
 ####################################
 # Determine scaler and vector parameters
 ####################################
@@ -149,21 +128,20 @@ for dict_name, params_dict in params_dicts.items():
 
 for experiment in experiments:
 
-    experiment_name, test_dataset_file = experiment
+    #experiment_name, kf_dims, test_dataset_file = experiment
+    experiment_name, kf_dims = experiment
     
     cfg_ctr = 1
 
-    for config_params in itertools.product(config_params_dicts['meta'],
-                                           config_params_dicts['model'],
-                                           config_params_dicts['dr'],
+    for config_params in itertools.product(config_params_dicts['gen'],
                                            config_params_dicts['kf']):
 
 
-        config_params[2]['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/evaluation/' + project + '/' + test_dataset_file
-        #config_params[3]['dimensions'] = kf_dims
+        #config_params[0]['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/evaluation/' + project + '/' + test_dataset_file
+        config_params[1]['dimensions'] = kf_dims
         
         # Create Directories
-        experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/kalman_filter/' + experiment_name + '/'
+        experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
         model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'
         model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
         results_dir = model_dir + '/results/'

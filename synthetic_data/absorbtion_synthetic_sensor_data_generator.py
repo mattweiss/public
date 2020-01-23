@@ -8,7 +8,7 @@ from pdb import set_trace as st
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from synthetic_data.synthetic_sensor_data_generator import SyntheticSensorDataGenerator
 
-class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
+class AbsorbtionSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
     """ 
     Produce synthetic sensor data using unique Gaussian draw at each sample in baseline curve
@@ -33,8 +33,11 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                          n_synthetic_sensors_per_label = n_synthetic_sensors_per_label,
                          save_plots = save_plots )
 
-        # Setting this by hand for how
-        #self._max_height_idx = 1000
+        # slice of samples to use - HARDCODE FOR NOW
+        self._sample_slice = (600,1000)
+
+        # sampled frequency
+        self._sample_freq = 20.0
         
     def generate_samples(self):
 
@@ -54,17 +57,21 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
             # trials for given label
             label_data = self._data[self._data.label==label]
-            sensor_labels = list(label_data.sensors.iloc[0])
+
+            # names of sensors
+            sensor_names = list(label_data.sensors.iloc[0])
 
             # update sensors dictionary with values corresponding to sensor index
+            # initiall the values in self._sensors are -1 because not all sensors will necessarily be used
+            # to ensure the used sensors are labeled accordingly the below code is needed
             for sensor in self._sensors.keys():
 
-                self._sensors[sensor] = sensor_labels.index(sensor)
+                self._sensors[sensor] = sensor_names.index(sensor)
 
-            # resistance values for given label, 3 dimensional array (trials, samples, sensors)
+            # resistance values for given label, 3 dimensional array (trials, samples, sexnsors)
             resistance = np.asarray(list(label_data.resistance.values))
             
-            # some resistance arrays are not 3d (?)
+            # some resistance arrays are not 3d
             if np.ndim(resistance) == 3:
                 
                 resistance = resistance[:,:self._n_max_samples,:]
@@ -73,29 +80,31 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                 continue
 
-            # standardize resistance to baseline
+            # baseline shift
             resistance = np.asarray(list(map(self._preprocess,resistance)))
 
-            # Piecewise Curve Fit
-            params, piecewise_func, trial_max_idx_dict = self._fitPiecewiseModel(resistance)
+            # select subset of data
+            resistance = resistance[:,self._sample_slice[0]:self._sample_slice[1],:]
+            
+            # fit curve model
+            params, piecewise_func, trial_max_idx_dict = self._fitCurveModel(resistance)
 
             # average trial max. response indices for each sensor
-            trial_max_idx_mean_dict = dict()
+            #trial_max_idx_mean_dict = dict()
             
-            # for sensor, max_res in trial_max_idx_dict.items():
-
-            #     trial_max_idx_mean_dict[sensor] = int(np.asarray(max_res).mean())
-            
-            # max and min piecewise parameters
+            # max and min estimated parameters for curve model
             params_min = np.nanmin(params, axis=0)
             params_max = np.nanmax(params, axis=0)
 
+            st()
+            
             # arrays of mean and std for each sample, all sensors
-            resistance_std = resistance.std(axis=0)
-
-            # average of standardized baseline standard deviation for each sensor response for given label
+            # resistance_std = resistance.std(axis=0)
+            
+            # average baseline standard deviation for each sensor response
+            # this is the standard deviation of the sampled noise added to the synthetic baseline curve
             mean_baseline_std_resistance = resistance[:,:self._baseline_length,: ].std(axis=1).mean(axis=0)
-
+            
             # generate synthetic sensor data
             for _ in range(self._n_synthetic_sensors_per_label): 
 
@@ -114,18 +123,19 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                 ssd_dict['y_multi_label'] = label_data.iloc[0].y
 
                 # array to hold resistance
-                ssd_dict['resistance_z'] = np.full((resistance.shape[1],resistance.shape[-1]),np.nan)
+                ssd_dict['resistance'] = np.full((resistance.shape[1],resistance.shape[-1]),np.nan)
 
                 # synthetic curve domain
-                t = np.linspace(0,resistance.shape[1],resistance.shape[1])
+                t = np.linspace(0,resistance.shape[1],resistance.shape[1]) / int(self._sample_freq)
 
                 # loop over sensors
-                #for idx, sensor in enumerate(self._sensors.keys()):
-
                 for sensor, sensor_idx in self._sensors.items():
 
+                    # list of parameters used in synthetic curve genration
                     param_list_syn = list()
-                    
+
+                    # for each parameter in curve model, sample uniformly between the min and max values
+                    # determined by curve fitting above
                     for param_low, param_high in zip(params_min[:,sensor_idx],params_max[:,sensor_idx]):
 
                         try:
@@ -136,15 +146,10 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                             print(param_low, param_high)
 
-                    # fit piecewise function with current parameters
-                    #self._x_hat = trial_max_idx_mean_dict[sensor]
-                    
+                    # generate ground truth synthetic curve
+                    print(*param_list_syn)
                     y = piecewise_func(t, *param_list_syn)
 
-                    # Clip value in decay region that are larger than maximum in absorbtion region
-                    #abs_max = np.max(y[:self._x_hat])
-                    #y[np.where(y>abs_max)] = abs_max
-                    
                     # Gaussian draw for synthetic sample
                     noise = np.random.normal(loc=0.0, scale=mean_baseline_std_resistance[sensor_idx], size=y.shape)
 
@@ -152,7 +157,7 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                     noise = noise-noise.mean(axis=0)
 
                     # insert synthetic sample into synthetic resistance array
-                    ssd_dict['resistance_z'][:,sensor_idx] = y + noise
+                    ssd_dict['resistance'][:,sensor_idx] = y + noise
 
                 # save synthetic data
                 synthetic_data_filename = label_data.iloc[0]['csv_file'].split('_')[0].replace('&','-') + '_synthetic_label_{label}_{syn_ctr}'.format(label=label, syn_ctr=str(synthetic_sensor_ctr))
@@ -182,13 +187,14 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                         trial_list = label_data.csv_file.values
                         
                         for trial_resistance in range(resistance.shape[0]):
-                            
+
                             trial = int(trial_list[trial_resistance].split('_')[-1])
-                            ax1.plot(resistance[trial_resistance,:1000,sensor_idx], label = trial )
-                            ax2.plot(resistance[trial_resistance,:1000,sensor_idx], label = trial )
+                            print(trial)
+                            ax1.plot(t,resistance[trial_resistance,:,sensor_idx], label = trial )
+                            ax2.plot(t,resistance[trial_resistance,:,sensor_idx], label = trial )
                             syn_label_ctr = 1
 
-                        ax1.plot(range(ssd_dict['resistance'][:1000,sensor_idx].shape[0]), ssd_dict['resistance'][:1000,sensor_idx], label='Synthetic', color='black', zorder=10 )
+                        ax1.plot(t, ssd_dict['resistance'][:,sensor_idx], label='Synthetic', color='black', zorder=10 )
                         ax1.set_xlabel('Sample')
                         ax1.set_ylabel('Standardized Resistance')
                         ax1.set_title('Real Sensor Response with Synthetic Overlay')
@@ -197,14 +203,14 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                         # synthetic data
 
-                        # ax2.plot(ssd_dict['resistance_z'][:,sensor_idx], label=None, color='black', zorder=10 )
-                        ax2.set_xlabel('Sample')
-                        ax2.set_ylabel('Standardized Resistance')
-                        ax2.set_title('Synthetic Sensor Response')
-                        plt.grid()
+                        # ax2.plot(ssd_dict['resistance'][:,sensor_idx], label=None, color='black', zorder=10 )
+                        # ax2.set_xlabel('Sample')
+                        # ax2.set_ylabel('Standardized Resistance')
+                        # ax2.set_title('Synthetic Sensor Response')
+                        # plt.grid()
 
-                        #plt.show()
-                        plt.savefig(self._figure_dir + synthetic_data_filename + '_{sensor}'.format(sensor=sensor).replace(' ','_'))
+                        plt.show()
+                        #plt.savefig(self._figure_dir + synthetic_data_filename + '_{sensor}'.format(sensor=sensor).replace(' ','_'))
                             
                         plt.close()
                     
@@ -219,7 +225,7 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
         return data
 
-    def _fitPiecewiseModel(self, data=None):
+    def _fitCurveModel(self, data=None):
 
         assert data is not None
 
@@ -240,13 +246,13 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
             #for sensor in range(resistance.shape[-1]):
             for sensor, sensor_idx in self._sensors.items():
                 
-                sensor_resistance = resistance[:1000,sensor_idx].astype(np.float64)
+                sensor_resistance = resistance[:,sensor_idx].astype(np.float64)
 
                 ###############
                 # curve fitting
                 ###############
 
-                xdata = np.linspace(0,sensor_resistance.shape[0],sensor_resistance.shape[0])
+                xdata = np.linspace(0,sensor_resistance.shape[0],sensor_resistance.shape[0]) / self._sample_freq
                 ydata = sensor_resistance
 
                 # plt.figure(figsize=(6,6))
@@ -254,74 +260,25 @@ class PiecewiseSyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                 # plt.grid()
                 # plt.show()
                 # plt.close()
-                
-                # max_idx = np.where(sensor_resistance==np.max(sensor_resistance))[0][0]
-                # self._x_hat = max_idx
-                # trial_max_idx_dict[sensor].append(max_idx)
-                
-                # try:
 
-                #     st()
-                    
-                #     #popt, pcov = curve_fit(self._sig, xdata, ydata, p0=[sensor_resistance[self._x_hat],10.0,700.0,1,0.1,0.0])
-                #     popt, pcov = curve_fit(self._sig, xdata, ydata)
-                    
-                #     # if True not in np.isinf(pcov):
-
-                #     piecewise_func = self._sig
-                #     param_array[trial,:,sensor_idx] = popt
-
-                # except:
-
-                #     print('Trial:{trial}, Sensor:{sensor} Did Not Converge'.format(trial=trial,sensor=sensor))
-                #     continue
                 # sigmoid
-                try:
+                #try:
                     
-                    popt, pcov = curve_fit(self._sig_curve, xdata, ydata, maxfev=10000)
-                    piecewise_func = self._sig_curve
-                    print('Sigmoid')
+                # popt, pcov = curve_fit(self._sig_curve, xdata, ydata, maxfev=10000)
+                # piecewise_func = self._sig_curve
+                    #print('Sigmoid')
 
                 # exponential
-                except:
+                # except:
 
-                    popt, pcov = curve_fit(self._exp_curve, xdata, ydata, maxfev=10000)
-                    piecewise_func = self._exp_curve
-                    print('Exponential')
+                popt, pcov = curve_fit(self._exp_curve, xdata, ydata)
+                piecewise_func = self._exp_curve
+                #     print('Exponential')
 
                 param_array[trial,:,sensor_idx] = popt
             
         return param_array, piecewise_func, trial_max_idx_dict
-
-    def _piecewise_sig(self, x,
-                       alpha_abs,beta_abs,gamma_abs,
-                       alpha_des,beta_des,gamma_des):
-
-        y = np.piecewise(x, 
-                            [x <= self._x_hat], 
-                            [
-                             lambda x: alpha_abs / (1 + np.exp(-beta_abs*(x-gamma_abs))),  # sigmoid
-                             lambda x: alpha_des * np.exp(-beta_des*(x-self._x_hat)) + gamma_des  # exponential decay
-                            ])
-
-        return y
-
-    def _piecewise_exp(self, x,
-                       alpha_abs,beta_abs,gamma_abs,
-                       alpha_des,beta_des,gamma_des):
     
-        return np.piecewise(x, 
-                            [x <= self._x_hat],
-                            #[x <= self._max_height_idx],
-                            [
-                             lambda x: alpha_abs * np.exp(beta_abs*(x)) + gamma_abs, # exponential growth
-                             lambda x: alpha_des * np.exp(-beta_des*(x-self._x_hat)) + gamma_des  # exponential decay
-                            ])
-    
-    def _sig(self,x,alpha,beta,gamma):
-
-        return alpha*(1 + np.exp(-beta*(x-gamma)))**-1,  # sigmoid
-
     def _exp_curve(self,x,a,b,c):
 
         return a*np.exp(b*(x-c))

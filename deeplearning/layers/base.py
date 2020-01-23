@@ -5,7 +5,6 @@ from pdb import set_trace as st
 class Dense():
 
     def __init__(self,
-                 #params=None
                  name=None,
                  weight_initializer=None,
                  weight_regularizer=None,
@@ -14,7 +13,8 @@ class Dense():
                  bias_regularizer=None,
                  activation=None,
                  use_bias=True,
-                 dropout_rate=0.0
+                 dropout_rate=0.0,
+                 input_dropout_rate=0.0
     ):
 
         #assert isinstance(params,dict)
@@ -29,12 +29,17 @@ class Dense():
         self._bias_regularizer=bias_regularizer
         self._activation=activation
         self._use_bias=use_bias
-        self._dropout_rate=0.0
-        
+        self._dropout_rate=dropout_rate
+        self._input_dropout_rate=input_dropout_rate
+
     def build(self, x=None, dims=None):
 
         assert x is not None
         assert isinstance(dims, list)
+
+        if self._input_dropout_rate is not 0.0:
+
+            x = tf.nn.dropout(x, rate=self._input_dropout_rate)
 
         for dim_idx, dim in enumerate(dims):
 
@@ -77,5 +82,5 @@ class Dense():
             if self._dropout_rate is not 0.0:
 
                 x = tf.nn.dropout(x, rate=self._dropout_rate)
-            
+
         return x

@@ -21,9 +21,9 @@ mnist_params = {
     }
 
 ccdc_params = {
-    'dataset_dir':'/home/mlweiss/Documents/wpi/research/code/sensors/mixtures/datasets/02_05_19-0905144322/',
-    'val_size':0.1,
-    'resistance_type':'resistance_z',
+    'dataset_dir':'/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark_3/split/07_12_19-1203141455/',
+    'with_val':True,
+    'resistance_type':'resistance',
     'labels':None,
     'sensors':None,
     'with_synthetic':True,

@@ -7,17 +7,16 @@ from dovebirdia.deeplearning.layers.base import Dense
 from tensorflow.python.ops.distributions.special_math import ndtri as tf_ndtri
 
 try:
-    
+
     from orthnet import Legendre, Chebyshev
 
 except:
 
     pass
-    
+
 from sklearn.datasets import make_spd_matrix
 
 from dovebirdia.filtering.kalman_filter import KalmanFilter
-#from kalmanfilter.kalmanfiltertf import KalmanFilterTF as KalmanFilter
 
 from dovebirdia.utilities.base import dictToAttributes, saveDict
 
@@ -26,75 +25,77 @@ class Autoencoder(FeedForwardNetwork):
     """
     Autoencoder Class
     """
-    
+
     def __init__(self, params=None):
 
         assert isinstance(params,dict)
-        
+
         super().__init__(params=params)
-        
+
     ##################
     # Public Methods #
     ##################
-    
+
     ###################
-    # Private Methods #
+   # Private Methods #
     ###################
-    
+
     def _buildNetwork(self):
 
         # input and output placeholders
-        self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
-        self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
+        # self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
+        # self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
 
         # encoder and decoder
         self._encoder = self._buildEncoder(input=self._X)
         self._decoder = self._buildDecoder(input=self._encoder)
-        
+
         # output layer
         self._y_hat = self._buildOutput(input=self._decoder)
 
     def _buildEncoder(self, input=None):
 
         assert input is not None
-        
+
         return Dense(self._hidden_layer_dict).build(input, self._hidden_dims[:-1], scope='encoder')
 
     def _buildDecoder(self, input=None):
 
         assert input is not None
-        
+
         return Dense(self._hidden_layer_dict).build(input, self._hidden_dims[::-1][1:], scope='decoder')
 
     def _buildOutput(self, input=None):
 
         assert input is not None
-         
+
         return Dense(self._affine_layer_dict).build(input, [self._output_dim], scope='output')
-        
+
 class AutoencoderKalmanFilter(Autoencoder):
 
     """
     Autoencoder-KalmanFilter Class
     """
-    
+
     def __init__(self, params=None, kf_params=None):
 
         # instantiate Kalman Filter before parent constructor as
         # the parent calls _buildNetwork()
         self._kalman_filter = KalmanFilter(params=kf_params)
-        
+
         super().__init__(params=params)
 
     ##################
    # Public Methods #
     ##################
- 
-    def evaluate(self, x=None, y=None, t=None, save_results=True):
+
+    def evaluate(self, x=None, y=None,
+                #t=None,
+                save_results=True):
 
         assert x is not None
         assert y is not None
-        assert t is not None
+        # assert t is not None
 
         # model predictions
         x_hat_list = list()
@@ -117,6 +118,14 @@ class AutoencoderKalmanFilter(Autoencoder):
 
             for trial, (X,Y) in enumerate(zip(x,y)):
 
+                if X.ndim > 2:
+
+                    X = np.squeeze(X,axis=-1)
+
+                if y.ndim > 3:
+
+                    Y = np.squeeze(Y,axis=-1)
+
                 test_feed_dict = {self._X:X, self._y:Y}
 
                 # OKF
@@ -124,7 +133,7 @@ class AutoencoderKalmanFilter(Autoencoder):
 
                     support = np.linspace(-1,1,100).reshape(1,-1)
                     test_feed_dict[self._support] = support
-                
+
                 test_loss, x_hat, z, z_hat_post, R = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post,self._R], feed_dict=test_feed_dict)
                 self._history['test_loss'].append(test_loss)
                 x_hat_list.append(x_hat)
@@ -136,7 +145,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         z = np.asarray(z_list)
         z_hat_post = np.asarray(z_hat_post_list)
         R = np.asarray(R_list)
-        
+
         # save predictions
         if save_results is not None:
 
@@ -144,22 +153,22 @@ class AutoencoderKalmanFilter(Autoencoder):
                 'x':x,
                 'y':y,
                 'x_hat':x_hat,
-                't':t,
+                # 't':t,
                 'z':z,
                 'z_hat_post':z_hat_post,
                 'R':R
                 }
-            
+
             saveDict(save_dict=test_results_dict, save_path='./results/' + save_results + '.pkl')
-            
+
         return self._history
-    
+
     ###################
     # Private Methods #
     ###################
 
     def _buildNetwork(self):
-        
+
         # weight regularizer
         try:
 
@@ -168,7 +177,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         except:
 
             weight_regularizer = self._weight_regularizer
-            
+
         self._setPlaceholders()
 
         self._encoder = self._encoderLayer(self._X)
@@ -179,31 +188,33 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         #self._post_kf_affine = self._postKalmanFilterAffineLayer(tf.squeeze(self._z_hat_pri,axis=-1))
         self._post_kf_affine = self._postKalmanFilterAffineLayer(self._z_hat_pri)
-        
+
         self._decoder = self._decoderLayer(self._post_kf_affine)
-        
+
         self._y_hat = self._outputLayer(self._decoder)
-        
+
     def _setPlaceholders(self):
-        
+
         # input and output placeholders
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
-  
+
     def _encoderLayer(self, input=None):
 
         assert input is not None
-        
+
         return Dense(name='encoder',
                      weight_initializer=self._weight_initializer,
                      weight_regularizer=None,
                      bias_initializer=self._bias_initializer,
-                     activation=self._activation).build(input, self._hidden_dims[:-1])
+                     activation=self._activation,
+                     input_dropout_rate=self._input_dropout_rate,
+                     dropout_rate=self._dropout_rate).build(input, self._hidden_dims[:-1])
 
     def _preKalmanFilterAffineLayer(self, input=None):
 
         assert input is not None
-        
+
         z = Dense(name='z',
                         weight_initializer=self._weight_initializer,
                         weight_regularizer=None,
@@ -212,11 +223,11 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         # backwards compatibility
         try:
-        
+
             # learned noise covariance
             if self._R_model == 'learned':
 
-                # learn L, which is vector from which SPD matrix R is formed 
+                # learn L, which is vector from which SPD matrix R is formed
                 self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
                 self._L = Dense(name='L',
                                 weight_initializer=self._weight_initializer,
@@ -229,10 +240,10 @@ class AutoencoderKalmanFilter(Autoencoder):
             elif self._R_model == 'identity':
 
                 R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf.float64)
-                
+
         except:
 
-            # learn L, which is vector from which SPD matrix R is formed 
+            # learn L, which is vector from which SPD matrix R is formed
             self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
             self._L = Dense(name='L',
                             weight_initializer=self._weight_initializer,
@@ -265,7 +276,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)
 
         return z_hat_pri, z_hat_post
-    
+
     def _postKalmanFilterAffineLayer(self, input=None):
 
         assert input is not None
@@ -274,31 +285,33 @@ class AutoencoderKalmanFilter(Autoencoder):
                      weight_initializer=None,
                      weight_regularizer=None,
                      bias_initializer=self._bias_initializer,
-                     activation=None).build(input, [self._hidden_dims[-2]])
-        
+                     activation=None,
+                     dropout_rate=self._dropout_rate).build(input, [self._hidden_dims[-2]])
+
     def _decoderLayer(self, input=None):
 
         assert input is not None
-        
+
         return Dense(name='decoder',
                      weight_initializer=self._weight_initializer,
                      weight_regularizer=None,
                      bias_initializer=self._bias_initializer,
-                     activation=self._activation).build(input, self._hidden_dims[::-1][2:]+[self._output_dim])
-            
+                     activation=self._activation,
+                     dropout_rate=self._dropout_rate).build(input, self._hidden_dims[::-1][2:]+[self._output_dim])
+
     def _outputLayer(self, input=None):
 
         assert input is not None
-        
+
         return Dense(name='y_hat',
                      weight_initializer=self._weight_initializer,
                      weight_regularizer=None,
                      bias_initializer=self._bias_initializer,
-                     activation=None).build(input, [self._output_dim])
-     
+                     activation=self._output_activation).build(input, [self._output_dim])
+
     def _generate_spd_cov_matrix(self, R):
 
-        """ 
+        """
         Generates a symmetric covariance matrix for the input covariance
         given input vector with first n_dims elements the diagonal and the
         remaining elements the off-diagonal elements
@@ -321,7 +334,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         """ Wrapper for sklearn make_spd_matrix """
 
         return tf.py_func(make_spd_matrix, [x], tf.float64)
-    
+
     def _shapiro_wilk(self, x):
 
         x = tf.reshape(x, [tf.size(x)])
@@ -395,7 +408,7 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
     """
     Orthogonal Polynomial-Autoencoder KalmanFilter Class
     """
-    
+
     def __init__(self, params=None, kf_params=None):
 
         super().__init__(params=params, kf_params=kf_params)
@@ -403,7 +416,7 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
     ##################
     # Public Methods #
     ##################
-    
+
     ###################
     # Private Methods #
     ###################
@@ -413,18 +426,18 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
         super()._setPlaceholders()
         self._support = tf.placeholder(dtype=tf.float64, shape=(1,self._input_dim), name='support')
         self._P = tf.squeeze(tf.map_fn(self._polyVector,self._support), axis=0)
-        
+
     def _preKalmanFilterAffineLayer(self, input=None):
 
         assert input is not None
-        
+
         z = Dense(name='z',
                   weight_initializer=self._weight_initializer,
                   weight_regularizer=None,
                   bias_initializer=self._bias_initializer,
                   activation=None).build(input, [self._hidden_dims[-1]])
 
-        z = tf.expand_dims(z, axis=-1) 
+        z = tf.expand_dims(z, axis=-1)
 
         R  = Dense(name='R',
                   weight_initializer=self._weight_initializer,
@@ -437,7 +450,7 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
         # learned noise covariance
         # if self._R_model == 'learned':
 
-        #     # learn L, which is vector from which SPD matrix R is formed 
+        #     # learn L, which is vector from which SPD matrix R is formed
         #     self._L_dims = np.sum(np.arange(1,16+1))
         #     self._L = Dense(name='L',
         #                     weight_initializer=self._weight_initializer,
@@ -457,7 +470,7 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
             R = self._R_activation(R)
 
         return z, R
-    
+
     def _kalmanFiterLayer(self, input=None):
 
         assert input is not None
@@ -468,7 +481,7 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
         z_hat_pri, z_hat_post = tf.map_fn(self._filterEncoderOutput, [z,R], dtype=(tf.float64,tf.float64))
 
         return tf.squeeze(z_hat_pri,axis=-1), tf.squeeze(z_hat_post,axis=-1)
-        
+
     def _filterEncoderOutput(self, input=None):
 
         assert input is not None
@@ -483,12 +496,14 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
 
         output = super()._kalmanFiterLayer(input)
 
+        st()
+
         return output
-        
+
     def _outputLayer(self, input=None):
 
         assert input is not None
-        
+
         c = Dense(name='c',
                   weight_initializer=self._weight_initializer,
                   weight_regularizer=None,
@@ -498,20 +513,19 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
         y_hat = tf.map_fn(lambda c : tf.squeeze(tf.matmul(c,tf.transpose(self._P)),axis=0), [c], dtype=tf.float64, name='y_hat')
 
         return y_hat
-        
+
     def _polyVector(self,x):
 
         #N = self._y_hat.get_shape()[1]
         N = self._output_dim-1
 
         try:
-        
+
             poly = Legendre(x,N).tensor
-        
+
         except:
-        
+
             x = tf.expand_dims(x,axis=1)
             poly = Legendre(x,N).tensor
 
         return poly
-        

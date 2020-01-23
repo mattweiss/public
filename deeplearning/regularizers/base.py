@@ -1,7 +1,7 @@
 import tensorflow as tf
 from dovebirdia.utilities.base import dictToAttributes
 
-def orthonormal_regularizer(scale, scope=None):
+def orthonormal_regularizer(scale=1.0, scope=None):
 
     def ortho_reg(weights):
 

@@ -46,23 +46,23 @@ class SyntheticSensorDataGenerator(ABC):
             
         # save plots
         self._save_plots = save_plots
-        
+
 ########################################################################
 
-    def load_data( self ):
+    def load_data(self):
 
         """ 
         Read data From pickle files
         """
-        
+
         # list all pickel files in dataset directory if trials are not specified, otherwise list those selected
         self._pickle_files = os.listdir( self._dataset_dir ) if self._trials is None else [ file for file in os.listdir( self._dataset_dir ) if int( file.split('_')[-1].split('.')[0] ) in self._trials ]
 
         # read pickle files and generate pandas dataframe
-        self._data = pd.DataFrame( [ pd.read_pickle( self._dataset_dir + '/' + pf ) for pf in self._pickle_files if 'synthetic' not in pf ] )
+        self._data = pd.DataFrame([pd.read_pickle(self._dataset_dir + '/' + pf ) for pf in self._pickle_files if 'synthetic' not in pf ] )
         
         # keys for generated synthetic sensor data
-        self._keys = list( self._data.columns )
+        self._keys = list(self._data.columns)
 
         # substring used for naming synthetic data files
         # self._synthetic_file_substring = self._pickle_files[0].split('_')
@@ -72,7 +72,7 @@ class SyntheticSensorDataGenerator(ABC):
 ########################################################################
 
     @abstractmethod
-    def generate_samples( self ):
+    def generate_samples(self):
 
         """ 
         Abstract method for generating samples

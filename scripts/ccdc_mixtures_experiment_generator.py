@@ -10,104 +10,94 @@ import os, sys, socket
 import numpy as np
 import itertools
 import tensorflow as tf
-from keras import optimizers, losses
+from tensorflow import keras
 import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.deeplearning.networks.lstm import LSTM
-import dovebirdia.utilities.dr_functions as drfns
-import dovebirdia.stats.distributions as distributions
+
+from dovebirdia.deeplearning.networks.keras_classifiers import KerasMultiLabelClassifier
 
 ####################################
 # Test Name and Description
 ####################################
-script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project = 'nyse'
-experiment_name = 'lstm_KILLME'
+script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/ccdc_model.py'
+project = 'ccdc_mixtures'
+experiment_name = '01_23_19_SAMPLES_1000_SYN_True_RES_z_LOSSFN_mse'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
 
 meta_params = dict()
-dr_params = dict()
+dataset_params = dict()
 model_params = dict()
 
 params_dicts = OrderedDict([
     ('meta',meta_params),
+    ('dataset',dataset_params),
     ('model',model_params),
-    ('ds',dr_params),
 ])
 
 ####################################
 # Meta Parameters
 ####################################
 
-meta_params['network'] = LSTM
+meta_params['network'] = KerasMultiLabelClassifier
+
+####################################
+# Dataset Parameters
+####################################
+
+dataset_params['dataset_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/01_23_19/'
+dataset_params['with_val'] = True
+dataset_params['resistance_type'] = 'resistance_z'
+dataset_params['labels'] = None
+dataset_params['sensors'] = None
+dataset_params['with_synthetic'] = True
+dataset_params['samples'] = (0,1000)
+dataset_params['multi_label'] = True
+dataset_params['feature_range'] = None # [None,(0,1)] # None if not using
 
 ####################################
 # Model Parameters
 ####################################
 
 model_params['results_dir'] = '/results/'
-model_params['input_dim'] = 4
-model_params['output_dim'] = model_params['input_dim']
-model_params['hidden_dims'] = (128,64)
-model_params['output_activation'] = None
+model_params['output_dim'] = 2 # number of classes
+model_params['hidden_dims'] = [(256,128,64,32),(128,32),(256,128,32),(128,64),(256,32)]
 model_params['activation'] = tf.nn.leaky_relu
+model_params['output_activation'] = tf.nn.sigmoid
 model_params['use_bias'] = True
-model_params['weight_initializer'] = 'glorot_uniform'
-model_params['bias_initializer'] = 0.0
-model_params['weight_regularizer'] = None
+model_params['kernel_initializer'] = 'glorot_uniform'
+model_params['bias_initializer'] = tf.initializers.zeros
+model_params['kernel_regularizer'] = keras.regularizers.l1
+model_params['kernel_regularizer_scale'] = 0.0
 model_params['bias_regularizer'] = None
+model_params['bias_regularizer_scale'] = None
 model_params['activity_regularizer'] = None
-model_params['weight_constraint'] = None
+model_params['activity_regularizer_scale'] = None
+model_params['kernel_constraint'] = None
 model_params['bias_constraint'] = None
-model_params['seq_len'] = 1 #[1,5,10,15,25]
-model_params['recurrent_regularizer'] = None
-model_params['stateful'] = False
-model_params['return_seq'] = True
+model_params['dropout_rate'] = 0.0
+model_params['input_dropout_rate'] = 0.0
+model_params['scale_output'] = False
+model_params['early_stopping'] = True
 
 # loss
-model_params['loss'] = losses.mean_squared_error
+model_params['loss'] = tf.keras.losses.mean_squared_error
+# tf.nn.sigmoid_cross_entropy_with_logits
+# tf.keras.losses.mean_squared_error
+# tf.keras.losses.categorical_crossentropy
+model_params['from_logits'] = True
 
 # training
 model_params['epochs'] = 1000
-model_params['mbsize'] = 100
-model_params['optimizer'] = optimizers.Adam
-model_params['learning_rate'] = 1e-3#list(np.logspace(-3,-5,10))
+model_params['mbsize'] = [32,64]
+model_params['optimizer'] = tf.train.AdamOptimizer
+model_params['optimizer_params'] = [{'learning_rate':lr} for lr in np.logspace(-4,-8,5)]
+#[ {'learning_rate':lr,'momentum':0.95,'use_nesterov':True} for lr in np.logspace(-3,-5,3) ]
+#[{'learning_rate':lr} for lr in np.logspace(-3,-5,5)]
 
-# testing
-model_params['history_size'] = model_params['epochs'] // 10
-
-####################################
-# Domain Randomization Parameters
-####################################
-
-dr_params['ds_type'] = 'train'
-dr_params['x_range'] = (-1,1)
-dr_params['n_trials'] = 1
-dr_params['n_baseline_samples'] = 0
-dr_params['n_samples'] = 100
-dr_params['n_features'] = model_params['input_dim']
-dr_params['param_range'] = 1.0
-dr_params['max_N'] = 7
-dr_params['min_N'] = 3
-dr_params['fns'] = (
-    #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
-    #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
-    #['sine', drfns.sine, [(0.0,100.0),(0.04,0.1)]],
-    # ['taylor_poly', drfns.taylor_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(dr_params['max_N']+1)],
-    #['legendre_poly', drfns.legendre_poly, [(-param_range,param_range)]*(N+1)],
-    ['trig_poly', drfns.trig_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(2*dr_params['max_N']+1)],
-)
-
-dr_params['noise'] = (
-    ['gaussian', np.random.normal, {'loc':0.0, 'scale':0.2}],
-    #['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.1, 'loc2':-0.05, 'scale2':0.1}],
-    # ['cauchy', np.random.standard_cauchy, {}],
-    #['stable', distributions.stable, {'alpha':(1.0,2.0),'scale':0.2}],
-)
 ####################################
 # Determine scaler and vector parameters
 ####################################
@@ -165,8 +155,9 @@ for dict_name, params_dict in params_dicts.items():
 cfg_ctr = 1
 
 for config_params in itertools.product(config_params_dicts['meta'],
+                                       config_params_dicts['dataset'],
                                        config_params_dicts['model'],
-                                       config_params_dicts['ds']):
+):
 
     # Create Directories
     model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'
