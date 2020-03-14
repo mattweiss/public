@@ -89,79 +89,119 @@ class AutoencoderKalmanFilter(Autoencoder):
    # Public Methods #
     ##################
 
-    def evaluate(self, x=None, y=None,
-                #t=None,
-                save_results=True):
+    # def evaluate(self, x=None, y=None, labels=None,
+    #              eval_ops = None,
+    #              save_results=None):
 
-        assert x is not None
-        assert y is not None
-        # assert t is not None
+    #     assert x is not None
+    #     assert y is not None
 
-        # model predictions
-        x_hat_list = list()
-        z_list = list()
-        z_hat_post_list = list()
-        R_list = list()
+    #     # default evaluation ops list
+    #     eval_ops_dict = OrderedDict()
+    #     eval_ops_dict = {
+    #         'loss_op':self._loss_op,
+    #         'mse_op':self._mse_op,
+    #         'y_hat':self._y_hat
+    #     }
 
-        with tf.Session() as sess:
+    #     # add custom ops to list
+    #     for eval_op in eval_ops:
 
-            # backwards compatibility
-            try:
+    #         eval_op_key = '_' + eval_op
+            
+    #         if eval_op_key in self.__dict__.keys():
+            
+    #             eval_ops_dict.update({eval_op:self.__dict__[eval_op_key]})
 
-                model_results_path = './results/trained_model.ckpt'
-                tf.train.Saver().restore(sess, model_results_path)
+    #     # dictionary of results lists
+    #     for eval_op in eval_ops_dict.keys():
 
-            except:
+    #         self._history[eval_op] = list()
 
-                model_results_path = './results/tensorflow_model.ckpt'
-                tf.train.Saver().restore(sess, model_results_path)
+    #     # model predictions
+    #     ###################
+    #     # y_hat_list = list()
+    #     # z_list = list()
+    #     # R_list = list()
+    #     # kf_results_list = list()
+    #     #######################
+        
+    #     with tf.Session() as sess:
 
-            for trial, (X,Y) in enumerate(zip(x,y)):
+    #         # backwards compatibility
+    #         try:
 
-                if X.ndim > 2:
+    #             model_results_path = './results/trained_model.ckpt'
+    #             tf.train.Saver().restore(sess, model_results_path)
 
-                    X = np.squeeze(X,axis=-1)
+    #         except:
 
-                if y.ndim > 3:
+    #             model_results_path = './results/tensorflow_model.ckpt'
+    #             tf.train.Saver().restore(sess, model_results_path)
 
-                    Y = np.squeeze(Y,axis=-1)
+    #         for trial, (X,Y) in enumerate(zip(x,y)):
 
-                test_feed_dict = {self._X:X, self._y:Y}
+    #             if X.ndim > 2:
 
-                # OKF
-                if hasattr(self, '_support'):
+    #                 X = np.squeeze(X,axis=-1)
 
-                    support = np.linspace(-1,1,100).reshape(1,-1)
-                    test_feed_dict[self._support] = support
+    #             if Y.ndim > 3:
 
-                test_loss, x_hat, z, z_hat_post, R = sess.run([self._loss_op,self._y_hat,self._z,self._z_hat_post,self._R], feed_dict=test_feed_dict)
-                self._history['test_loss'].append(test_loss)
-                x_hat_list.append(x_hat)
-                z_list.append(z)
-                z_hat_post_list.append(z_hat_post)
-                R_list.append(R)
+    #                 Y = np.squeeze(Y,axis=-1)
 
-        x_hat = np.asarray(x_hat_list)
-        z = np.asarray(z_list)
-        z_hat_post = np.asarray(z_hat_post_list)
-        R = np.asarray(R_list)
+    #             test_feed_dict = {self._X:X, self._y:Y,self._mask:np.ones(shape=X.shape)}
 
-        # save predictions
-        if save_results is not None:
+    #             ##################################################################################
+    #             # test_loss, test_mse, y_hat, z, R, kf_results = sess.run([self._loss_op,
+    #             #                                                          self._mse_op,
+    #             #                                                          self._y_hat,
+    #             #                                                          self._z,
+    #             #                                                          self._R,
+    #             #                                                          self._kf_results],
+    #             #                                                          feed_dict=test_feed_dict)
+    #             eval_ops_results = sess.run(list(eval_ops_dict.values()),feed_dict=test_feed_dict)
+    #             ##################################################################################
 
-            test_results_dict = {
-                'x':x,
-                'y':y,
-                'x_hat':x_hat,
-                # 't':t,
-                'z':z,
-                'z_hat_post':z_hat_post,
-                'R':R
-                }
+    #             # append results to dictionary
+    #             for eval_ops_key,eval_ops_result in zip(eval_ops_dict.keys(),eval_ops_results):
 
-            saveDict(save_dict=test_results_dict, save_path='./results/' + save_results + '.pkl')
+    #                 self._history[eval_ops_key].append(eval_ops_result)
+                    
+    #             #################################
+    #             # y_hat_list.append(y_hat)
+    #             # z_list.append(z)
 
-        return self._history
+    #             # R_list.append(R)
+    #             # kf_results_list.append(kf_results)
+    #             #################################
+
+    #     # x = np.asarray(x)
+    #     # y = np.asarray(y)
+    #     # y_hat = np.asarray(y_hat_list)
+    #     # z = np.asarray(z_list)
+    #     # R = np.asarray(R_list)
+    #     # kf_results = np.asarray(kf_results_list)
+
+    #     self._history['x'] = np.asarray(x)
+    #     self._history['y'] = np.asarray(y)
+        
+    #     # save predictions
+    #     if save_results is not None:
+
+    #         # test_results_dict = {
+    #         #     'x':x,
+    #         #     'y':y,
+    #         #     'y_hat':y_hat,
+    #         #     'z':z,
+    #         #     'R':R,
+    #         #     'kf_results':kf_results,
+    #         #     'labels':labels,
+    #         #     }
+
+    #         #saveDict(save_dict=test_results_dict, save_path='./results/' + save_results + '.pkl')
+    #         saveDict(save_dict=self._history, save_path='./results/' + save_results + '.pkl')
+
+    #     return self._history
 
     ###################
     # Private Methods #
@@ -169,25 +209,17 @@ class AutoencoderKalmanFilter(Autoencoder):
 
     def _buildNetwork(self):
 
-        # weight regularizer
-        try:
-
-            weight_regularizer = self._weight_regularizer(self._weight_regularizer_scale)
-
-        except:
-
-            weight_regularizer = self._weight_regularizer
-
         self._setPlaceholders()
 
         self._encoder = self._encoderLayer(self._X)
 
         self._z, self._R = self._preKalmanFilterAffineLayer(self._encoder)
 
-        self._z_hat_pri, self._z_hat_post = self._kalmanFiterLayer([self._z, self._R])
+        #self._z_hat_pri, self._z_hat_post = self._kalmanFilterLayer([self._z, self._R])
+        #self._kf_results = self._kalmanFilterLayer([self._z, self._R])
+        self._kf_results = self._kalman_filter.fit([self._z,self._R])
 
-        #self._post_kf_affine = self._postKalmanFilterAffineLayer(tf.squeeze(self._z_hat_pri,axis=-1))
-        self._post_kf_affine = self._postKalmanFilterAffineLayer(self._z_hat_pri)
+        self._post_kf_affine = self._postKalmanFilterAffineLayer(tf.squeeze(self._kf_results['z_hat_pri'],axis=-1))
 
         self._decoder = self._decoderLayer(self._post_kf_affine)
 
@@ -198,16 +230,22 @@ class AutoencoderKalmanFilter(Autoencoder):
         # input and output placeholders
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
-
+        self._mask = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='mask')
+        
     def _encoderLayer(self, input=None):
 
         assert input is not None
 
         return Dense(name='encoder',
                      weight_initializer=self._weight_initializer,
-                     weight_regularizer=None,
+                     weight_regularizer=self._weight_regularizer,
+                     weight_regularizer_scale=self._weight_regularizer_scale,
                      bias_initializer=self._bias_initializer,
+                     bias_regularizer=self._bias_regularizer,
+                     weight_constraint=self._weight_constraint,
+                     bias_constraint=self._bias_constraint,
                      activation=self._activation,
+                     use_bias=True,
                      input_dropout_rate=self._input_dropout_rate,
                      dropout_rate=self._dropout_rate).build(input, self._hidden_dims[:-1])
 
@@ -215,77 +253,86 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         assert input is not None
 
+        # scale Z, L and R dimensions if including z dot
+        self._dim_scale = self._kalman_filter._dimensions[1] if self._kalman_filter._with_z_dot else 1
+
         z = Dense(name='z',
-                        weight_initializer=self._weight_initializer,
-                        weight_regularizer=None,
-                        bias_initializer=self._bias_initializer,
-                        activation=None).build(input, [self._hidden_dims[-1]])
+                  weight_initializer=self._weight_initializer,
+                  weight_regularizer=self._weight_regularizer,
+                  weight_regularizer_scale=self._weight_regularizer_scale,
+                  bias_initializer=self._bias_initializer,
+                  bias_regularizer=self._bias_regularizer,
+                  weight_constraint=self._weight_constraint,
+                  bias_constraint=self._bias_constraint,
+                  activation=None,
+                  use_bias=True,
+                  input_dropout_rate=0.0,
+                  dropout_rate=0.0).build(input, [self._dim_scale*self._hidden_dims[-1]])
+
+        z = tf.expand_dims(z, axis=-1)
+
+        self._L_dims = np.sum(np.arange(1,self._dim_scale*self._hidden_dims[-1]+1))
 
         # backwards compatibility
-        try:
+        # try:
 
-            # learned noise covariance
-            if self._R_model == 'learned':
+        # learned noise covariance
+        if self._R_model == 'learned':
 
-                # learn L, which is vector from which SPD matrix R is formed
-                self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
-                self._L = Dense(name='L',
-                                weight_initializer=self._weight_initializer,
-                                weight_regularizer=None,
-                                bias_initializer=self._bias_initializer,
-                                activation=None).build(input, [self._L_dims])
-
-                R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
-
-            elif self._R_model == 'identity':
-
-                R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf.float64)
-
-        except:
-
-            # learn L, which is vector from which SPD matrix R is formed
-            self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
             self._L = Dense(name='L',
                             weight_initializer=self._weight_initializer,
-                            weight_regularizer=None,
+                            weight_regularizer=self._weight_regularizer,
+                            weight_regularizer_scale=self._weight_regularizer_scale,
                             bias_initializer=self._bias_initializer,
-                            activation=None).build(input, [self._L_dims])
+                            bias_regularizer=self._bias_regularizer,
+                            weight_constraint=self._weight_constraint,
+                            bias_constraint=self._bias_constraint,
+                            activation=self._R_activation,
+                            use_bias=True,
+                            input_dropout_rate=0.0,
+                            dropout_rate=0.0).build(input, [self._L_dims])
 
             R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
+        elif self._R_model == 'identity':
+
+            R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf.float64)
+            R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
+
         # for backwards compatibility
-        try:
+        #try:
 
-            if self._R_activation is not None:
+        #     if self._R_activation is not None:
 
-                R = self._R_activation(R)
+        #         R = self._R_activation(R)
 
-        except:
+        # except:
 
-            pass
+        #     pass
 
         return z, R
 
-    def _kalmanFiterLayer(self, input=None):
+    def _kalmanFilterLayer(self, input=None):
 
         z, R = input
 
         self._kf_results = self._kalman_filter.fit([z,R])
-
-        z_hat_pri = tf.squeeze(self._kf_results['z_hat_pri'],axis=-1)
-        z_hat_post = tf.squeeze(self._kf_results['z_hat_post'],axis=-1)
-
-        return z_hat_pri, z_hat_post
-
+        
     def _postKalmanFilterAffineLayer(self, input=None):
 
         assert input is not None
 
         return Dense(name='post_kf_affine',
-                     weight_initializer=None,
-                     weight_regularizer=None,
+                     weight_initializer=self._weight_initializer,
+                     weight_regularizer=self._weight_regularizer,
+                     weight_regularizer_scale=self._weight_regularizer_scale,
                      bias_initializer=self._bias_initializer,
+                     bias_regularizer=self._bias_regularizer,
+                     weight_constraint=self._weight_constraint,
+                     bias_constraint=self._bias_constraint,
                      activation=None,
+                     use_bias=True,
+                     input_dropout_rate=0.0,
                      dropout_rate=self._dropout_rate).build(input, [self._hidden_dims[-2]])
 
     def _decoderLayer(self, input=None):
@@ -294,9 +341,15 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         return Dense(name='decoder',
                      weight_initializer=self._weight_initializer,
-                     weight_regularizer=None,
+                     weight_regularizer=self._weight_regularizer,
+                     weight_regularizer_scale=self._weight_regularizer_scale,
                      bias_initializer=self._bias_initializer,
+                     bias_regularizer=self._bias_regularizer,
+                     weight_constraint=self._weight_constraint,
+                     bias_constraint=self._bias_constraint,
                      activation=self._activation,
+                     use_bias=True,
+                     input_dropout_rate=0.0,
                      dropout_rate=self._dropout_rate).build(input, self._hidden_dims[::-1][2:]+[self._output_dim])
 
     def _outputLayer(self, input=None):
@@ -305,9 +358,16 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         return Dense(name='y_hat',
                      weight_initializer=self._weight_initializer,
-                     weight_regularizer=None,
+                     weight_regularizer=self._weight_regularizer,
+                     weight_regularizer_scale=self._weight_regularizer_scale,
                      bias_initializer=self._bias_initializer,
-                     activation=self._output_activation).build(input, [self._output_dim])
+                     bias_regularizer=self._bias_regularizer,
+                     weight_constraint=self._weight_constraint,
+                     bias_constraint=self._bias_constraint,
+                     activation=self._output_activation,
+                     use_bias=True,
+                     input_dropout_rate=0.0,
+                     dropout_rate=0.0).build(input, [self._output_dim])
 
     def _generate_spd_cov_matrix(self, R):
 
@@ -471,34 +531,32 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
 
         return z, R
 
-    def _kalmanFiterLayer(self, input=None):
+    # def _kalmanFilterLayer(self, input=None):
 
-        assert input is not None
+    #     assert input is not None
 
-        z, R = input
+    #     z, R = input
 
-        # filter each trial in mini batch
-        z_hat_pri, z_hat_post = tf.map_fn(self._filterEncoderOutput, [z,R], dtype=(tf.float64,tf.float64))
+    #     # filter each trial in mini batch
+    #     z_hat_pri, z_hat_post = tf.map_fn(self._filterEncoderOutput, [z,R], dtype=(tf.float64,tf.float64))
 
-        return tf.squeeze(z_hat_pri,axis=-1), tf.squeeze(z_hat_post,axis=-1)
+    #     return tf.squeeze(z_hat_pri,axis=-1), tf.squeeze(z_hat_post,axis=-1)
 
-    def _filterEncoderOutput(self, input=None):
+    # def _filterEncoderOutput(self, input=None):
 
-        assert input is not None
+    #     assert input is not None
 
-        z, R = input
+    #     z, R = input
 
-        # transpose for Kalman Filter compatibility
-        #input = tf.transpose(z)
+    #     # transpose for Kalman Filter compatibility
+    #     #input = tf.transpose(z)
 
-        # add single dimension for Kalman Filter compatibility
-        #input = tf.expand_dims(input, axis=1)
+    #     # add single dimension for Kalman Filter compatibility
+    #     #input = tf.expand_dims(input, axis=1)
 
-        output = super()._kalmanFiterLayer(input)
+    #     output = super()._kalmanFilterLayer(input)
 
-        st()
-
-        return output
+    #     return output
 
     def _outputLayer(self, input=None):
 

@@ -25,7 +25,7 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/weather_model.py'
 project = 'weather'
-experiment_name = 'aekf_KILLME'
+experiment_name = 'aekf_weather_EPOCH_500_SAMPLES_40k_NCV_ALL_FEATURES_KILLME'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -52,17 +52,26 @@ meta_params['network'] = AutoencoderKalmanFilter
 # Model Parameters
 ####################################
 
+model_params['hidden_dims'] = (128,64,32) # [(512,128,64),(128,64),(128,64,32),(512,128)]
+model_params['learning_rate'] = list(np.logspace(-3,-5,3))
+kf_params['q'] = [1e0,1e-1] # list(np.logspace(-1,-3,3))
+kf_params['with_z_dot'] = [True,False]
+model_params['optimizer'] = tf.train.AdamOptimizer #[tf.train.MomentumOptimizer,tf.train.AdamOptimizer]
+model_params['mbsize'] = [256,512]
+
+# model params
+
 model_params['results_dir'] = '/results/'
-model_params['input_dim'] = 5
+model_params['input_dim'] = 2
 model_params['output_dim'] = model_params['input_dim']
-model_params['hidden_dims'] = [(128,64),(128,64,32),(64,32)]
+
 model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
-model_params['weight_initializer'] = tf.initializers.glorot_uniform
-model_params['bias_initializer'] = tf.initializers.zeros
-model_params['weight_regularizer'] = tf.keras.regularizers.l2
-model_params['weight_regularizer_scale'] = 0.0
+model_params['weight_initializer'] = tf.initializers.glorot_normal
+model_params['bias_initializer'] = tf.initializers.ones
+model_params['weight_regularizer'] = None#[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
+model_params['weight_regularizer_scale'] = 0.0#[1e-4,1e-5]
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
 model_params['weight_constraint'] = None
@@ -71,82 +80,39 @@ model_params['input_dropout_rate'] = 0.0
 model_params['dropout_rate'] = 0.0
 model_params['R_model'] = 'learned' # learned, identity
 model_params['R_activation'] = None
+model_params['train_ground'] = True
 
 # loss
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100
-model_params['mbsize'] = 960
-model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['momentum'] = 0.95
-model_params['learning_rate'] = list(np.logspace(-3,-5,3))
-model_params['trials'] = [0]
+model_params['epochs'] = 10
+model_params['momentum'] = 0.96
+model_params['use_nesterov'] = True
+model_params['decay_steps'] = 100
+model_params['decay_rate'] = 0.96
+model_params['staircase'] = False
+model_params['outliers'] = False
+model_params['p_outlier'] = 0.05 * (2.0/3.0)
+model_params['outlier_range'] = (-1,1)
 
 ####################################
 # Dataset Parameters
 ####################################
 
-ds_params['saved_dataset'] = '/home/mlweiss/Documents/wpi/research/data/weather/split/weather_all_train_test_split.npy'
+ds_params['saved_dataset'] = '/home/mlweiss/Documents/wpi/research/data/weather/historicalHourlyWeatherData/split/hourly_weather_dataset_FEATURES_temperature_pressure_CITY_Phoenix_SAMPLES_40000.pkl'
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
 kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = 16
-kf_params['n_measurements'] = model_params['mbsize']
-kf_params['dt'] = 0.2
-kf_params['sample_freq'] = kf_params['dt']**-1
-kf_params['q'] = list(np.logspace(-2,0,5)) # list(np.logspace(-1,-8,8))
+kf_params['n_signals'] = 8
+kf_params['dt'] = 0.5 # list(np.linspace(1e-2,1e-0,12))
 kf_params['f_model'] = 'fixed' # fixed, random, learned
-kf_params['h_model'] = 'fixed' # fixed, random, learned, identity
-kf_params['weight_initializer'] = tf.initializers.glorot_uniform # if learning F and H
-
-# Build dynamical model
-if kf_params['dimensions'][1] == 2:
-
-    # F
-    if kf_params['f_model'] == 'fixed':
-
-        kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
-
-    elif kf_params['f_model'] == 'random':
-
-        kf_params['F'] = np.random.normal(size=(kf_params['n_signals']*kf_params['dimensions'][1],kf_params['n_signals']*kf_params['dimensions'][1]))
-
-    # H
-    if kf_params['h_model'] == 'fixed':
-
-        kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0]))
-
-    elif kf_params['h_model'] == 'identity':
-
-        kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,1.0]))
-
-    elif kf_params['h_model'] == 'random':
-
-        kf_params['H'] = np.random.normal(size=(kf_params['n_signals'],kf_params['n_signals']*kf_params['dimensions'][1]))
-
-if kf_params['dimensions'][1] == 3:
-
-    # F
-    if kf_params['f_model'] == 'fixed':
-
-        kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
-
-    elif kf_params['f_model'] == 'random':
-
-        kf_params['F'] = np.random.normal(size=(kf_params['n_signals']*kf_params['dimensions'][1],kf_params['n_signals']*kf_params['dimensions'][1]))
-
-    # H
-    if kf_params['h_model'] == 'fixed':
-
-        kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0,0.0]))
-
-    elif kf_params['h_model'] == 'random':
-
-        kf_params['H'] = np.random.normal(size=(kf_params['n_signals'],kf_params['n_signals']*kf_params['dimensions'][1]))
+kf_params['h_model'] = 'fixed' # fixed, random, learned
+kf_params['diagonal_R'] = False
+kf_params['diagonal_P'] = False
 
 ####################################
 # Determine scaler and vector parameters

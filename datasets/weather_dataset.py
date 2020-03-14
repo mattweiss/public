@@ -1,12 +1,12 @@
 import os
+import glob
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
+from sklearn.preprocessing import StandardScaler
 
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
+from dovebirdia.utilities.base import saveAttrDict
 
 class weatherDataset(AbstractDataset):
 
@@ -15,20 +15,15 @@ class weatherDataset(AbstractDataset):
         """
         Parameters:
 
-        train_samples: Number of training samples to consider
-        with_val: use validation set
-        support: support of function,
-        feature_range: min max scaling range
-        split_len: # Each city's temp has over 45000 samples.  These are split into subsamples of length split_len
+        datadir: path to data set csv files
+        samples: tuple of samples to include (start,end)
+        city: city to include in dataset
         features: temperature,pressure,humidity,wind_direction,wind_speed
-        cities: cities to include in dataset
+        standardize: whether to use StandardScaler, bool
 
         """
 
         super().__init__(params)
-
-        # set dataset manually for now
-        self._dataset_dir = '/home/mlweiss/Documents/wpi/research/data/weather/'
 
     ##################
     # Public Methods #
@@ -39,103 +34,106 @@ class weatherDataset(AbstractDataset):
         # load previously saved dataset
         if hasattr(self,'_saved_dataset'):
 
-            self._data = np.load(self._saved_dataset,allow_pickle=True).item()
+            self._data = self.getSavedDataset(self._saved_dataset)
 
         # create and save dataset
         else:
 
-            # function fupport
-            # self._data['t'] = np.expand_dims(np.linspace(self._support[0], self._support[1], self._split_len), axis=-1)
+            ###################################
+            # Read CSV Data to Pandas Dataframe
+            ###################################
+            
+            # find all csv files in data directory
+            csv_paths = glob.glob(os.path.join(self._datadir+'raw/', '*.csv'))
 
-            # read dataset
-            data_list = list()
+            # empty pandas dataframe
+            data_pd = pd.DataFrame()
 
-            for feature in self._features:
+            for csv_path in csv_paths:
+    
+                feature = csv_path.split('/')[-1].split('.')[0]
+    
+                if feature in self._features:
 
-                data_list.append(pd.read_csv(self._dataset_dir + '/raw/' + feature + '.csv', index_col=None, header=0))
+                    # if first time concatenating, include datetime column
+                    if data_pd.shape[0] == 0:
+            
+                        read_columns = ['datetime',self._city]
+            
+                    else:
+            
+                        read_columns = self._city
+        
+                    # load weather features for given city, ignoring first row as it often contains NAN values
+                    data_pd = pd.concat([data_pd,pd.read_csv(csv_path,skiprows=[1])[read_columns]],axis=1)
 
-            self._raw_df = pd.concat(data_list, axis=1, ignore_index=False)
-            # self._raw_df = pd.read_csv(self._dataset_dir + 'raw/' + self._csv_file, usecols=self._cities)
+                    # rename columns
+                    column_names = {
+                        self._city:feature
+                    }
 
-            # fill Nan values
-            self._raw_df = self._raw_df.fillna(method='ffill')
+                    # Rename Columns to match features
+                    data_pd = data_pd.rename(columns=column_names)
 
-            # lists for split data and symbols
-            weather_list = list()
-            city_list = list()
+            # convert datetime column to datetime data type
+            data_pd['datetime'] = pd.to_datetime(data_pd['datetime'])
 
-            # loop over all cities
-            for city in self._cities:
+            # set datetime column as index and remove datetime column
+            data_pd = data_pd.set_index(data_pd['datetime'])
+            data_pd = data_pd.drop(columns='datetime')
 
-                # get all data for given symbol
-                weather_values = self._raw_df[city].values[:self._n_samples]
-                weather_list.append(weather_values)
-                city_list.append(city)
+            # interpolate NANn values
+            data_pd = data_pd.interpolate(method ='time', limit_direction ='forward', limit = 10)
 
-                # split security data into arrays of len self._split_len
-                # city_weather_data_splits = [city_weather_data[i * self._split_len:(i + 1) * self._split_len]
-                #                                 for i in range( (len(city_weather_data) + self._split_len - 1) // self._split_len )]
-                #
-                # # loop over security data splits
-                # for city_weather_data_split in city_weather_data_splits:
-                #
-                #     if city_weather_data_split.shape[0] == self._split_len:
-                #
-                #         weather_splits_list.append(city_weather_data_split[:1500])
-                #         city_splits_list.append(city)
+            #################################
+            # Pandas Dataframe to Numpy Array
+            #################################
 
-            # cast to numpy arrays
-            weather_splits = np.stack(weather_list)
-            city_splits = np.stack(city_list)
+            X = data_pd.to_numpy()[self._n_samples[0]:self._n_samples[1]]
+            self._features = data_pd.columns
+            
+            ######################
+            # Train-Val-Test Split
+            ######################
 
-            # training and testing data and labels
-            train_test_split_index = int(weather_splits.shape[1] * 0.8)
+            #train-test
+            train_test_split_indices = int(0.8*X.shape[0])
+            X_train, X_test = X[:train_test_split_indices], X[train_test_split_indices:]
 
-            self._data['x_train'] = weather_splits[:,:train_test_split_index]
-            self._data['x_test'] = weather_splits[:,train_test_split_index:]
-            self._data['y_labels'] = city_splits
+            # train-val
+            train_val_split_indices = int(0.8*X_train.shape[0])
+            X_train, X_val = X_train[:train_val_split_indices], X_train[train_val_split_indices:]
 
-            # validation set
-            if self._with_val is not None:
+            assert np.sum(X_train.shape[0]+X_val.shape[0]+X_test.shape[0])==X.shape[0]
+            
+            ##################
+            # Standardize Data
+            ##################
 
-                train_val_split_index = int(self._data['x_train'].shape[1] * 0.8)
+            if self._standardize:
+                
+                scaler = StandardScaler(with_mean=True,with_std=True)
+                X_train = scaler.fit_transform(X_train)
+                X_val = scaler.transform(X_val)
+                X_test = scaler.transform(X_test)
 
-                # temp to hold training values
-                x_train_tmp = self._data['x_train']
+                assert np.sum(X_train.shape[0]+X_val.shape[0]+X_test.shape[0])==X.shape[0]
 
-                self._data['x_train'] = x_train_tmp[:,:train_val_split_index]
-                self._data['x_val'] = x_train_tmp[:,train_val_split_index:]
+            ######################
+            # Assign to attributes
+            ######################
 
-            # min-max scaler
-            if self._feature_range is not None:
+            self._data['x_train'] = np.expand_dims(X_train,axis=0)
+            self._data['x_val'] = np.expand_dims(X_val,axis=0)
+            self._data['x_test'] = np.expand_dims(X_test,axis=0)
 
-                x_train_min_max_list = list()
-                x_val_min_max_list = list()
-                x_test_min_max_list = list()
-
-                for x_train, x_val, x_test in zip(self._data['x_train'],self._data['x_val'],self._data['x_test']):
-
-                    min_max_scaler = MinMaxScaler(feature_range=(0,1))
-                    x_train_min_max_list.append(min_max_scaler.fit_transform(x_train))
-                    x_val_min_max_list.append(min_max_scaler.transform(x_val))
-                    x_test_min_max_list.append(min_max_scaler.transform(x_test))
-
-                self._data['x_train'] = np.asarray(x_train_min_max_list)
-                self._data['x_val'] = np.asarray(x_val_min_max_list)
-                self._data['x_test'] = np.asarray(x_test_min_max_list)
-
-            # Baseline shift
-            self._data['x_train'] -= self._data['x_train'][:,:1]
-            self._data['x_val'] -= self._data['x_val'][:,:1]
-            self._data['x_test'] -= self._data['x_test'][:,:1]
-
+            ##############
             # save to disk
-            save_dir = self._dataset_dir + 'split/' + self._dataset_name
+            ##############
 
-            if np_filename is not None:
+            save_dir = self._datadir + 'split/' + self._dataset_name.replace(' ','_') + '.pkl'
 
-                save_dir += '_' + np_filename
-
-            np.save(save_dir,self._data,allow_pickle=True)
+            # np.save(save_dir,self._data,allow_pickle=True)
+            saveAttrDict(save_dict=self.__dict__, save_path=save_dir)
 
         return self._data

@@ -54,7 +54,8 @@ class KerasMultiLabelClassifier():
 
                 self._model.add(keras.layers.Dropout(self._input_dropout_rate, input_shape=(input_dim,)))
 
-            self._model.add(keras.layers.Dense(dim,input_dim=input_dim,
+            self._model.add(keras.layers.Dense(dim,
+                                               input_dim=input_dim,
                                                kernel_initializer = self._kernel_initializer,
                                                bias_initializer = self._bias_initializer,
                                                kernel_regularizer=self._kernel_regularizer(self._kernel_regularizer_scale),

@@ -5,9 +5,10 @@ import random
 import copy
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
-from dovebirdia.utilities.base import saveAttrDict, loadDict
-from sklearn.preprocessing import MinMaxScaler
+from dovebirdia.utilities.base import saveAttrDict, loadDict, generateMask
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy.stats import shapiro
+import copy
 
 class DomainRandomizationDataset(AbstractDataset):
 
@@ -28,7 +29,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
         return self._data
 
-    def generateDataset(self):
+    def generateDataset(self,with_mask=False):
 
         """
         Generate domain randomization dataset.  Logic for whether to save to disk or return in in getDataset()
@@ -37,132 +38,130 @@ class DomainRandomizationDataset(AbstractDataset):
         # linspace for generating function values
         t = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_samples), axis=-1)
 
-        # list to hold either training of testing datasets.
-        x_list = list()
-        y_list = list()
+        # list to hold either training or testing datasets.
+        self._data['x'] = list()
+        self._data['y'] = list()
         noise_types = list()
-
-        # If training include list for validation data
-        if self._ds_type == 'train':
-
-            x_val_list = list()
-            y_val_list = list()
-            n_datasets = 2
-
-        else:
-
-            n_datasets = 1
 
         for trial in range(self._n_trials):
 
-            # loop twice if training to generate validation set
-            for dataset_ctr in range(n_datasets):
+            # randomly select training function and parameters
+            self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
 
-                # randomly select training function and parameters
-                self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
+            y_loop_list = list()
 
-                y_loop_list = list()
+            for _ in range(self._n_features):
 
-                for _ in range(self._n_features):
+                param_list = list()
 
-                    param_list = list()
+                for param in self._fn_params:
 
-                    for param in self._fn_params:
+                    if isinstance(param, tuple):
 
-                        if isinstance(param, tuple):
+                        param_list.append(np.random.uniform(param[0], param[1]))
 
-                            param_list.append(np.random.uniform(param[0], param[1]))
+                    else:
 
-                        else:
+                        param_list.append(param)
 
-                            param_list.append(param)
-
-                    # select the number of parameters if polynomial order is randomized
-                    try:
-
-                        param_max_index = np.random.randint(self._min_N,self._max_N+1) + 1
-                        param_list = param_list[:param_max_index]
-
-                    except:
-
-                        pass
-
-                    y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
-
-                y = np.hstack(y_loop_list)
-
-                # min max scale y
+                # select the number of parameters if polynomial order is randomized
                 try:
 
-                    y = MinMaxScaler(feature_range=self._feature_range).fit_transform(y)
+                    param_max_index = np.random.randint(self._min_N,self._max_N+1) + 1
+                    param_list = param_list[:param_max_index]
 
                 except:
 
                     pass
 
-                # zero curves
-                y -= y[0]
+                y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
 
-                # if number of features is less than number of noise features
-                if self._n_features < self._n_noise_features:
+            y = np.hstack(y_loop_list)
 
-                    y = np.tile(y,(1,self._n_noise_features))
+            ###############################################
+            # randomly select training noise and parameters
+            ###############################################
 
-                # randomly select training noise and parameters
-                self._noise_name, self._noise_dist, self._noise_params = random.choice(self._noise)
-                noise_types.append(self._noise_name)
+            self._noise_name, self._noise_dist, self._noise_params = random.choice(self._noise)
+            noise_types.append(self._noise_name)
 
-                # randomly select noise params if tuple
-                noise_param_dict = dict()
-                for param_key, param in self._noise_params.items():
+            # randomly select noise params if tuple
+            noise_param_dict = dict()
+            
+            for param_key, param in self._noise_params.items():
 
-                        if isinstance(param, tuple):
+                if isinstance(param, tuple):
 
-                            noise_param_dict[param_key] = np.random.uniform(param[0], param[1])
-
-                        else:
-
-                            noise_param_dict[param_key] = param
-
-                y_noise = y + self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_noise_features))
-
-                # shift
-                try:
-
-                    shift_value = np.random.uniform(low=self._baseline_shift[0],high=self._baseline_shift[1],size=1)
-                    y += shift_value
-                    y_noise += shift_value
-
-                except:
-
-                    pass
-
-                if dataset_ctr == 0:
-
-                    x_list.append(y_noise)
-                    y_list.append(y)
+                    noise_param_dict[param_key] = np.random.uniform(param[0], param[1])
 
                 else:
 
-                    x_val_list.append(y_noise)
-                    y_val_list.append(y)
+                    noise_param_dict[param_key] = param
+
+            noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_noise_features))
+            x = y + noise
+            
+            ######################
+            # Shift y
+            ######################
+
+            # try:
+
+            #     #shift_value = np.random.uniform(low=self._baseline_shift[0],high=self._baseline_shift[1],size=1)
+            #     shift_value = np.random.uniform(high=scale_max_value)
+            #     self._data['y_train'] += shift_value 
+            #     self._data['y_val'] += shift_value
+            #     self._data['y_test'] += shift_value
+            #     self._data['x_train'] += shift_value
+            #     self._data['x_val'] += shift_value
+            #     self._data['x_test'] += shift_value
+
+            # except:
+
+            #     pass
+
+            #####################
+            # Add first dimension
+            #####################
+
+            self._data['y'].append(y)
+            self._data['x'].append(x)
 
         # set dataset_dict
-        self._data['t'] = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_baseline_samples+self._n_samples), axis=-1)
+        self._data['y'] = np.asarray(self._data['y'])
+        self._data['x'] = np.asarray(self._data['x'])
+        self._data['t'] = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1],
+                                                     self._n_baseline_samples+self._n_samples), axis=-1)
         self._data['noise_type'] = noise_types
+        self._data['mask'] = np.ones(shape=self._data['x'].shape)
 
-        if self._ds_type == 'train':
+        if with_mask:
+        
+            # missing data mask
+            #mask_indices = np.random.choice(np.arange(self._data['x'].shape[1]-1), replace=False, size=round(self._data['x'].shape[1]*self._mask_percent))
+            
+            # randomly pad additional missing data before and after each mask index with 25% probability
+            # for mask_index in mask_indices:
+    
+            #     bin_index = np.random.choice([0,1],p=[0.75,0.25])
 
-            self._data['x_train'] = np.asarray(x_list)
-            self._data['y_train'] = np.asarray(y_list)
-            self._data['x_val'] = np.asarray(x_val_list)
-            self._data['y_val'] = np.asarray(y_val_list)
+            #     if bin_index == 1:
+                
+            #         mask_indices = np.append(mask_indices,mask_index+bin_index)
 
-        else:
+            #         # ensure negative index does not occur
+            #         if mask_index != 0:
+    
+            #             mask_indices = np.append(mask_indices,mask_index-bin_index)
 
-            self._data['x_test'] = np.asarray(x_list)
-            self._data['y_test'] = np.asarray(y_list)
+            
+            mask_indices = generateMask(self._data['x'],
+                                        self._mask_percent)
 
+            self._data['mask'][:,mask_indices] = 0
+            self._data['x'][:,mask_indices] = self._mask_value
+            self._data['y'][:,mask_indices] = self._mask_value
+            
         # save dataset logic
         if getattr(self, '_save_path', None) is not None:
 
@@ -180,18 +179,4 @@ class DomainRandomizationDataset(AbstractDataset):
 
         else:
 
-            # import matplotlib.pyplot as plt
-            # plt.figure(figsize=(12,12))
-            #
-            # for feature_index in range(y_noise.shape[-1]):
-            #
-            #     plt.subplot(int('22{feature_index}'.format(feature_index=feature_index+1)))
-            #
-            #     plt.plot(self._data['y_train'][0,:,feature_index])
-            #     plt.plot(self._data['x_train'][0,:,feature_index])
-            #     plt.grid()
-            #
-            # plt.show()
-            # plt.close()
-
-            return self._data
+            return copy.copy(self._data)

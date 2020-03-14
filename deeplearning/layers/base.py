@@ -8,9 +8,11 @@ class Dense():
                  name=None,
                  weight_initializer=None,
                  weight_regularizer=None,
-                 weight_regularizer_scale=None,
+                 weight_regularizer_scale=0.0,
                  bias_initializer=None,
                  bias_regularizer=None,
+                 weight_constraint=None,
+                 bias_constraint=None,
                  activation=None,
                  use_bias=True,
                  dropout_rate=0.0,
@@ -24,13 +26,25 @@ class Dense():
 
         self._name=name
         self._weight_initializer=weight_initializer
-        self._weight_regularizer=weight_regularizer
+        # self._weight_regularizer=weight_regularizer
+        # self._weight_regularizer_scale=weight_regularizer_scale
         self._bias_initializer=bias_initializer
         self._bias_regularizer=bias_regularizer
+        self._weight_constraint=weight_constraint
+        self._bias_constraint=bias_constraint
         self._activation=activation
         self._use_bias=use_bias
         self._dropout_rate=dropout_rate
         self._input_dropout_rate=input_dropout_rate
+
+        # weight regularizer
+        try:
+
+            self._weight_regularizer = weight_regularizer(weight_regularizer_scale)
+
+        except:
+
+            self._weight_regularizer = None
 
     def build(self, x=None, dims=None):
 
@@ -52,6 +66,7 @@ class Dense():
                 W = tf.get_variable(name=w_name,
                                     shape=(x.get_shape()[1],dim),
                                     initializer=self._weight_initializer,
+                                    constraint=self._weight_constraint,
                                     trainable=True,
                                     dtype=tf.float64)
 
@@ -66,6 +81,7 @@ class Dense():
                     b = tf.get_variable(name=b_name,
                                         shape=dim,
                                         initializer=self._bias_initializer,
+                                        constraint=self._bias_constraint,
                                         trainable=True,
                                         dtype=tf.float64)
 

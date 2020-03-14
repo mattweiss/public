@@ -22,11 +22,12 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/ccdc_filter_model.py'
+
 #****************************************************************************************************************************
 project = 'ccdc_mixtures'
 
 experiments = [
-    '07_12_19'
+    '01_23_19'
 ]
 
 #****************************************************************************************************************************
@@ -55,13 +56,13 @@ meta_params['filter'] = KalmanFilter
 # Dataset Parameters
 ####################################
 
-dataset_params['dataset_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark_3/split/07_12_19/'
+dataset_params['dataset_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/01_23_19/'
 dataset_params['with_val'] = True
-dataset_params['resistance_type'] = 'resistance_z'
+#dataset_params['resistance_type'] = 'resistance_z'
 dataset_params['labels'] = None
 dataset_params['sensors'] = None
 dataset_params['with_synthetic'] = True
-dataset_params['samples'] = (0,4900)
+dataset_params['samples'] = (0,1000)
 dataset_params['multi_label'] = True
 dataset_params['feature_range'] = None # None if not using
 
@@ -76,35 +77,15 @@ model_params['results_dir'] = '/results/'
 ####################################
 
 kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = 20 if dataset_params['sensors'] == None else dataset_params['sensors']
-kf_params['n_measurements'] = dataset_params['samples'][1]-dataset_params['samples'][0]
-kf_params['sample_freq'] = 20.0
-kf_params['dt'] = kf_params['sample_freq']**-1
-kf_params['q'] = list(np.logspace(-10,-1,10))
+kf_params['n_signals'] = 20 #if dataset_params['sensors'] == None else dataset_params['sensors']
+kf_params['dt'] = 1.0
+kf_params['f_model'] = 'fixed' # fixed, random, learned
+kf_params['h_model'] = 'fixed' # fixed, random, learned
+kf_params['diagonal_R'] = False
+kf_params['diagonal_P'] = False
+kf_params['q'] = 1e-6 #[1e-2,1e-4,1e-6,1e-8]
 kf_params['r'] = 1.0
-# kf_params['h'] = 1.0
-#kf_params['f_model'] = 'fixed' # fixed, random, learned
-#kf_params['h_model'] = 'identity' # fixed, random, learned
-
-#kf_params['n_measurements'] = dr_params['n_baseline_samples'] + dr_params['n_samples']
-#kf_params['sample_freq'] = 1.0
-#kf_params['h'] = 1.0
-
-# Build dynamical model
-if kf_params['dimensions'][1] == 2:
-
-    kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
-
-    # H
-    kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0]))
-
-if kf_params['dimensions'][1] == 3:
-
-    # F
-    kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
-
-    # H
-    kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0,0.0]))
+kf_params['with_z_dot'] = False
 
 ####################################
 # Determine scaler and vector parameters

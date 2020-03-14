@@ -6,8 +6,10 @@ import tensorflow as tf
 from pdb import set_trace as st
 
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+from dovebirdia.datasets.outliers import generate_outliers
 from dovebirdia.deeplearning.layers.base import Dense
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 
@@ -39,6 +41,9 @@ class AbstractNetwork(ABC):
             'train_loss':list(),
             'val_loss':list(),
             'test_loss':list(),
+            'train_mse':list(),
+            'val_mse':list(),
+            'test_mse':list(),
             }
 
     ##################
@@ -51,7 +56,7 @@ class AbstractNetwork(ABC):
         Build Network
         """
 
-        ############################
+       ############################
         # Build Network
         ############################
         self._buildNetwork()
@@ -133,9 +138,80 @@ class FeedForwardNetwork(AbstractNetwork):
 
         pass
 
-    def evaluate(self, x=None, y=None, t=None, save_results=True):
+    def evaluate(self, x=None, y=None, labels=None,
+                 eval_ops = None,
+                 save_results=None):
 
-        pass
+        assert x is not None
+        assert y is not None
+
+        # default evaluation ops list
+        eval_ops_dict = OrderedDict()
+        eval_ops_dict = {
+            'loss_op':self._loss_op,
+            'mse_op':self._mse_op,
+            'y_hat':self._y_hat
+        }
+
+        # add custom ops to list
+        if eval_ops is not None:
+
+            for eval_op in eval_ops:
+
+                eval_op_key = '_' + eval_op
+
+                if eval_op_key in self.__dict__.keys():
+
+                    eval_ops_dict.update({eval_op:self.__dict__[eval_op_key]})
+
+        # dictionary of results lists
+        for eval_op in eval_ops_dict.keys():
+
+            self._history[eval_op] = list()
+        
+        with tf.Session() as sess:
+
+            # backwards compatibility
+            try:
+
+                model_results_path = './results/trained_model.ckpt'
+                tf.train.Saver().restore(sess, model_results_path)
+
+            except:
+
+                model_results_path = './results/tensorflow_model.ckpt'
+                tf.train.Saver().restore(sess, model_results_path)
+
+            for trial, (X,Y) in enumerate(zip(x,y)):
+
+                # if X.ndim > 2:
+
+                #     X = np.squeeze(X,axis=-1)
+
+                # if Y.ndim > 3:
+
+                #     Y = np.squeeze(Y,axis=-1)
+
+                test_feed_dict = {self._X:X, self._y:Y,self._mask:np.ones(shape=Y.shape)}
+
+                # run ops
+                eval_ops_results = sess.run(list(eval_ops_dict.values()),feed_dict=test_feed_dict)
+
+                # append ops results to history
+                for eval_ops_key,eval_ops_result in zip(eval_ops_dict.keys(),eval_ops_results):
+
+                    self._history[eval_ops_key].append(eval_ops_result)
+
+        # append x and y to history
+        self._history['x'] = np.asarray(x)
+        self._history['y'] = np.asarray(y)
+
+        # save predictions
+        if save_results is not None:
+            
+            saveDict(save_dict=self._history, save_path='./results/' + save_results + '.pkl')
+
+        return self._history
 
     ###################
     # Private Methods #
@@ -146,7 +222,8 @@ class FeedForwardNetwork(AbstractNetwork):
         # input and output placeholders
         self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float64, shape=(None), name='y')
-
+        self._mask = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='mask')
+        
         self._y_hat = Dense(name='layers',
                             weight_initializer=self._weight_initializer,
                             weight_regularizer=None,
@@ -161,7 +238,8 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def _setLoss(self):
 
-        self._loss_op = tf.cast(self._loss(self._y, self._y_hat), tf.float64) + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
+        self._mse_op = tf.cast(self._loss(self._y,self._y_hat,weights=self._mask), tf.float64)
+        self._loss_op = self._mse_op + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
 
     def _setOptimizer(self):
 
@@ -171,7 +249,9 @@ class FeedForwardNetwork(AbstractNetwork):
 
         elif self._optimizer.__name__ == 'MomentumOptimizer':
 
-            self._optimizer_op = self._optimizer(learning_rate=self._learning_rate, momentum=self._momentum,use_nesterov=self._use_nesterov).minimize(self._loss_op)
+            global_step = tf.Variable(0, trainable=False)
+            learning_rate = tf.compat.v1.train.exponential_decay(self._learning_rate, global_step, self._decay_steps, self._decay_rate, staircase=self._staircase)
+            self._optimizer_op = self._optimizer(learning_rate=learning_rate, momentum=self._momentum, use_nesterov=self._use_nesterov).minimize(self._loss_op, global_step=global_step)
 
         elif self._optimizer.__name__ == 'GradientDescentOptimizer':
 
@@ -201,91 +281,173 @@ class FeedForwardNetwork(AbstractNetwork):
             for k, v in zip(variables_names, values):
 
                 print(v.shape, k)
-
+                
             # start time
             start_time = time()
 
-            for epoch in range(1, self._epochs+1):
+            for epoch in range(1, self._epochs+1):          
 
                 # lists to hold epoch training and validation losses
                 epoch_train_loss = list()
-                epoch_val_loss = list()
+                epoch_train_mse = list()
 
                 # shuffle training set
-                training_samples = self._x_train[self._trials]
+                np.random.shuffle(self._x_train)
 
-                for x_train_trial in training_samples:
-
+                # loop over training examples
+                for x_train_trial in self._x_train:
+                    
                     if np.ndim(x_train_trial) == 1:
 
                         x_train_trial = np.expand_dims(x_train_trial,axis=-1)
 
-                    # training op
-                    _, train_loss = sess.run([self._optimizer_op,self._loss_op], feed_dict={self._X:x_train_trial, self._y:x_train_trial})
-                    epoch_train_loss.append(train_loss)
+                    # add outliers to training data
+                    if self._outliers:
 
+                        train_outliers = generate_outliers(shape=x_train_trial.shape,
+                                                           p_outlier=self._p_outlier,
+                                                           outlier_range=self._outlier_range)
+
+                        # truth and truth + outliers
+                        x_train_trial = x_train_trial + train_outliers
+                        y_train_trial = x_train_trial
+                        
+                    else:
+
+                        x_train_trial, y_train_trial = x_train_trial, x_train_trial
+
+                    # plt.figure(figsize=(6,6))
+                    # plt.plot(x_train_trial,label='x',marker=None)
+                    # plt.plot(y_train_trial,label='y')
+                    # plt.grid()
+                    # plt.legend()
+                    # plt.show()
+                    # plt.close()
+
+                    #############
+                    # train model
+                    #############
+                    
+                    # generate minibatches
+                    x_train_mbs, y_train_mbs = self._generateMinibatches(x_train_trial,y_train_trial)
+
+                    # loop over mini batches
+                    for x_train_mb,y_train_mb in zip(x_train_mbs,y_train_mbs):
+
+                        # training op
+                        _, train_loss, train_mse = sess.run([self._optimizer_op,self._loss_op,self._mse_op], feed_dict={self._X:x_train_mb, self._y:y_train_mb})
+                        epoch_train_loss.append(train_loss)
+                        epoch_train_mse.append(train_mse)
+                        
                 # validation loss
                 try:
-
-                    for x_val_trial in self._x_val[self._trials]:
+                    
+                    epoch_val_loss = list()
+                    epoch_val_mse = list()
+                    
+                    for x_val_trial in self._x_val:
 
                         if np.ndim(x_val_trial) == 1:
 
                             x_val_trial = np.expand_dims(x_val_trial,axis=-1)
 
-                        epoch_val_loss.append(sess.run(self._loss_op, feed_dict={self._X:x_val_trial, self._y:x_val_trial}))
+                        # add noise to training data
+                        if self._outliers:
+
+                            val_outliers = generate_outliers(shape=x_val_trial.shape,
+                                                             p_outlier=self._p_outlier,
+                                                             outlier_range=self._outlier_range)
+
+                            # truth and truth + outliers
+                            x_val_trial = x_val_trial + val_outliers
+                            y_val_trial = x_val_trial
+
+                        else:
+
+                            x_val_trial, y_val_trial = x_val_trial, x_val_trial 
+
+                        val_loss, val_mse = sess.run([self._loss_op,self._mse_op], feed_dict={self._X:x_val_trial, self._y:y_val_trial})
+                        epoch_val_loss.append(val_loss)
+                        epoch_val_mse.append(val_mse)
+
+                        # y_val_hat = sess.run(self._y_hat, feed_dict={self._X:x_val_trial, self._y:y_val_trial})
+                        # plt.figure(figsize=(6,6))
+                        # plt.plot(y_val_trial,label='True')
+                        # plt.plot(x_val_trial,label='Input')
+                        # plt.plot(y_val_hat,label='Pred')
+                        # plt.grid()
+                        # plt.legend()
+                        # plt.show()
+                        # plt.close()
 
                 except:
 
                     pass
-
+                
                 self._history['train_loss'].append(np.asarray(epoch_train_loss).mean())
                 self._history['val_loss'].append(np.asarray(epoch_val_loss).mean())
-
+                self._history['train_mse'].append(np.asarray(epoch_train_mse).mean())
+                self._history['val_mse'].append(np.asarray(epoch_val_mse).mean())
+                
                 if epoch % 1 == 0:
 
-                    print('Epoch {epoch}, Training Loss {train_loss:0.4}, Val Loss {val_loss:0.4}'.format(epoch=epoch,
-                                                                                                          train_loss=self._history['train_loss'][-1],
-                                                                                                          val_loss=self._history['val_loss'][-1]))
+                    print('Epoch {epoch}, Training Loss/MSE {train_loss:0.4}/{train_mse:0.4}, Val Loss/MSE {val_loss:0.4}/{val_mse:0.4}'.format(epoch=epoch,
+                                                                                                                                                train_loss=self._history['train_loss'][-1],
+                                                                                                                                                train_mse=self._history['train_mse'][-1],        
+                                                                                                                                                val_loss=self._history['val_loss'][-1],
+                                                                                                                                                val_mse=self._history['val_mse'][-1]))
 
             self._history['runtime'] = (time() - start_time) / 60.0
 
-            # test mse
-            test_loss_list = list()
-            test_pred_list = list()
-            train_loss_list = list()
-            train_pred_list = list()
+            # if test set was passed compute test loss
+            try:
 
-            for x_train_trial in self._x_train[self._trials]:
+                epoch_test_loss = list()
+                epoch_test_mse = list()
+                
+                for x_test_trial in self._x_test:
 
-                if np.ndim(x_train_trial) == 1:
+                    if np.ndim(x_test_trial) == 1:
 
-                    x_train_trial = np.expand_dims(x_train_trial,axis=-1)
+                        x_test_trial = np.expand_dims(x_test_trial,axis=-1)
 
-                train_loss, train_pred = sess.run([self._loss_op,self._y_hat], feed_dict={self._X:x_train_trial, self._y:x_train_trial})
-                train_loss_list.append(train_loss)
-                train_pred_list.append(train_pred)
+                    x_test_trial, y_test_trial = x_test_trial, x_test_trial 
 
-            for x_test_trial in self._x_test[self._trials]:
+                    test_loss, test_mse = sess.run([self._loss_op,self._mse_op], feed_dict={self._X:x_test_trial, self._y:y_test_trial})
+                    epoch_test_loss.append(test_loss)
+                    epoch_test_mse.append(test_mse)
 
-                if np.ndim(x_test_trial) == 1:
+                    # y_val_hat = sess.run(self._y_hat, feed_dict={self._X:x_val_trial, self._y:y_val_trial})
+                    # plt.figure(figsize=(6,6))
+                    # plt.plot(y_val_trial,label='True')
+                    # plt.plot(x_val_trial,label='Input')
+                    # plt.plot(y_val_hat,label='Pred')
+                    # plt.grid()
+                    # plt.legend()
+                    # plt.show()
+                    # plt.close()
 
-                    x_test_trial = np.expand_dims(x_test_trial,axis=-1)
+                self._history['test_loss'].append(np.asarray(epoch_test_loss).mean())
+                self._history['test_mse'].append(np.asarray(epoch_test_mse).mean())
 
-                test_loss, test_pred = sess.run([self._loss_op,self._y_hat], feed_dict={self._X:x_test_trial, self._y:x_test_trial})
-                test_loss_list.append(test_loss)
-                test_pred_list.append(test_pred)
+            except:
 
+                pass
+
+            # save model
             if save_model:
 
                 self._saveModel(sess)
 
-        self._history['test_loss'] = np.asarray(test_loss_list).mean()
-        self._history['test_pred'] = np.asarray(test_pred_list)
-        self._history['test_true'] = np.asarray(self._x_test[self._trials])
-
-        self._history['train_pred'] = np.asarray(train_pred_list)
-        self._history['train_true'] = np.asarray(self._x_train[self._trials])
+        plt.figure(figsize=(6,6))
+        plt.plot(self._history['train_loss'],label='Train Loss')
+        plt.plot(self._history['val_loss'],label='Val Loss')
+        plt.title('Loss vs. Epoch')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.grid()
+        plt.legend()
+        plt.savefig('loss_plot')
 
         return self._history
 
@@ -293,7 +455,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
         # create domainRandomizationDataset object
         self._dr_dataset = DomainRandomizationDataset(dr_params)
-
+        
         # dictionaries to hold training and validation data
         train_feed_dict = dict()
         val_feed_dict = dict()
@@ -313,91 +475,152 @@ class FeedForwardNetwork(AbstractNetwork):
             # start time
             start_time = time()
 
-            self._history['p_value'] = list()
-
             for epoch in range(1, self._epochs+1):
 
-                # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
-                dr_data = self._dr_dataset.generateDataset()
+                # generate training and validation datasets
+                train_data = self._dr_dataset.generateDataset(with_mask=True)
+                val_data = self._dr_dataset.generateDataset(with_mask=True)
 
                 # train and val loss lists
-                train_loss = list()
-                val_loss = list()
-
+                train_loss_list = list()
+                val_loss_list = list()
+                train_mse_list = list()
+                val_mse_list = list()
+                
                 # train on all trials
-                #for x_train, y_train, x_val, y_val in zip(dr_data['x_train'],dr_data['y_train'],dr_data['x_val'],dr_data['y_val']):
+                for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x'], train_data['y'], train_data['mask'],
+                                                                                val_data['x'], val_data['y'], val_data['mask']):
 
-                x_train, y_train, x_val, y_val = dr_data['x_train'], dr_data['y_train'], dr_data['x_val'], dr_data['y_val']
+                    # plt.figure(figsize=(18,12))
 
-                x_train = np.squeeze(x_train, axis=0)
-                y_train = np.squeeze(y_train, axis=0)
-                x_val = np.squeeze(x_val, axis=0)
-                y_val = np.squeeze(y_val, axis=0)
-
-                train_feed_dict.update({self._X:x_train, self._y:y_train} if self._train_ground else {self._X:x_train, self._y:x_train})
-                val_feed_dict.update({self._X:x_val, self._y:y_val} if self._train_ground else {self._X:x_val, self._y:x_val})
-
-                # training op
-                x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train)
-
-                for x_mb, y_mb in zip(x_train_mb,y_train_mb):
-
-                    train_feed_dict[self._X] = x_mb
-                    train_feed_dict[self._y] = y_mb
-
-                    #_, z,z_hat,decoder,y_hat = sess.run([self._optimizer_op, self._z, self._z_hat_pri,self._decoder,self._y_hat], feed_dict=train_feed_dict)
-                    sess.run(self._optimizer_op, feed_dict=train_feed_dict)
-
-                    # for idx, (x,y) in enumerate(zip(y_hat[:5],y_mb[:5])):
-
-                    # plt.figure(figsize=(6,6))
-                    # plt.scatter(range(x_mb.shape[0]),x_mb,label='x_mb')
-                    # plt.plot(y_mb,label='y_mb')
+                    # plt.subplot(231)
+                    # plt.plot(x_train[:,0],label='x0',marker=None)
                     # plt.grid()
                     # plt.legend()
-                    # #plt.savefig('./{idx}'.format(idx=idx))
+
+                    # plt.subplot(232)
+                    # plt.plot(x_train[:,1],label='x1',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+
+                    # plt.subplot(233)
+                    # plt.scatter(x_train[:,0],x_train[:,1],label='x',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+
+                    # plt.subplot(234)
+                    # plt.plot(x_val[:,0],label='x0',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+
+                    # plt.subplot(235)
+                    # plt.plot(x_val[:,1],label='x1',marker=None)
+                    # plt.grid()
+
+                    # plt.legend()
+
+                    # plt.subplot(236)
+                    # plt.scatter(x_val[:,0],x_val[:,1],label='x',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+                    
                     # plt.show()
                     # plt.close()
+                    
+                    # plt.figure(figsize=(6,6))
+                    # plt.plot(x_train,label='x')
+                    # plt.plot(y_train,label='y')
+                    # plt.grid()
+                    # plt.legend()
+                    # plt.show()
+                    # plt.close()
+                    
+                    # training and validation feed dicts
+                    # train_feed_dict.update({self._X:x_train, self._y:y_train,self._mask:train_mask} if self._train_ground else {self._X:x_train, self._y:x_train,self._mask:train_mask})
+                    # val_feed_dict.update({self._X:x_val, self._y:y_val,self._mask:val_mask} if self._train_ground else {self._X:x_val, self._y:x_val,self._mask:val_mask})
 
-                # loss op
-                train_loss.append(sess.run(self._loss_op, feed_dict=train_feed_dict))
-                val_loss.append(sess.run(self._loss_op, feed_dict=val_feed_dict))
+                    #x_train, y_train, mask_train = x_train, y_train, mask_train if self._train_ground else x_train, x_train, mask_train
+                    #x_val, y_val, mask_val = x_val, y_val, mask_val if self._train_ground else x_val, x_val, mask_val
 
-                self._history['train_loss'].append(np.asarray(train_loss).mean())
-                self._history['val_loss'].append(np.asarray(val_loss).mean())
+                    if not self._train_ground:
 
-                if len(self._history['train_loss']) > self._history_size:
+                        y_train = x_train
+                        y_val = x_val
 
-                    self._history['train_loss'].pop(0)
-                    self._history['val_loss'].pop(0)
+                    # train on minibatches
+                    x_train_mb, y_train_mb, mask_train_mb = self._generateMinibatches(x_train,y_train,mask_train)
 
-                print('Epoch {epoch} training loss {train_loss:.4f} Val Loss {val_loss:.4f}'.format(epoch=epoch,
-                                                                                                    train_loss=self._history['train_loss'][-1],
-                                                                                                    val_loss=self._history['val_loss'][-1]))
+                    for x_mb, y_mb, mask_mb in zip(x_train_mb,y_train_mb,mask_train_mb):
+
+                        train_feed_dict.update({self._X:x_train,self._y:y_train,self._mask:mask_train})
+                        sess.run(self._optimizer_op, feed_dict=train_feed_dict)
+
+                    # loss op
+                    train_loss, train_mse = sess.run([self._loss_op,self._mse_op],feed_dict=train_feed_dict)
+                    val_feed_dict.update({self._X:x_val,self._y:y_val,self._mask:mask_val})
+                    val_loss, val_mse = sess.run([self._loss_op,self._mse_op],feed_dict=val_feed_dict)
+                    train_loss_list.append(train_loss)
+                    val_loss_list.append(val_loss)
+                    train_mse_list.append(train_mse)
+                    val_mse_list.append(val_mse)
+
+                    self._history['train_loss'].append(np.asarray(train_loss).mean())
+                    self._history['val_loss'].append(np.asarray(val_loss).mean())
+                    self._history['train_mse'].append(np.asarray(train_mse).mean())
+                    self._history['val_mse'].append(np.asarray(val_mse).mean())
+
+                    print('Epoch {epoch}, Training Loss/MSE {train_loss:0.4}/{train_mse:0.4}, Val Loss/MSE {val_loss:0.4}/{val_mse:0.4}'.format(epoch=epoch,
+                                                                                                                                                train_loss=self._history['train_loss'][-1],
+                                                                                                                                                train_mse=self._history['train_mse'][-1],        
+                                                                                                                                                val_loss=self._history['val_loss'][-1],
+                                                                                                                                                val_mse=self._history['val_mse'][-1]))
+
+
 
             self._history['runtime'] = (time() - start_time) / 60.0
-
+            
             if save_model:
 
-                self._saveModel(sess)
+                self._saveModel(sess,'trained_model.ckpt')
 
+        plt.figure(figsize=(6,6))
+        plt.plot(self._history['train_loss'],label='Train Loss')
+        plt.plot(self._history['val_loss'],label='Val Loss')
+        plt.title('Loss vs. Epoch')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.grid()
+        plt.legend()
+        plt.savefig('loss_plot')
+                
         return self._history
 
-    def _generateMinibatches(self, X, y):
+    def _generateMinibatches(self, X, y=None,mask=None):
 
+        X_mb, y_mb, mask_mb = None, None, None
+        
         X_mb = [X[i * self._mbsize:(i + 1) * self._mbsize,:] for i in range((X.shape[0] + self._mbsize - 1) // self._mbsize )]
-        y_mb = [y[i * self._mbsize:(i + 1) * self._mbsize] for i in range((y.shape[0] + self._mbsize - 1) // self._mbsize )]
 
-        return X_mb, y_mb
+        if y is not None:
 
-    def _saveModel(self, tf_session=None):
+            y_mb = [y[i * self._mbsize:(i + 1) * self._mbsize] for i in range((y.shape[0] + self._mbsize - 1) // self._mbsize )]
+
+        if mask is not None:
+
+            mask_mb = [mask[i * self._mbsize:(i + 1) * self._mbsize] for i in range((mask.shape[0] + self._mbsize - 1) // self._mbsize )]
+
+        return X_mb, y_mb, mask_mb
+
+    def _saveModel(self, tf_session=None, model_name=None):
 
         assert tf_session is not None
+        assert model_name is not None
 
         # save Tensorflow variables
 
         # name of file weights are saved to
-        self._trained_model_file = os.getcwd() + self._results_dir + 'trained_model.ckpt'
-
+        #self._trained_model_file = os.getcwd() + self._results_dir + 'trained_model.ckpt'
+        self._trained_model_file = os.getcwd() + self._results_dir + model_name
+        
         # save everything
         tf.train.Saver().save(tf_session, self._trained_model_file)

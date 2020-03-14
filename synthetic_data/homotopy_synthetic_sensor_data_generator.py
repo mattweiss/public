@@ -5,7 +5,6 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import dill
 from pdb import set_trace as st
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from synthetic_data.synthetic_sensor_data_generator import SyntheticSensorDataGenerator
 
 class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
@@ -20,7 +19,6 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                   sensors = None,
                   labels = None,
                   n_synthetic_sensors_per_label = 1,
-                  use_baseline_std = False,
                   save_plots = False):
 
         super().__init__(dataset_dir = dataset_dir,
@@ -64,7 +62,7 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                 self._sensors[sensor] = sensor_names.index(sensor)
 
             # resistance values for given label, 3 dimensional array (trials, samples, sexnsors)
-            resistance = np.asarray(list(label_data.resistance_z.values))
+            resistance = np.asarray(list(label_data.resistance.values))
 
             # some resistance arrays are not 3d
             if np.ndim(resistance) == 3:
@@ -74,9 +72,6 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
             else:
 
                 continue
-
-            # baseline shift
-            #resistance = np.asarray(list(map(self._preprocess,resistance)))
 
             # select subset of data
             resistance = resistance[:,self._sample_slice[0]:self._sample_slice[1],:]
@@ -113,7 +108,7 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                 y_raw_syn = (homotopy_parameter**1)*y_raw_1 + (1.0-homotopy_parameter**1)*y_raw_2
 
-                ssd_dict['resistance_z'] = y_raw_syn
+                ssd_dict['resistance'] = y_raw_syn
 
                 # save synthetic data
                 synthetic_data_filename = label_data.iloc[0]['csv_file'].split('_')[0].replace('&','-') + '_synthetic_label_{label}_{syn_ctr}'.format(label=label, syn_ctr=str(synthetic_sensor_ctr))
@@ -154,11 +149,3 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                         #plt.show()
                         plt.savefig(self._figure_dir + synthetic_data_filename + '_{sensor}'.format(sensor=sensor).replace(' ','_'))
                         plt.close()
-
-    def _preprocess(self,data):
-
-        # baseline shift
-        scaler = StandardScaler(with_std = False).fit(data[:self._baseline_length])
-        data = scaler.transform(data)
-
-        return data

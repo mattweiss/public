@@ -26,33 +26,23 @@ from dovebirdia.datasets.nyse_dataset import nyseDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'nyse'
+project = 'pets'
 
 config_dict = dict()
-config_dict['dataset'] = 'nyseDataset'
-config_dict['saved_dataset'] = '/home/mlweiss/Documents/wpi/research/data/nyse/split/nyse_all_train_test_split.pkl'
+config_dict['dataset'] = 'petsDataset' #'DomainRandomizationDataset'
+config_dict['with_val'] = False
 
 experiments = [
-
-    #('aekf_bimodal_100_ncv_taylor_fixed_F_fixed_H',[24]),
-    #('aekf_bimodal_100_ncv_taylor_random_F_fixed_H',[32]),
-    #('aekf_bimodal_100_ncv_taylor_learned_F_fixed_H',[28]),
-    #('aekf_bimodal_100_ncv_taylor_fixed_F_random_H',[13]),
-    #('aekf_bimodal_100_ncv_taylor_random_F_random_H',[69]),
-    #('aekf_bimodal_100_ncv_taylor_learned_F_random_H',[23]),
-    #('aekf_bimodal_100_ncv_taylor_fixed_F_learned_H',[30]),
-    #('aekf_bimodal_100_ncv_taylor_random_F_learned_H',[68]),
-    #('aekf_bimodal_100_ncv_taylor_learned_F_learned_H',[72]),
-    ('aekf_nyse_dr_legendre_beta',[28,39]),
-
+    #('aekf_legendre_ncv_mask_percent_1_value_1000',[68]),
+    #('aekf_legendre_real_ncv_mask_percent_1_value_1000',[70]),
+    #('aekf_legendre_ncv_mask_percent_1_value_1000_KILLME',[1]),
+    ('lstm_legendre_mask_percent_1_value_1000_KILLME',[1])
 ]
 
 test_dataset_files = [
-
-    # 'FUNC_taylor_NOISE_bimodal_LOC_0-05_SCALE_0-1_TRIALS_100_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl'
-    '/home/mlweiss/Documents/wpi/research/data/nyse/split/nyse_all_train_test_split.pkl'
-
+    '/home/mlweiss/Documents/wpi/research/data/pets/split/PETS2009_S2L1_dataset_SAMPLES_None_NOISE_none_MASK_percent_0-01_value_1000.pkl',
 ]
+
 machine = socket.gethostname()
 
 #****************************************************************************************************************************

@@ -11,7 +11,7 @@ from pdb import set_trace as st
 # synthetic sensor data object
 dataset_dir = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/01_23_19/training/'
 # dataset_dir = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark_3/split/07_12_19/training/'
-#dataset_dir = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/06_21_19-1204151148/training/'
+#dataset_dir = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/06_21_19/training/'
 
 # sensor dictionary.  -1 value is a placeholder for actual index of sensor in dataset.  This index is set in the generate_samples() method
 # 01-23-19
@@ -91,8 +91,7 @@ ssdg = HomotopySyntheticSensorDataGenerator(dataset_dir = dataset_dir,
                                             trials = None,
                                             sensors = sensors,
                                             labels = None,
-                                            n_synthetic_sensors_per_label = 10,
-                                            use_baseline_std = True,
+                                            n_synthetic_sensors_per_label = 25,
                                             save_plots = False)
 
 # read pickle files

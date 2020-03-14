@@ -24,8 +24,8 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/nyse_model.py'
-project = 'nyse'
-experiment_name = 'aekf_ncv_multivariate_KILLME'
+project = 'kdd'
+experiment_name = 'model_AEKF_train_NYSE_FEATURES_2'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -49,26 +49,34 @@ params_dicts = OrderedDict([
 meta_params['network'] = AutoencoderKalmanFilter
 
 ####################################
-# Model Parameters
+# Important Parameters
 ####################################
+model_params['hidden_dims'] = [(32,),(64,),(64,32),(32,16)]
+model_params['learning_rate'] = 1e-3#list(np.logspace(-3,-4,3))
+kf_params['q'] = list(np.logspace(-1,-3,3))
+kf_params['with_z_dot'] = False
+model_params['optimizer'] = tf.train.MomentumOptimizer #[tf.train.MomentumOptimizer,tf.train.AdamOptimizer]
+model_params['mbsize'] = [32,64]
+model_params['weight_regularizer'] = [tf.keras.regularizers.l1,tf.keras.regularizers.l2]
+model_params['weight_regularizer_scale'] = [1e-4,1e-5]
+
+# model parameters
 
 model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 4
 model_params['output_dim'] = model_params['input_dim']
-model_params['hidden_dims'] = (512,128)#[(128,64),(128,64),(256,64),(512,128)]
-model_params['activation'] = tf.nn.leaky_relu
+model_params['activation'] = tf.nn.elu
 model_params['output_activation'] = None
 model_params['use_bias'] = True
-model_params['weight_initializer'] = tf.initializers.glorot_uniform
-model_params['bias_initializer'] = tf.initializers.zeros
-model_params['weight_regularizer'] = tf.keras.regularizers.l1
-model_params['weight_regularizer_scale'] = 0.0
+model_params['weight_initializer'] = tf.initializers.glorot_normal
+model_params['bias_initializer'] = tf.initializers.ones
+
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
-model_params['weight_constraint'] = None
-model_params['bias_constraint'] = None
+model_params['bias_constraint'] = None#tf.keras.constraints.MaxNorm(3.0)
 model_params['input_dropout_rate'] = 0.0
 model_params['dropout_rate'] = 0.0
+model_params['weight_constraint'] = None#tf.keras.constraints.MaxNorm(3.0)
 model_params['R_model'] = 'learned' # learned, identity
 model_params['R_activation'] = None
 
@@ -76,79 +84,30 @@ model_params['R_activation'] = None
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10
-model_params['mbsize'] = 1127
-model_params['optimizer'] = tf.train.AdamOptimizer
+model_params['epochs'] = 100
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
-model_params['learning_rate'] = 1e-4#list(np.logspace(-3,-5,3))
-model_params['trials'] = [list(range(0,25))]
+model_params['decay_steps'] = 1000
+model_params['decay_rate'] = 1.0
+model_params['staircase'] = False
 
 ####################################
 # Dataset Parameters
 ####################################
 
-ds_params['saved_dataset'] = '/home/mlweiss/Documents/wpi/research/data/nyse/split/nyse_all_train_test_split.pkl'
+ds_params['saved_dataset'] = '/home/mlweiss/Documents/wpi/research/data/nyse/split/nyse_all_train_test_split_n_securities_1_n_samples_None_features_4.pkl'
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
 kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = [16,32]
-kf_params['n_measurements'] = model_params['mbsize']
-# kf_params['sample_freq'] = 1.0
-# kf_params['dt'] = kf_params['sample_freq']**-1
-kf_params['dt'] = list(np.linspace(0.0005,1.0,50))
-kf_params['q'] = 1.0#list(np.logspace(-2,1,4))
+kf_params['n_signals'] = 16
+#kf_params['n_measurements'] = model_params['mbsize']
+kf_params['dt'] = 1e0#list(np.linspace(0,1,6))
 kf_params['f_model'] = 'fixed' # fixed, random, learned
 kf_params['h_model'] = 'fixed' # fixed, random, learned, identity
-kf_params['weight_initializer'] = tf.initializers.glorot_uniform # if learning F and H
-
-# Build dynamical model
-# if kf_params['dimensions'][1] == 2:
-#
-#     # F
-#     if kf_params['f_model'] == 'fixed':
-#
-#         kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
-#
-#     elif kf_params['f_model'] == 'random':
-#
-#         kf_params['F'] = np.random.normal(size=(kf_params['n_signals']*kf_params['dimensions'][1],kf_params['n_signals']*kf_params['dimensions'][1]))
-#
-#     # H
-#     if kf_params['h_model'] == 'fixed':
-#
-#         kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0]))
-#
-#     elif kf_params['h_model'] == 'identity':
-#
-#         kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,1.0]))
-#
-#     elif kf_params['h_model'] == 'random':
-#
-#         kf_params['H'] = np.random.normal(size=(kf_params['n_signals'],kf_params['n_signals']*kf_params['dimensions'][1]))
-#
-# if kf_params['dimensions'][1] == 3:
-#
-#     # F
-#     if kf_params['f_model'] == 'fixed':
-#
-#         kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
-#
-#     elif kf_params['f_model'] == 'random':
-#
-#         kf_params['F'] = np.random.normal(size=(kf_params['n_signals']*kf_params['dimensions'][1],kf_params['n_signals']*kf_params['dimensions'][1]))
-#
-#     # H
-#     if kf_params['h_model'] == 'fixed':
-#
-#         kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0,0.0]))
-#
-#     elif kf_params['h_model'] == 'random':
-#
-#         kf_params['H'] = np.random.normal(size=(kf_params['n_signals'],kf_params['n_signals']*kf_params['dimensions'][1]))
+#kf_params['weight_initializer'] = tf.initializers.glorot_uniform # if learning F and H
 
 ####################################
 # Determine scaler and vector parameters

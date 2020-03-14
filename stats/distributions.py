@@ -2,6 +2,7 @@
 import sys
 import numpy as np
 from scipy.stats import levy_stable
+from pdb import set_trace as st
 
 def bimodal( loc1, scale1, loc2, scale2, size ):
 

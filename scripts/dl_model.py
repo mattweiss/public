@@ -1,6 +1,6 @@
 #!/bin/env python3
 #SBATCH -N 1
-#SBATCH -n 2
+#SBATCH -n 4
 #SBATCH --mem=8G
 #SBATCH -p short
 #SBATCH -t 24:00:00
@@ -23,6 +23,7 @@ from pdb import set_trace as st
 import csv
 import pandas as pd
 
+from dovebirdia.utilities.base import loadDict
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 from dovebirdia.deeplearning.networks.lstm import LSTM
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
@@ -34,14 +35,6 @@ from dovebirdia.datasets.nyse_dataset import nyseDataset
 
 # define command line parser
 parser = argparse.ArgumentParser()
-
-# if parser.parse_args().__dict__['training'] == 'True':
-
-#     training_flag = True
-
-# else:
-
-#     training_flag = False
 
 # get train/test flag
 parser.add_argument("-c", "--config", dest = "config", help="Configuration File")
@@ -121,26 +114,34 @@ else:
     ################################################################################
     # Load Test Dataset
     ################################################################################
-
+    
+    dataset = loadDict(test_dataset_path)
+    
+    # data from domain randomization tests
     if config_dicts['test']['dataset'] == 'DomainRandomizationDataset':
 
-        dataset = DomainRandomizationDataset(config_dicts['ds']).getDataset(test_dataset_path)
+        x_test, y_test = dataset['data']['x'], dataset['data']['y']
+        
+    # existing dataset (i.e. weather, stock market, s5)
+    elif config_dicts['test']['dataset'] == 'nyseDataset' or \
+         config_dicts['test']['dataset'] == 's5Dataset' or \
+         config_dicts['test']['dataset'] == 'weatherDataset':
+    
+        x_test, y_test = dataset['data']['x_test'], dataset['data']['x_test']
 
-    elif config_dicts['test']['dataset'] == 'nyseDataset':
+    # pets dataset
+    elif config_dicts['test']['dataset'] == 'petsDataset':
 
-        dataset = nyseDataset(config_dicts['test']).getDataset()
-
-    # data from domain randomization tests
+        x_test, y_test = dataset['data']['x_test'], dataset['data']['x_true']
+        
+    # if labels exist
     try:
 
-        #x_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
-        x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
+        labels = dataset['data']['y_test']
 
-    # existing dataset (i.e. weather, stock market)
     except:
 
-        # x_test, y_test, t = np.expand_dims(dataset['x_test'],axis=-1), np.expand_dims(dataset['x_test'],axis=-1), dataset['t']
-        x_test, y_test = np.expand_dims(dataset['x_test'],axis=-1), np.expand_dims(dataset['x_test'],axis=-1)
+        labels = None
 
 ################################################################################
 # Model
@@ -154,10 +155,6 @@ if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
 
     # append n_signals
     config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
-
-    nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
-
-elif config_dicts['meta']['network'].__name__ == 'HilbertAutoencoderKalmanFilter':
 
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
 
@@ -187,44 +184,48 @@ if TRAINING:
         pass
 
     history = nn.fit(dr_params=config_dicts['ds'], save_model=True)
-    history_size = config_dicts['model']['history_size']
-    train_mse = np.asarray(history['train_loss'][-history_size:]).mean()
-    train_std = np.asarray(history['train_loss'][-history_size:]).std()
-    val_mse = np.asarray(history['val_loss'][-history_size:]).mean()
-    val_std = np.asarray(history['val_loss'][-history_size:]).std()
 
-    try:
+    train_loss = np.asarray(history['train_loss']).mean()
+    train_loss_std = np.asarray(history['train_loss']).std()
+    train_mse = np.asarray(history['train_mse']).mean()
+    train_mse_std = np.asarray(history['train_mse']).std()
 
-        test_mse = np.asarray(history['test_loss']).mean()
-        test_std = np.asarray(history['test_loss']).std()
-
-    except:
-
-        pass
-
+    val_loss = np.asarray(history['val_loss']).mean()
+    val_std = np.asarray(history['val_loss']).std()
+    val_mse = np.asarray(history['val_mse']).mean()
+    val_mse_std = np.asarray(history['val_mse']).std()
+  
     results_dict = {
+        'train_loss':train_loss,
+        'val_loss':val_loss,
         'train_mse':train_mse,
         'val_mse':val_mse,
-        'test_mse':test_mse,
         'runtime':history['runtime'],
     }
-
-    print('Training MSE, STD: {train_mse}, {train_std}\nValidation MSE, STD: {val_mse}, {val_std}\nTesting MSE, STD: {test_mse}, {test_std}'.format(train_mse=train_mse,
-                                                                                                                                                    train_std=train_std,
-                                                                                                                                                    val_mse=val_mse,
-                                                                                                                                                    val_std=val_std,
-                                                                                                                                                    test_mse=test_mse,
-                                                                                                                                                    test_std=test_std))
+   
 else:
 
     evaluate_save_path = test_dataset_path.split('/')[-1].split('.')[0]
-    history = nn.evaluate(x=x_test, y=y_test,
-                          #t=t,
+
+    class_name = type(nn).__name__
+
+    if class_name == 'AutoencoderKalmanFilter':
+
+        eval_ops_list =  ['z','R','kf_results']
+
+    elif class_name == 'LSTM':
+
+        eval_ops_list =  None
+    
+    history = nn.evaluate(x=x_test, y=y_test,labels=labels,
+                          eval_ops=eval_ops_list,
                           save_results=evaluate_save_path)
 
     results_dict = {
-        'test_mse':np.asarray(history['test_loss']).mean(),
-        'test_std':np.asarray(history['test_loss']).std(),
+        'test_loss':np.asarray(history['loss_op']).mean(),
+        'test_loss_std':np.asarray(history['loss_op']).std(),
+        'test_mse':np.asarray(history['mse_op']).mean(),
+        'test_mse_std':np.asarray(history['mse_op']).std(),
     }
 
 ################################################################################
@@ -276,11 +277,11 @@ for k,v in merged_config_dicts.items():
 
 if TRAINING:
 
-    results_file = 'training_results.csv'
+    results_file = os.getcwd().split('/')[-1] + '_training_results.csv'
 
 else:
 
-    results_file = 'testing_results.csv'
+    results_file = os.getcwd().split('/')[-1] + '_testing_results.csv'
 
 results_file_path = os.getcwd() + config_dicts['model']['results_dir'] + results_file
 

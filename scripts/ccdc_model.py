@@ -82,7 +82,7 @@ dataset = ccdcMixturesDataset(params=config_dicts['dataset']).getDataset()
 ################################################################################
 
 # add output dims
-n_sensors = 20 if config_dicts['dataset']['sensors'] is None else config_dicts['dataset']['sensors']
+n_sensors = 20 if config_dicts['dataset']['sensors'] is None else len(config_dicts['dataset']['sensors'])
 config_dicts['model']['input_dim'] = (config_dicts['dataset']['samples'][1]-config_dicts['dataset']['samples'][0])*n_sensors
 
 nn = config_dicts['meta']['network'](config_dicts['model'])
@@ -99,6 +99,16 @@ val_subset_accuracy = history['val_subset_accuracy']
 print('Training Loss: {train_loss:0.4}\nValidation Loss: {val_loss:0.4}\nTesting Loss: {test_loss:0.4}'.format(train_loss=train_loss,
                                                                                                                val_loss=val_loss,
                                                                                                                test_loss=test_loss))
+
+print('Validation Accuracy: {val_subset_accuracy:0.4}\nTesting Accuracy: {test_subset_accuracy:0.4}'.format(val_subset_accuracy=val_subset_accuracy,
+                                                                                                            test_subset_accuracy=test_subset_accuracy))
+
+
+n_labels = 5
+print('First {n_labels} Test Truth and Predictions:\n{test_true}\n\n{test_pred}'.format(n_labels=n_labels,
+                                                                                       test_true=history['test_true'][:n_labels],
+                                                                                       test_pred=history['test_pred'][:n_labels]))
+        
 
 results_dict = {
     'train_loss':train_loss,

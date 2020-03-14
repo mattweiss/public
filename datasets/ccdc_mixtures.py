@@ -2,7 +2,8 @@ import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from itertools import repeat
 
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
@@ -24,6 +25,18 @@ class ccdcMixturesDataset(AbstractDataset):
         """
 
         super().__init__(params)
+
+        # baseline shift length for StandardScaler
+        self._baseline_length = 500
+        
+        # cast sensors tuple to list
+        try:
+
+            self._sensors = list(self._sensors)
+
+        except:
+
+            self._sensors = np.arange(20)
 
     ##################
     # Public Methods #
@@ -55,9 +68,20 @@ class ccdcMixturesDataset(AbstractDataset):
         self._data_test  = pd.DataFrame( [ pd.read_pickle( self._dataset_dir + '/testing/' + pf ) for pf in self._pickle_files_test ] )
 
         # training set
-        self._data['x_train'] = np.asarray([ trial[self._samples[0]:self._samples[1],:] for trial in self._data_train[self._resistance_type].values ])
+        self._data['x_train'] = np.asarray([ trial[self._samples[0]:self._samples[1],self._sensors] for trial in self._data_train[self._resistance_type].values ])
+
+        # if self._standardize:
+
+        #     # if second argument is True fit and transform, otherwise only transform
+        #     self._data['x_train'] = np.asarray(list(map(self._preprocess,self._data['x_train'],repeat(True))))
+
         self._data['x_train'] = self._data['x_train'].reshape(-1,  self._data['x_train'].shape[1]*self._data['x_train'].shape[2] )
 
+        if self._standardize:
+
+            # if second argument is True fit and transform, otherwise only transform
+            self._data['x_train'] = self._preprocess(data=self._data['x_train'],fit=True)
+        
         if self._multi_label:
 
             # self._data['y_train'] = np.stack(self._data_train['concentration'].apply(lambda x : [ float(i) for i in x.split(",") ]))
@@ -71,9 +95,20 @@ class ccdcMixturesDataset(AbstractDataset):
         if self._with_val:
 
             # validation set
-            self._data['x_val'] = np.asarray([ trial[self._samples[0]:self._samples[1],:] for trial in self._data_val[self._resistance_type].values ])
+            self._data['x_val'] = np.asarray([ trial[self._samples[0]:self._samples[1],self._sensors] for trial in self._data_val[self._resistance_type].values ])
+
+            # if self._standardize:
+
+            #     # if second argument is True fit and transform, otherwise only transform
+            #     self._data['x_val'] = np.asarray(list(map(self._preprocess,self._data['x_val'],repeat(False))))
+                
             self._data['x_val'] = self._data['x_val'].reshape(-1,  self._data['x_val'].shape[1]*self._data['x_val'].shape[2] )
 
+            if self._standardize:
+
+                # if second argument is True fit and transform, otherwise only transform
+                self._data['x_val'] = self._preprocess(data=self._data['x_val'])
+                
             if self._multi_label:
 
                 # self._data['y_val'] = np.stack(self._data_val['concentration'].apply(lambda x : [ float(i) for i in x.split(",") ]))
@@ -85,8 +120,19 @@ class ccdcMixturesDataset(AbstractDataset):
                 self._data['y_val'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_val.label])
 
         # testing set
-        self._data['x_test'] = np.asarray([ trial[self._samples[0]:self._samples[1],:] for trial in self._data_test[self._resistance_type].values ])
+        self._data['x_test'] = np.asarray([ trial[self._samples[0]:self._samples[1],self._sensors] for trial in self._data_test[self._resistance_type].values ])
+
+        # if self._standardize:
+
+        #         # if second argument is True fit and transform, otherwise only transform
+        #         self._data['x_test'] = np.asarray(list(map(self._preprocess,self._data['x_test'],repeat(False))))
+
         self._data['x_test'] = self._data['x_test'].reshape(-1,  self._data['x_test'].shape[1]*self._data['x_test'].shape[2] )
+
+        if self._standardize:
+
+                # if second argument is True fit and transform, otherwise only transform
+                self._data['x_test'] = self._preprocess(data=self._data['x_test'])
 
         if self._multi_label:
 
@@ -98,15 +144,16 @@ class ccdcMixturesDataset(AbstractDataset):
 
             self._data['y_test'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_test.label])
 
-        if self._feature_range is not None:
-
-            min_max_scaler = MinMaxScaler(feature_range=self._feature_range).fit(self._data['x_train'])
-            self._data['x_train'] = min_max_scaler.transform(self._data['x_train'])
-
-            if self._with_val:
-
-                self._data['x_val'] = min_max_scaler.transform(self._data['x_val'])
-
-            self._data['x_test'] = min_max_scaler.transform(self._data['x_test'])
-
         return self._data
+
+    def _preprocess(self,data,fit=False):
+
+        # standardize based on training set only
+        if fit:
+
+            self._scaler = StandardScaler(with_mean=True,with_std=True)
+            self._scaler.fit(data)
+            
+        data = self._scaler.transform(data)
+
+        return data

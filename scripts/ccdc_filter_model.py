@@ -1,6 +1,6 @@
 #!/bin/env python3
 #SBATCH -N 1
-#SBATCH -n 2
+#SBATCH -n 4
 #SBATCH --mem=8G
 #SBATCH -p short
 #SBATCH -t 24:00:00
@@ -81,8 +81,8 @@ if not os.path.exists(res_dir):
 # create new split directory for Kalman Filtered data
 
 kf_split_base_dir = config_dicts['dataset']['dataset_dir'][:-1] + \
-                    '_kf_q_' + str(config_dicts['kf']['q']).replace('-','') + \
-                    '_r_' + str(int(config_dicts['kf']['r'])) + \
+                    '_kf_q_' + str(config_dicts['kf']['q']).replace('.','-') + \
+                    '_r_' + str(config_dicts['kf']['r']).replace('.','-') + \
                     config_dicts['dataset']['dataset_dir'][-1]
 
 try:
@@ -119,17 +119,19 @@ for split_name in split_list:
         # load df
         df = np.load(split_dir+pickle_file, allow_pickle=True)
 
-        z = df['resistance_z']
+        z = df['resistance'][config_dicts['dataset']['samples'][0]:config_dicts['dataset']['samples'][1],:]
 
         filter = config_dicts['meta']['filter'](config_dicts['kf'])
         filter_results = filter.fit(z)
-        z_hat = np.squeeze(filter_results['z_hat_post'],axis=-1)
+        
+        x_hat_post = np.squeeze(filter_results['x_hat_post'],axis=-1)
 
         tf.reset_default_graph()
 
         # add new key to dictionary
-        df['resistance_kf0'] = z_hat
-
+        df['resistance_kf0'] = x_hat_post[:,::2]
+        df['resistance_kf1'] = x_hat_post[:,1::2]
+        
         # write dictionary to pickle file
         dill_output_file = kf_split_base_dir + split_name + '/' + pickle_file
         with open(dill_output_file, 'wb') as handle:

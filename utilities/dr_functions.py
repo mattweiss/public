@@ -67,6 +67,4 @@ def trig_poly(x,params=None):
 
 def zeros(x,params=None):
 
-    assert x is not None
-
     return np.zeros(shape=x.shape)

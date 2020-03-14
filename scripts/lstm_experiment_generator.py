@@ -15,7 +15,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.deeplearning.networks.lstm import LSTM
+from dovebirdia.deeplearning.networks.lstm_tf import LSTM
 import dovebirdia.utilities.dr_functions as drfns
 import dovebirdia.stats.distributions as distributions
 
@@ -23,20 +23,20 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project = 'nyse'
-experiment_name = 'lstm_KILLME'
+project = 'pets'
+experiment_name = 'lstm_legendre_mask_percent_1_value_1000_KILLME'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
 
 meta_params = dict()
-dr_params = dict()
+ds_params = dict()
 model_params = dict()
 
 params_dicts = OrderedDict([
     ('meta',meta_params),
     ('model',model_params),
-    ('ds',dr_params),
+    ('ds',ds_params),
 ])
 
 ####################################
@@ -46,68 +46,83 @@ params_dicts = OrderedDict([
 meta_params['network'] = LSTM
 
 ####################################
-# Model Parameters
+# Important Parameters
 ####################################
 
+model_params['hidden_dims'] = (128,64) # [(512,128,64),(128,64),(128,64,32),(512,128)]
+model_params['learning_rate'] = 1e-3 # list(np.logspace(-3,-5,3))
+model_params['seq_len'] = 1 # [1,5,10,15]
+model_params['optimizer'] = optimizers.Adam
+model_params['mbsize'] = [500,125]
+
+# model parameters
+
 model_params['results_dir'] = '/results/'
-model_params['input_dim'] = 4
+model_params['input_dim'] = 2
 model_params['output_dim'] = model_params['input_dim']
-model_params['hidden_dims'] = (128,64)
 model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
-model_params['weight_initializer'] = 'glorot_uniform'
-model_params['bias_initializer'] = 0.0
+model_params['weight_initializer'] = 'glorot_normal'
+model_params['bias_initializer'] = 1.0
 model_params['weight_regularizer'] = None
+model_params['weight_regularizer_scale'] = 0.0
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
 model_params['weight_constraint'] = None
 model_params['bias_constraint'] = None
-model_params['seq_len'] = 1 #[1,5,10,15,25]
 model_params['recurrent_regularizer'] = None
+model_params['input_dropout_rate'] = 0.0
+model_params['dropout_rate'] = 0.0
 model_params['stateful'] = False
 model_params['return_seq'] = True
+model_params['train_ground'] = False
 
 # loss
-model_params['loss'] = losses.mean_squared_error
+model_params['loss'] = tf.losses.mean_squared_error # losses.mean_squared_error
 
 # training
-model_params['epochs'] = 1000
-model_params['mbsize'] = 100
-model_params['optimizer'] = optimizers.Adam
-model_params['learning_rate'] = 1e-3#list(np.logspace(-3,-5,10))
+model_params['epochs'] = 10
 
 # testing
-model_params['history_size'] = model_params['epochs'] // 10
+# model_params['history_size'] = int(0.01*model_params['epochs'])
 
 ####################################
 # Domain Randomization Parameters
 ####################################
 
-dr_params['ds_type'] = 'train'
-dr_params['x_range'] = (-1,1)
-dr_params['n_trials'] = 1
-dr_params['n_baseline_samples'] = 0
-dr_params['n_samples'] = 100
-dr_params['n_features'] = model_params['input_dim']
-dr_params['param_range'] = 1.0
-dr_params['max_N'] = 7
-dr_params['min_N'] = 3
-dr_params['fns'] = (
-    #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
+ds_params['ds_type'] = 'train'
+ds_params['x_range'] = (-1,1)
+ds_params['n_trials'] = 1
+ds_params['n_baseline_samples'] = 0
+ds_params['n_samples'] = 500
+ds_params['n_features'] = model_params['input_dim']
+ds_params['n_noise_features'] = model_params['input_dim']
+ds_params['feature_range'] = None
+ds_params['baseline_shift'] = None
+ds_params['param_range'] = 1.0
+ds_params['max_N'] = 15
+ds_params['min_N'] = 3
+ds_params['mask_percent'] = 0.01
+ds_params['mask_value'] = 1000
+
+ds_params['fns'] = (
+    # ['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
     #['sine', drfns.sine, [(0.0,100.0),(0.04,0.1)]],
-    # ['taylor_poly', drfns.taylor_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(dr_params['max_N']+1)],
-    #['legendre_poly', drfns.legendre_poly, [(-param_range,param_range)]*(N+1)],
-    ['trig_poly', drfns.trig_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(2*dr_params['max_N']+1)],
+    #['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    ['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    #['trig_poly', drfns.trig_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(2*ds_params['max_N']+1)],
 )
 
-dr_params['noise'] = (
-    ['gaussian', np.random.normal, {'loc':0.0, 'scale':0.2}],
-    #['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.1, 'loc2':-0.05, 'scale2':0.1}],
+ds_params['noise'] = [
+    ['gaussian', np.random.normal, {'loc':0.0, 'scale':0.0}],
+    # ['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.1, 'loc2':-0.05, 'scale2':0.1}],
     # ['cauchy', np.random.standard_cauchy, {}],
-    #['stable', distributions.stable, {'alpha':(1.0,2.0),'scale':0.2}],
-)
+    # ['stable', distributions.stable, {'alpha':(1.0),'scale':0.2}],
+    #['stable', distributions.stable, {'alpha':(1.5), 'scale':0.01}],
+]
+
 ####################################
 # Determine scaler and vector parameters
 ####################################

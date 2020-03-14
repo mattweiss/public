@@ -1,13 +1,14 @@
 import os
 import numpy as np
+import random
 import pandas as pd
 import tensorflow as tf
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+# from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
 
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
-from dovebirdia.utilities.base import saveAttrDict, loadDict
+from dovebirdia.utilities.base import saveAttrDict
 
 class nyseDataset(AbstractDataset):
 
@@ -29,7 +30,7 @@ class nyseDataset(AbstractDataset):
         self._csv_file = 'prices-split-adjusted.csv'
 
         # minimum length of time series for inclusion in dataset
-        self._min_ts_len = 1762
+        self._min_ts_len = 500
 
         # length of each security data split
         self._split_len = self._min_ts_len
@@ -44,8 +45,9 @@ class nyseDataset(AbstractDataset):
         if hasattr(self,'_saved_dataset'):
 
             # self._data = np.load(self._saved_dataset,allow_pickle=True).item()
-            self._pkl_data = loadDict(self._saved_dataset)
-            self._data = self._pkl_data['data']
+            # self._pkl_data = loadDict(self._saved_dataset)
+            # self._data = self._pkl_data['data']
+            self._data = self.getSavedDataset(self._saved_dataset)
 
         # create and save dataset
         else:
@@ -53,58 +55,43 @@ class nyseDataset(AbstractDataset):
             # read dataset
             self._raw_df = pd.read_csv(self._dataset_dir + 'raw/' + self._csv_file)
 
-            # list of symbols
-            self._symbols = self._raw_df.symbol.unique()
-
             # security data
-            self._securities = [ self._raw_df[self._raw_df.symbol==symbol] for symbol in self._symbols \
-                                 if self._raw_df[self._raw_df.symbol==symbol].shape[0] == self._min_ts_len ]
+            self._securities = [ self._raw_df[self._raw_df.symbol==symbol][:self._n_samples] for symbol in self._raw_df.symbol.unique() \
+                                 if self._raw_df[self._raw_df.symbol==symbol].shape[0] >= self._min_ts_len ]
 
             # lists for split data and symbols
-            security_splits_list = list()
-            symbol_splits_list = list()
+            security_list = list()
+            symbol_list = list()
 
             # loop over all symbols
-            #for symbol in self._symbols:
-            for security in self._securities[:self._n_securities]:
+            if self._n_securities is not None:
 
-                # get all data for given symbol
-                # security = self._raw_df[ self._raw_df.symbol == symbol ]
+                for security in random.sample(population=self._securities,k=self._n_securities):
 
-                # if symbol has sufficient data
-                # if security.shape[0] == self._min_ts_len:
+                    security_list.append(security[self._price_types].values)
+                    symbol_list.append(security.symbol.unique())
 
-                # price data
-                security_price_data = security[self._price_types].values
+            else:
 
-                # split security data into arrays of len self._split_len
-                security_price_data_splits = [security_price_data[i * self._split_len:(i + 1) * self._split_len]
-                                                for i in range( (len(security_price_data) + self._split_len - 1) // self._split_len )]
+                for security in self._securities:
 
-                # loop over security data splits
-                for security_price_data_split in security_price_data_splits:
-
-                    if security_price_data_split.shape[0] == self._split_len:
-
-                        security_splits_list.append(security_price_data_split[:])
-                        symbol_splits_list.append(security.symbol.unique())
+                    security_list.append(security[self._price_types].values)
+                    symbol_list.append(security.symbol.unique())
 
             # cast to numpy arrays
-            security_splits = np.stack(security_splits_list)
-            symbol_splits = np.stack(symbol_splits_list)
+            securities = np.stack(security_list)
+            symbols = np.stack(symbol_list)
 
-            # train/test split
-            # train_test_sss = ShuffleSplit(n_splits=1, test_size=self._test_size, random_state=None)
-
-            # for train_idx, test_idx in train_test_sss.split(security_splits, symbol_splits):
+            ######################
+            # Train-Val-Test Split
+            ######################
 
             # training and testing data and labels
-            train_test_split_index = int(security_splits.shape[1] * 0.8)
+            train_test_split_index = int(securities.shape[1] * 0.8)
 
-            self._data['x_train'] = security_splits[:,:train_test_split_index]
-            self._data['x_test'] = security_splits[:,train_test_split_index:]
-            self._data['y_labels'] = symbol_splits
-            # self._data['y_test'] = symbol_splits[train_test_split_index:]
+            self._data['x_train'] = securities[:,:train_test_split_index]
+            self._data['x_test'] = securities[:,train_test_split_index:]
+            self._data['y_labels'] = symbols
 
             # validation set
             if self._with_val is not None:
@@ -113,44 +100,52 @@ class nyseDataset(AbstractDataset):
 
                 # temp to hold training values
                 x_train_tmp = self._data['x_train']
-                # y_train_tmp = self._data['y_train']
 
                 self._data['x_train'] = x_train_tmp[:,:train_val_split_index]
                 self._data['x_val'] = x_train_tmp[:,train_val_split_index:]
-                # self._data['y_train'] = y_train_tmp[:train_val_split_index]
-                # self._data['y_val'] = y_train_tmp[train_val_split_index:]
 
-            # min-max scaler
-            if self._feature_range is not None:
+            ###########################
+            # Reshape for preprocessing
+            ###########################
 
-                x_train_min_max_list = list()
-                x_val_min_max_list = list()
-                x_test_min_max_list = list()
+            train_shape_orig, val_shape_orig, test_shape_orig = self._data['x_train'].shape, self._data['x_val'].shape, self._data['x_test'].shape
 
-                for x_train, x_val, x_test in zip(self._data['x_train'],self._data['x_val'],self._data['x_test']):
+            self._data['x_train'] = self._data['x_train'].reshape(self._data['x_train'].shape[0]*self._data['x_train'].shape[1],self._data['x_train'].shape[2])
+            self._data['x_val'] = self._data['x_val'].reshape(self._data['x_val'].shape[0]*self._data['x_val'].shape[1],self._data['x_val'].shape[2])
+            self._data['x_test'] = self._data['x_test'].reshape(self._data['x_test'].shape[0]*self._data['x_test'].shape[1],self._data['x_test'].shape[2])
 
-                    min_max_scaler = MinMaxScaler(feature_range=(0,1))
-                    x_train_min_max_list.append(min_max_scaler.fit_transform(x_train))
-                    x_val_min_max_list.append(min_max_scaler.transform(x_val))
-                    x_test_min_max_list.append(min_max_scaler.transform(x_test))
+            ##################
+            # Standardize Data
+            ##################
 
-                self._data['x_train'] = np.asarray(x_train_min_max_list)
-                self._data['x_val'] = np.asarray(x_val_min_max_list)
-                self._data['x_test'] = np.asarray(x_test_min_max_list)
+            if self._standardize:
+            
+                standard_scaler = StandardScaler()
+                self._data['x_train'] = standard_scaler.fit_transform(self._data['x_train'])
+                self._data['x_val'] = standard_scaler.transform(self._data['x_val'])
+                self._data['x_test'] = standard_scaler.transform(self._data['x_test'])
 
-            #Baseline shift
-            if self._baseline_shift:
+            ###############
+            # MinMax Scaler
+            ###############
 
-                self._data['x_train'] -= self._data['x_train'][:,:1,:]
-                self._data['x_val'] -= self._data['x_val'][:,:1,:]
-                self._data['x_test'] -= self._data['x_test'][:,:1,:]
+            min_max_scaler = MinMaxScaler(feature_range=self._feature_range)
+            self._data['x_train'] = min_max_scaler.fit_transform(self._data['x_train'])
+            self._data['x_val'] = min_max_scaler.transform(self._data['x_val'])
+            self._data['x_test'] = min_max_scaler.transform(self._data['x_test'])
+
+            ##################
+            # Reshape Datasets
+            ##################
+
+            self._data['x_train'] = self._data['x_train'].reshape(train_shape_orig)
+            self._data['x_val'] = self._data['x_val'].reshape(val_shape_orig)
+            self._data['x_test'] = self._data['x_test'].reshape(test_shape_orig)
 
             # save to disk
             save_dir = self._dataset_dir + 'split/' + self._dataset_name + '.pkl'
 
             # np.save(save_dir,self._data,allow_pickle=True)
             saveAttrDict(save_dict=self.__dict__, save_path=save_dir)
-
-        st()
 
         return self._data

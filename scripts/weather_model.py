@@ -109,7 +109,7 @@ history = nn.fit(dataset=dataset, save_model=True)
 
 train_mse = np.asarray(history['train_loss'][-1])
 val_mse = np.asarray(history['val_loss'][-1])
-test_mse = np.asarray(history['test_loss'])
+test_mse = np.asarray(history['test_loss'][-1])
 
 print('Training MSE: {train_mse:0.4}\nValidation MSE: {val_mse:0.4}\nTesting MSE: {test_mse:0.4}'.format(train_mse=train_mse,
                                                                                                         val_mse=val_mse,
@@ -123,11 +123,11 @@ results_dict = {
 }
 
 # save test truth and predictions to disk
-test_pred_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_pred'
-np.save(test_pred_file_path,history['test_pred'])
+#test_pred_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_pred'
+#np.save(test_pred_file_path,history['test_pred'])
 
-test_true_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_true'
-np.save(test_true_file_path,history['test_true'])
+#test_true_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_true'
+#np.save(test_true_file_path,history['test_true'])
 
 ################################################################################
 # CSV
