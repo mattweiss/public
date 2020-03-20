@@ -20,7 +20,7 @@ dataset_params = {
     #'noise':['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.03, 'loc2':-0.05, 'scale2':0.03}],
     #'noise':['cauchy', distributions.stable, {'alpha':(1.0), 'scale':0.002}],
     'mask_percent':0.01,
-    'mask_value':1000,
+    'mask_value':0,
 }
 
 dataset_params['dataset_name'] = '{dataset}_dataset_SAMPLES_{samples}_NOISE_{noise}_MASK_percent_{mask_percent}_value_{mask_value}'.format(dataset=dataset_params['dataset'].split('.')[0].replace('-','_'),

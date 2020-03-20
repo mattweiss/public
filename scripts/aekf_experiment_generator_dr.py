@@ -25,7 +25,7 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'pets'
-experiment_name = 'aekf_legendre_ncv_mask_percent_1_value_1000_KILLME'
+experiment_name = 'aekf_legendre_ncv_mask_percent_1_value_1000'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -53,11 +53,13 @@ meta_params['network'] = AutoencoderKalmanFilter
 ####################################
 
 model_params['hidden_dims'] = [(512,128,64),(128,64),(128,64,32),(512,128)]
-model_params['learning_rate'] = list(np.logspace(-3,-4,2))
-kf_params['q'] = list(np.logspace(0,-2,3))
-kf_params['with_z_dot'] = False
+model_params['learning_rate'] = 1e-3 # list(np.logspace(-3,-5,12))
+kf_params['q'] = list(np.logspace(0,-5,6))
+kf_params['with_z_dot'] = [True,False]
 model_params['optimizer'] = tf.train.AdamOptimizer #[tf.train.MomentumOptimizer,tf.train.AdamOptimizer]
-model_params['mbsize'] = [500,125]
+model_params['mbsize'] = 100
+kf_params['dimensions'] = (1,2)
+kf_params['n_signals'] = [8,16]
 
 # model params
 
@@ -70,8 +72,8 @@ model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
 model_params['weight_initializer'] = tf.initializers.glorot_normal
 model_params['bias_initializer'] = tf.initializers.ones
-model_params['weight_regularizer'] = None#[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
-model_params['weight_regularizer_scale'] = 0.0#[1e-4,1e-5]
+model_params['weight_regularizer'] = None #[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
+model_params['weight_regularizer_scale'] = 0.0 #[1e-4,1e-5]
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
 model_params['weight_constraint'] = None
@@ -86,7 +88,7 @@ model_params['train_ground'] = False
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10
+model_params['epochs'] = 100000
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -101,7 +103,7 @@ ds_params['ds_type'] = 'train'
 ds_params['x_range'] = (-1,1)
 ds_params['n_trials'] = 1
 ds_params['n_baseline_samples'] = 0
-ds_params['n_samples'] = 500
+ds_params['n_samples'] = 100
 ds_params['n_features'] = model_params['input_dim']
 ds_params['n_noise_features'] = ds_params['n_features']
 ds_params['standardize'] = False
@@ -110,8 +112,10 @@ ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
 ds_params['max_N'] = 7
 ds_params['min_N'] = 3
-ds_params['mask_percent'] = 0.01
-ds_params['mask_value'] = 1000
+ds_params['missing_percent'] = 0.01
+ds_params['missing_value'] = 1000.0
+ds_params['with_mask'] = True
+ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     #['zeros', drfns.zeros, []],
     # ['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
@@ -123,7 +127,8 @@ ds_params['fns'] = (
 )
 
 ds_params['noise'] = [
-    ['gaussian', np.random.normal, {'loc':0.0, 'scale':0.0}],
+    [None, None, None],
+    #['gaussian', np.random.normal, {'loc':0.0, 'scale':0.0}],
     #['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.03, 'loc2':-0.05, 'scale2':0.03}],
     #['cauchy', np.random.standard_cauchy, {}],
     #['stable', distributions.stable, {'alpha':(1.0,2.0),'scale':1.0}], # alpha = 2 Gaussian, alpha = 1 Cauchy
@@ -134,9 +139,7 @@ ds_params['noise'] = [
 # Kalman Filter Parameters
 ####################################
 
-kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = [8,16]
-kf_params['dt'] = 0.5
+kf_params['dt'] = 1.0
 kf_params['f_model'] = 'fixed' # fixed, random, learned
 kf_params['h_model'] = 'fixed' # fixed, random, learned
 kf_params['diagonal_R'] = False

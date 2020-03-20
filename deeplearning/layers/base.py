@@ -26,8 +26,6 @@ class Dense():
 
         self._name=name
         self._weight_initializer=weight_initializer
-        # self._weight_regularizer=weight_regularizer
-        # self._weight_regularizer_scale=weight_regularizer_scale
         self._bias_initializer=bias_initializer
         self._bias_regularizer=bias_regularizer
         self._weight_constraint=weight_constraint

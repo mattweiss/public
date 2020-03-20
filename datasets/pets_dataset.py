@@ -118,34 +118,15 @@ class petsDataset(AbstractDataset):
             # Apply mask
             ############
 
-            if self._mask_percent is not 0:
+            if self._mask_percent is not 0.0:
 
-                mask_indices = generateMask(self._data['x_test'],
-                                            self._mask_percent,
-                                            self._mask_value)
-
-                self._data['x_test'][mask_indices] = self._mask_value
+                for index, x_test in enumerate(self._data['x_test']):
                 
-                # for x_test in self._data['x_test']:
+                    mask_indices = generateMask(x_test,
+                                                self._mask_percent)
 
-                #     mask_indices = np.random.choice(np.arange(x_test.shape[0]), replace=False, size=round(x_test.shape[0]*self._mask_percent))
-
-                #     # randomly pad additional missing data before and after each mask index with 25% probability
-                #     for mask_index in mask_indices:
-    
-                #         bin_index = np.random.choice([0,1],p=[0.75,0.25])
-
-                #         if bin_index == 1:
-                
-                #             mask_indices = np.append(mask_indices,mask_index+bin_index)
-
-                #             # ensure negative index does not occur
-                #             if mask_index != 0:
-    
-                #                 mask_indices = np.append(mask_indices,mask_index-bin_index)
-
-                #     # assign mask value
-                #     x_test[mask_indices] = self._mask_value
+                    #self._data['x_test'][mask_indices] = self._mask_value
+                    self._data['x_test'][index][mask_indices] = self._mask_value
 
             ##############
             # save to disk

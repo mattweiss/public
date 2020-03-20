@@ -140,6 +140,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def evaluate(self, x=None, y=None, labels=None,
                  eval_ops = None,
+                 attributes = None,
                  save_results=None):
 
         assert x is not None
@@ -206,6 +207,17 @@ class FeedForwardNetwork(AbstractNetwork):
         self._history['x'] = np.asarray(x)
         self._history['y'] = np.asarray(y)
 
+        # add additionaly class attributes to history
+        if attributes is not None:
+
+            for attr in attributes:
+
+                attr_key = '_' + attr
+
+                if attr_key in self.__dict__.keys():
+
+                    self._history[attr] = self.__dict__[attr_key]
+
         # save predictions
         if save_results is not None:
             
@@ -218,11 +230,6 @@ class FeedForwardNetwork(AbstractNetwork):
     ###################
 
     def _buildNetwork(self):
-
-        # input and output placeholders
-        self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
-        self._y = tf.placeholder(dtype=tf.float64, shape=(None), name='y')
-        self._mask = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='mask')
         
         self._y_hat = Dense(name='layers',
                             weight_initializer=self._weight_initializer,
@@ -236,6 +243,14 @@ class FeedForwardNetwork(AbstractNetwork):
                             bias_initializer=self._bias_initializer,
                             activation=self._output_activation).build(self._y_hat, [self._output_dim])
 
+    def _setPlaceholders(self):
+
+        # input and output placeholders
+        self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
+        self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
+        self._t = tf.placeholder(dtype=tf.float64, shape=(None,1), name='t')
+        self._mask = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='mask')
+        
     def _setLoss(self):
 
         self._mse_op = tf.cast(self._loss(self._y,self._y_hat,weights=self._mask), tf.float64)
@@ -478,8 +493,8 @@ class FeedForwardNetwork(AbstractNetwork):
             for epoch in range(1, self._epochs+1):
 
                 # generate training and validation datasets
-                train_data = self._dr_dataset.generateDataset(with_mask=True)
-                val_data = self._dr_dataset.generateDataset(with_mask=True)
+                train_data = self._dr_dataset.generateDataset()
+                val_data = self._dr_dataset.generateDataset()
 
                 # train and val loss lists
                 train_loss_list = list()
@@ -495,53 +510,47 @@ class FeedForwardNetwork(AbstractNetwork):
 
                     # plt.subplot(231)
                     # plt.plot(x_train[:,0],label='x0',marker=None)
+                    # plt.plot(y_train[:,0],label='y0',marker=None)
+                    # plt.title(np.array_equal(x_train[:,0],y_train[:,0]))
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(232)
                     # plt.plot(x_train[:,1],label='x1',marker=None)
+                    # plt.plot(y_train[:,1],label='y1',marker=None)
+                    # plt.title(np.array_equal(x_train[:,1],y_train[:,1]))
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(233)
                     # plt.scatter(x_train[:,0],x_train[:,1],label='x',marker=None)
+                    # plt.scatter(y_train[:,0],y_train[:,1],label='x',marker=None)
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(234)
                     # plt.plot(x_val[:,0],label='x0',marker=None)
+                    # plt.plot(y_val[:,0],label='y0',marker=None)
+                    # plt.title(np.array_equal(x_val[:,0],y_val[:,0]))
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(235)
                     # plt.plot(x_val[:,1],label='x1',marker=None)
+                    # plt.plot(y_val[:,1],label='y1',marker=None)
+                    # plt.title(np.array_equal(x_val[:,1],y_val[:,1]))
                     # plt.grid()
-
                     # plt.legend()
 
                     # plt.subplot(236)
                     # plt.scatter(x_val[:,0],x_val[:,1],label='x',marker=None)
+                    # plt.scatter(y_val[:,0],y_val[:,1],label='y',marker=None)
                     # plt.grid()
                     # plt.legend()
                     
                     # plt.show()
                     # plt.close()
-                    
-                    # plt.figure(figsize=(6,6))
-                    # plt.plot(x_train,label='x')
-                    # plt.plot(y_train,label='y')
-                    # plt.grid()
-                    # plt.legend()
-                    # plt.show()
-                    # plt.close()
-                    
-                    # training and validation feed dicts
-                    # train_feed_dict.update({self._X:x_train, self._y:y_train,self._mask:train_mask} if self._train_ground else {self._X:x_train, self._y:x_train,self._mask:train_mask})
-                    # val_feed_dict.update({self._X:x_val, self._y:y_val,self._mask:val_mask} if self._train_ground else {self._X:x_val, self._y:x_val,self._mask:val_mask})
-
-                    #x_train, y_train, mask_train = x_train, y_train, mask_train if self._train_ground else x_train, x_train, mask_train
-                    #x_val, y_val, mask_val = x_val, y_val, mask_val if self._train_ground else x_val, x_val, mask_val
-
+                                    
                     if not self._train_ground:
 
                         y_train = x_train
@@ -552,12 +561,14 @@ class FeedForwardNetwork(AbstractNetwork):
 
                     for x_mb, y_mb, mask_mb in zip(x_train_mb,y_train_mb,mask_train_mb):
 
-                        train_feed_dict.update({self._X:x_train,self._y:y_train,self._mask:mask_train})
+                        x_mb, y_mb, mask_mb = x_mb, y_mb, mask_mb
+
+                        train_feed_dict.update({self._X:x_train,self._y:y_train,self._mask:mask_train,self._t:train_data['t']})
                         sess.run(self._optimizer_op, feed_dict=train_feed_dict)
 
                     # loss op
                     train_loss, train_mse = sess.run([self._loss_op,self._mse_op],feed_dict=train_feed_dict)
-                    val_feed_dict.update({self._X:x_val,self._y:y_val,self._mask:mask_val})
+                    val_feed_dict.update({self._X:x_val,self._y:y_val,self._mask:mask_val,self._t:val_data['t']})
                     val_loss, val_mse = sess.run([self._loss_op,self._mse_op],feed_dict=val_feed_dict)
                     train_loss_list.append(train_loss)
                     val_loss_list.append(val_loss)
@@ -569,6 +580,32 @@ class FeedForwardNetwork(AbstractNetwork):
                     self._history['train_mse'].append(np.asarray(train_mse).mean())
                     self._history['val_mse'].append(np.asarray(val_mse).mean())
 
+                    # if epoch % 1000 == 0:
+
+                    #     y_hat_train, alpha_train, hidden_train = sess.run([self._y_hat,self._alpha,self._hidden], feed_dict=train_feed_dict)
+                    #     y_hat_val, alpha_val = sess.run([self._y_hat,self._alpha], feed_dict=val_feed_dict)
+
+                    #     print(alpha_train, '\n', hidden_train)
+
+                    #     plt.figure(figsize=(12,6))
+
+                    #     plt.subplot(121)
+                    #     plt.plot(y_train[:,0],label='y0',marker=None)
+                    #     plt.plot(y_hat_train[:,0],label='yhat 0',marker=None)
+                    #     plt.grid()
+                    #     plt.legend()
+                    #     plt.title('Training')
+                        
+                    #     plt.subplot(122)
+                    #     plt.plot(y_val[:,0],label='y0',marker=None)
+                    #     plt.plot(y_hat_val[:,0],label='yhat 0',marker=None)
+                    #     plt.grid()
+                    #     plt.legend()
+                    #     plt.title('Validation')
+                        
+                    #     plt.show()
+                    #     plt.close()
+                                        
                     print('Epoch {epoch}, Training Loss/MSE {train_loss:0.4}/{train_mse:0.4}, Val Loss/MSE {val_loss:0.4}/{val_mse:0.4}'.format(epoch=epoch,
                                                                                                                                                 train_loss=self._history['train_loss'][-1],
                                                                                                                                                 train_mse=self._history['train_mse'][-1],        

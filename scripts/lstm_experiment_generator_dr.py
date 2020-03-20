@@ -24,7 +24,7 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'pets'
-experiment_name = 'lstm_legendre_mask_percent_1_value_1000_KILLME'
+experiment_name = 'lstm_legendre_mask_percent_1_value_1000'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -49,11 +49,11 @@ meta_params['network'] = LSTM
 # Important Parameters
 ####################################
 
-model_params['hidden_dims'] = (128,64) # [(512,128,64),(128,64),(128,64,32),(512,128)]
-model_params['learning_rate'] = 1e-3 # list(np.logspace(-3,-5,3))
-model_params['seq_len'] = 1 # [1,5,10,15]
+model_params['hidden_dims'] = [(512,128,64),(128,64),(128,64,32),(512,128)]
+model_params['learning_rate'] = list(np.logspace(-3,-5,6))
+model_params['seq_len'] = [1,5,10,15]
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['mbsize'] = 500 # [500,125]
+model_params['mbsize'] = 100
 
 # model parameters
 
@@ -82,10 +82,7 @@ model_params['train_ground'] = False
 model_params['loss'] = tf.losses.mean_squared_error # losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10
-
-# testing
-# model_params['history_size'] = int(0.01*model_params['epochs'])
+model_params['epochs'] = 100000
 
 ####################################
 # Domain Randomization Parameters
@@ -95,17 +92,18 @@ ds_params['ds_type'] = 'train'
 ds_params['x_range'] = (-1,1)
 ds_params['n_trials'] = 1
 ds_params['n_baseline_samples'] = 0
-ds_params['n_samples'] = 500
+ds_params['n_samples'] = 100
 ds_params['n_features'] = model_params['input_dim']
 ds_params['n_noise_features'] = model_params['input_dim']
 ds_params['feature_range'] = None
 ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
-ds_params['max_N'] = 15
+ds_params['max_N'] = 7
 ds_params['min_N'] = 3
-ds_params['mask_percent'] = 0.01
-ds_params['mask_value'] = 1000
-
+ds_params['missing_percent'] = 0.01
+ds_params['missing_value'] = 1000
+ds_params['with_mask'] = True
+ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     # ['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
@@ -116,7 +114,8 @@ ds_params['fns'] = (
 )
 
 ds_params['noise'] = [
-    ['gaussian', np.random.normal, {'loc':0.0, 'scale':0.0}],
+    [None, None, None],
+    #['gaussian', np.random.normal, {'loc':0.0, 'scale':0.0}],
     # ['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.1, 'loc2':-0.05, 'scale2':0.1}],
     # ['cauchy', np.random.standard_cauchy, {}],
     # ['stable', distributions.stable, {'alpha':(1.0),'scale':0.2}],

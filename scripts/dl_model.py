@@ -194,12 +194,28 @@ if TRAINING:
     val_std = np.asarray(history['val_loss']).std()
     val_mse = np.asarray(history['val_mse']).mean()
     val_mse_std = np.asarray(history['val_mse']).std()
-  
+
+    metric_sublen = dr_params=config_dicts['ds']['metric_sublen']
+
+    train_loss_sub = np.asarray(history['train_loss'][metric_sublen:]).mean()
+    train_loss_std_sub = np.asarray(history['train_loss'][metric_sublen:]).std()
+    train_mse_sub = np.asarray(history['train_mse'][metric_sublen:]).mean()
+    train_mse_std_sub = np.asarray(history['train_mse'][metric_sublen:]).std()
+
+    val_loss_sub = np.asarray(history['val_loss'][metric_sublen:]).mean()
+    val_std_sub = np.asarray(history['val_loss'][metric_sublen:]).std()
+    val_mse_sub = np.asarray(history['val_mse'][metric_sublen:]).mean()
+    val_mse_std_sub = np.asarray(history['val_mse'][metric_sublen:]).std()
+
     results_dict = {
         'train_loss':train_loss,
         'val_loss':val_loss,
         'train_mse':train_mse,
         'val_mse':val_mse,
+        'train_loss_sub':train_loss_sub,
+        'val_loss_sub':val_loss_sub,
+        'train_mse_sub':train_mse_sub,
+        'val_mse_sub':val_mse_sub,
         'runtime':history['runtime'],
     }
    
@@ -209,16 +225,21 @@ else:
 
     class_name = type(nn).__name__
 
+    # default eval ops and attributes lists
+    eval_ops_list =  None
+    attributes_list = None
+        
     if class_name == 'AutoencoderKalmanFilter':
 
         eval_ops_list =  ['z','R','kf_results']
-
+        
     elif class_name == 'LSTM':
 
-        eval_ops_list =  None
+        attributes_list = ['seq_len']
     
     history = nn.evaluate(x=x_test, y=y_test,labels=labels,
                           eval_ops=eval_ops_list,
+                          attributes=attributes_list,
                           save_results=evaluate_save_path)
 
     results_dict = {

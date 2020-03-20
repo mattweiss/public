@@ -44,11 +44,12 @@ class LSTM(FeedForwardNetwork):
 
     def evaluate(self,x=None,y=None,labels=None,
                  eval_ops=None,
+                 attributes=None,
                  save_results=None):
 
         x, y, _ = self._generateDataset(x,y)
 
-        return super().evaluate(x=x,y=y,save_results=save_results)
+        return super().evaluate(x=x,y=y,attributes=attributes,save_results=save_results)
         
     ###################
     # Private Methods #
@@ -73,8 +74,8 @@ class LSTM(FeedForwardNetwork):
             for epoch in range(1, self._epochs+1):
 
                 # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
-                train_data = self._dr_dataset.generateDataset(with_mask=False)
-                val_data = self._dr_dataset.generateDataset(with_mask=False)
+                train_data = self._dr_dataset.generateDataset()
+                val_data = self._dr_dataset.generateDataset()
 
                 # train and val loss lists
                 train_loss_list = list()
@@ -86,6 +87,42 @@ class LSTM(FeedForwardNetwork):
                 for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x'],train_data['y'],train_data['mask'],
                                                                                 val_data['x'],val_data['y'],val_data['mask']):
 
+                    # plt.figure(figsize=(18,12))
+
+                    # plt.subplot(231)
+                    # plt.plot(x_train[:,0],label='x0',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+
+                    # plt.subplot(232)
+                    # plt.plot(x_train[:,1],label='x1',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+
+                    # plt.subplot(233)
+                    # plt.scatter(x_train[:,0],x_train[:,1],label='x',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+
+                    # plt.subplot(234)
+                    # plt.plot(x_val[:,0],label='x0',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+
+                    # plt.subplot(235)
+                    # plt.plot(x_val[:,1],label='x1',marker=None)
+                    # plt.grid()
+
+                    # plt.legend()
+
+                    # plt.subplot(236)
+                    # plt.scatter(x_val[:,0],x_val[:,1],label='x',marker=None)
+                    # plt.grid()
+                    # plt.legend()
+                    
+                    # plt.show()
+                    # plt.close()
+                    
                     # generate minibatches
                     x_train_mb, y_train_mb, mask_train_mb = self._generateMinibatches(x_train,y_train,mask_train)
 
@@ -96,10 +133,8 @@ class LSTM(FeedForwardNetwork):
 
                     for x_mb, y_mb, mask_mb in zip(x_train_mb,y_train_mb,mask_train_mb):
 
-                        # train_feed_dict[self._X] = x_mb
-                        # train_feed_dict[self._y] = y_mb
-                        # train_feed_dict[self._mask] = mask_mb
-
+                        # mask_mb = np.ones(shape=mask_mb.shape)
+                        
                         train_feed_dict.update({self._X:x_mb,self._y:y_mb,self._mask:mask_mb})
                         sess.run(self._optimizer_op, feed_dict=train_feed_dict)
 

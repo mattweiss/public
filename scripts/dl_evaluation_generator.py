@@ -26,21 +26,27 @@ from dovebirdia.datasets.nyse_dataset import nyseDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'pets'
+project = 'hilbert'
 
 config_dict = dict()
 config_dict['dataset'] = 'petsDataset' #'DomainRandomizationDataset'
 config_dict['with_val'] = False
 
 experiments = [
-    #('aekf_legendre_ncv_mask_percent_1_value_1000',[68]),
-    #('aekf_legendre_real_ncv_mask_percent_1_value_1000',[70]),
-    #('aekf_legendre_ncv_mask_percent_1_value_1000_KILLME',[1]),
-    ('lstm_legendre_mask_percent_1_value_1000_KILLME',[1])
+    #('aekf_legendre_ncv_mask_percent_1_value_1000',[56]),
+    #('aekf_taylor_ncv_mask_percent_1_value_1000',[56]),
+    #('lstm_legendre_mask_percent_1_value_1000',[32]),
+    #('lstm_taylor_mask_percent_1_value_1000',[80]),
+    #('aekf_legendre_ncv_mask_percent_1_value_1000_ZEROS',[1]),
+    #('aekf_legendre_nca_mask_percent_1_value_1000',[7]),
+    #('aekf_legendre_ncv_mask_percent_1_value_1000_ZEROS',[29]),
+    #('aekf_legendre_ncv_mask_percent_1_value_1000_samples_100',[58]),
+    ('hilbert_legendre_ncv_mask_percent_1_value_1000_samples_100_ALPHA',[1]),
 ]
 
 test_dataset_files = [
     '/home/mlweiss/Documents/wpi/research/data/pets/split/PETS2009_S2L1_dataset_SAMPLES_None_NOISE_none_MASK_percent_0-01_value_1000.pkl',
+    #'/home/mlweiss/Documents/wpi/research/data/pets/split/PETS2009_S2L1_dataset_SAMPLES_None_NOISE_none_MASK_percent_0-01_value_0.pkl',
 ]
 
 machine = socket.gethostname()

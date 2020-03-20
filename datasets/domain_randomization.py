@@ -16,6 +16,8 @@ class DomainRandomizationDataset(AbstractDataset):
 
         super().__init__(params)
 
+        # self._with_mask = True if self._mask_percent != 0.0 else False
+        
     ##################
     # Public Methods #
     ##################
@@ -29,7 +31,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
         return self._data
 
-    def generateDataset(self,with_mask=False):
+    def generateDataset(self):
 
         """
         Generate domain randomization dataset.  Logic for whether to save to disk or return in in getDataset()
@@ -85,22 +87,29 @@ class DomainRandomizationDataset(AbstractDataset):
             self._noise_name, self._noise_dist, self._noise_params = random.choice(self._noise)
             noise_types.append(self._noise_name)
 
-            # randomly select noise params if tuple
-            noise_param_dict = dict()
+            if self._noise_name is not None:
             
-            for param_key, param in self._noise_params.items():
+                # randomly select noise params if tuple
+                noise_param_dict = dict()
 
-                if isinstance(param, tuple):
+                for param_key, param in self._noise_params.items():
 
-                    noise_param_dict[param_key] = np.random.uniform(param[0], param[1])
+                    if isinstance(param, tuple):
 
-                else:
+                        noise_param_dict[param_key] = np.random.uniform(param[0], param[1])
 
-                    noise_param_dict[param_key] = param
+                    else:
 
-            noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_noise_features))
-            x = y + noise
-            
+                        noise_param_dict[param_key] = param
+
+                noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_noise_features))
+
+                x = y + noise
+
+            else:
+
+                x = y
+                
             ######################
             # Shift y
             ######################
@@ -135,33 +144,28 @@ class DomainRandomizationDataset(AbstractDataset):
         self._data['noise_type'] = noise_types
         self._data['mask'] = np.ones(shape=self._data['x'].shape)
 
-        if with_mask:
-        
-            # missing data mask
-            #mask_indices = np.random.choice(np.arange(self._data['x'].shape[1]-1), replace=False, size=round(self._data['x'].shape[1]*self._mask_percent))
-            
-            # randomly pad additional missing data before and after each mask index with 25% probability
-            # for mask_index in mask_indices:
-    
-            #     bin_index = np.random.choice([0,1],p=[0.75,0.25])
+        # add missing values
+        if self._missing_percent != 0.0:
 
-            #     if bin_index == 1:
+            for index, x in enumerate(self._data['x']):
                 
-            #         mask_indices = np.append(mask_indices,mask_index+bin_index)
+                    mask_indices = generateMask(x,
+                                                self._missing_percent)
 
-            #         # ensure negative index does not occur
-            #         if mask_index != 0:
-    
-            #             mask_indices = np.append(mask_indices,mask_index-bin_index)
+                    self._data['x'][index][mask_indices] = self._missing_value
+                    self._data['y'][index][mask_indices] = self._missing_value
 
-            
-            mask_indices = generateMask(self._data['x'],
-                                        self._mask_percent)
+            #mask_indices = generateMask(self._data['x'],
+            #                            self._missing_percent)
 
-            self._data['mask'][:,mask_indices] = 0
-            self._data['x'][:,mask_indices] = self._mask_value
-            self._data['y'][:,mask_indices] = self._mask_value
-            
+            #self._data['x'][:,mask_indices] = self._missing_value
+            #self._data['y'][:,mask_indices] = self._missing_value
+
+            # if excluding missing values from loss function
+            if self._with_mask:
+
+                self._data['mask'][index][mask_indices] = 0.0
+
         # save dataset logic
         if getattr(self, '_save_path', None) is not None:
 
