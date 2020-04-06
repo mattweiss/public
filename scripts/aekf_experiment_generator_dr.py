@@ -24,8 +24,8 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project = 'pets'
-experiment_name = 'aekf_legendre_ncv_mask_percent_1_value_1000'
+project = 'asilomar2020'
+experiment_name = 'aekf_FAMILY_taylor_DYNMOD_ncv_NOISE_cauchy_R_learned_EIGEN_KILLME'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -49,17 +49,14 @@ params_dicts = OrderedDict([
 meta_params['network'] = AutoencoderKalmanFilter
 
 ####################################
-# Important Parameters
+# Regularly edited Parameters
 ####################################
 
-model_params['hidden_dims'] = [(512,128,64),(128,64),(128,64,32),(512,128)]
-model_params['learning_rate'] = 1e-3 # list(np.logspace(-3,-5,12))
-kf_params['q'] = list(np.logspace(0,-5,6))
-kf_params['with_z_dot'] = [True,False]
-model_params['optimizer'] = tf.train.AdamOptimizer #[tf.train.MomentumOptimizer,tf.train.AdamOptimizer]
+model_params['hidden_dims'] = [(128,64,32),(128,64),(64,32,16),(64,32)]
+model_params['learning_rate'] = list(np.logspace(-3,-5,3))
+model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['mbsize'] = 100
-kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = [8,16]
+ds_params['missing_percent'] = 0.0
 
 # model params
 
@@ -80,15 +77,17 @@ model_params['weight_constraint'] = None
 model_params['bias_constraint'] = None
 model_params['input_dropout_rate'] = 0.0
 model_params['dropout_rate'] = 0.0
+model_params['z_regularizer'] = None #[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
+model_params['z_regularizer_scale'] = 0.0 # [1e-7,1e-8]
 model_params['R_model'] = 'learned' # learned, identity
 model_params['R_activation'] = None
-model_params['train_ground'] = False
+model_params['train_ground'] = True
 
 # loss
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100000
+model_params['epochs'] = 10
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -103,7 +102,7 @@ ds_params['ds_type'] = 'train'
 ds_params['x_range'] = (-1,1)
 ds_params['n_trials'] = 1
 ds_params['n_baseline_samples'] = 0
-ds_params['n_samples'] = 100
+ds_params['n_samples'] = model_params['mbsize']
 ds_params['n_features'] = model_params['input_dim']
 ds_params['n_noise_features'] = ds_params['n_features']
 ds_params['standardize'] = False
@@ -112,36 +111,66 @@ ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
 ds_params['max_N'] = 7
 ds_params['min_N'] = 3
-ds_params['missing_percent'] = 0.01
 ds_params['missing_value'] = 1000.0
-ds_params['with_mask'] = True
+ds_params['with_mask'] = False
 ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     #['zeros', drfns.zeros, []],
-    # ['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
+    #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
     #['sine', drfns.sine, [(0,10.0),(0.01,0.01)]],
-    #['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
-    ['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    ['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    #['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
     #['trig_poly', drfns.trig_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(2*ds_params['max_N']+1)],
 )
 
 ds_params['noise'] = [
-    [None, None, None],
-    #['gaussian', np.random.normal, {'loc':0.0, 'scale':0.0}],
-    #['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.03, 'loc2':-0.05, 'scale2':0.03}],
-    #['cauchy', np.random.standard_cauchy, {}],
-    #['stable', distributions.stable, {'alpha':(1.0,2.0),'scale':1.0}], # alpha = 2 Gaussian, alpha = 1 Cauchy
-    #['stable', distributions.stable, {'alpha':(1.75), 'scale':1.0}],
+    #[None, None, None],
+    #['gaussian', np.random.normal, {'loc':0.0, 'scale':0.2}],
+    #['bimodal', distributions.bimodal, {'loc1':0.25, 'scale1':0.02, 'loc2':-0.25, 'scale2':0.02}],
+    ['cauchy', np.random.standard_cauchy, {}],
+    #['stable', distributions.stable, {'alpha':(1.85,2.0),'scale':(0.0,0.2)}], # alpha = 2 Gaussian, alpha = 1 Cauchy
+    #['stable', distributions.stable, {'alpha':(2.0), 'scale':0.2}],
 ]
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
+# kf_params['f_model'] = 'fixed' # fixed, random, learned
+# kf_params['h_model'] = 'fixed' # fixed, random, learned
+
+# kf_params['q'] = 1.0 # list(np.logspace(1,-2,4))
+
+#kf_params['dimensions'] = (1,2)
+kf_params['with_z_dot'] = False
+
+#  measurements dimensions
+kf_params['meas_dims'] = 2
+
+#  state space dimensions
+kf_params['state_dims'] = kf_params['meas_dims']
+
+# number of state estimate 
 kf_params['dt'] = 1.0
-kf_params['f_model'] = 'fixed' # fixed, random, learned
-kf_params['h_model'] = 'fixed' # fixed, random, learned
+
+# dynamical model order (i.e. ncv = 1, nca = 2, etc.)
+kf_params['model_order'] = 1
+
+# Construct F, Q, H (R is learned, set to None)
+if kf_params['model_order'] == 0:
+
+    kf_params['F'] = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0]]))
+    kf_params['H'] = np.kron(np.eye(kf_params['state_dims']), np.array([1.0]))
+    
+elif kf_params['model_order'] == 1:
+
+    kf_params['F'] = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
+    kf_params['H'] = np.kron(np.eye(kf_params['meas_dims']), np.eye(kf_params['model_order']+1)) if kf_params['with_z_dot'] else np.kron(np.eye(kf_params['meas_dims']), np.array([1.0,0.0]))
+
+kf_params['Q'] = [ q * np.eye( kf_params['state_dims']  * (kf_params['model_order']+1) ) for q in list(np.logspace(1,-2,4)) ]
+kf_params['R'] = None
+
 kf_params['diagonal_R'] = False
 kf_params['diagonal_P'] = False
 

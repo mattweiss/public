@@ -47,7 +47,8 @@ class LSTM(FeedForwardNetwork):
         assert self._loss_op is not None
         assert self._optimizer_op is not None
 
-        self._mask = K.variable(np.ones(shape=(self._mbsize-self._seq_len,self._input_dim)))
+        #self._mask = K.variable(np.ones(shape=(self._mbsize-self._seq_len,self._input_dim)))
+        self._mask = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='mask')
         
         # compile model
         self._model.compile(loss = self._loss_op, optimizer=self._optimizer_op, metrics=['mse'])

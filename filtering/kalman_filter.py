@@ -14,59 +14,12 @@ class KalmanFilter(AbstractFilter):
         """
         Implements a Kalman Filter in Tensorflow
         """
-
-        # ncv
-        if params['dimensions'][1] == 2:
-
-            # F
-            if params['f_model'] == 'fixed':
-
-                params['F'] = np.kron(np.eye(params['n_signals']), np.array([[1.0,params['dt']],[0.0,1.0]]))
-
-            elif params['f_model'] == 'random':
-
-                params['F'] = np.random.normal(size=(params['n_signals']*params['dimensions'][1],params['n_signals']*params['dimensions'][1]))
-
-            # H
-            if params['h_model'] == 'fixed':
-
-                params['H'] = np.kron(np.eye(params['n_signals']), np.identity(params['dimensions'][1])) if params['with_z_dot'] else np.kron(np.eye(params['n_signals']), np.array([1.0,0.0]))
-
-            elif params['h_model'] == 'identity':
-
-                params['H'] = np.kron(np.eye(params['n_signals']), np.array([1.0,1.0]))
-
-            elif self._h_model == 'random':
-
-                params['H'] = np.random.normal(size=(params['n_signals'],params['n_signals']*params['dimensions'][1]))
-
-        # jerk
-        if params['dimensions'][1] == 3:
-
-            # F
-            if params['f_model'] == 'fixed':
-
-                params['F'] = np.kron(np.eye(params['n_signals']), np.array([[1.0,params['dt'],0.5*params['dt']**2],[0.0,1.0,params['dt']],[0.0,0.0,1.0]]))
-
-            elif params['f_model'] == 'random':
-
-                params['F'] = np.random.normal(size=(params['n_signals']*params['dimensions'][1],params['n_signals']*params['dimensions'][1]))
-
-            # H
-            if params['h_model'] == 'fixed':
-
-                params['H'] = np.kron(np.eye(params['n_signals']), np.identity(params['dimensions'][1])) if params['with_z_dot'] else np.kron(np.eye(params['n_signals']), np.array([1.0,0.0,0.0]))
-
-            elif params['h_model'] == 'random':
-
-                params['H'] = np.random.normal(size=(params['n_signals'],params['n_signals']*params['dimensions'][1]))
-
         params['sample_freq'] = np.reciprocal(params['dt'])
 
         super().__init__(params)
 
         # constructs matrices based on NCV, NCA, etc.
-        self._F, self._Q, self._H, self._R = self._buildModel()
+        # self._F, self._Q, self._H, self._R = self._buildModel()
         
 ################################################################################
 
@@ -109,25 +62,27 @@ class KalmanFilter(AbstractFilter):
             z = tf.convert_to_tensor(inputs)
 
         # set x0 to initial mesurement, set all derviatives to zero
-        x0_dots = tf.zeros( shape=(self._n_signals,self._dimensions[1]-1), dtype=tf.float64, name='x0_dots') # n_signals x 1
-        x0 = z[0,::self._dimensions[1]] if self._with_z_dot else z[0]
-        self._x0 = tf.reshape(tf.concat([x0,x0_dots],axis=1),[-1, tf.shape(x0)[1]])
-        self._P0 = tf.matmul(self._x0,self._x0,transpose_b=True)
+        # x0_dots = tf.zeros( shape=(self._state_dims,self._model_order), dtype=tf.float64, name='x0_dots') # n_signals x 1
+        # x0 = z[0,::self._model_order+1] if self._with_z_dot else z[0]
+        # self._x0 = tf.reshape(tf.concat([x0,x0_dots],axis=1),[-1, tf.shape(x0)[1]])
+        # self._P0 = tf.matmul(self._x0,self._x0,transpose_b=True)
         
-        # self._x0 = tf.constant(np.zeros((self._dimensions[1]*self._n_signals,1), dtype=np.float64), dtype=tf.float64, name='x0')
-        #self._P0 = tf.constant(np.eye(self._dimensions[1]*self._n_signals, dtype=np.float64), dtype=tf.float64, name='P0')
-
-        x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
-                                                                             z,
-                                                                             initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
+        self._x0 = tf.constant(np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np.float64), dtype=tf.float64, name='x0')
+        self._P0 = tf.constant(np.eye((self._model_order+1)*self._state_dims, dtype=np.float64), dtype=tf.float64, name='P0')
+        self._K0 = tf.constant(np.zeros(self._H.T.shape, dtype=np.float64), dtype=tf.float64, name='K0')
+        
+        x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, K, self._kf_ctr = tf.scan(self._kfScan,
+                                                                                z,
+                                                                                initializer = [ self._x0, self._x0, self._P0, self._P0, self._K0, tf.constant(0) ], name='kfScan')
 
         z_hat_pri  = tf.matmul(self._H, x_hat_pri, name='z_pri', transpose_b=False)
         z_hat_post = tf.matmul(self._H, x_hat_post, name='z_post', transpose_b=False)
 
         filter_result = {
-            'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,\
-            'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,\
-            'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,\
+            'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,
+            'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,
+            'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,
+            'K':K,
             'z':z,
             'R':self._R,
             }
@@ -170,7 +125,7 @@ class KalmanFilter(AbstractFilter):
         """ This is where the acutal Kalman Filter is implemented. """
 
         #x_pri, x_post, P_pri, P_post, self._kf_ctr = state
-        _, x_post, _, P_post, self._kf_ctr = state
+        _, x_post, _, P_post, K, self._kf_ctr = state
 
         ########################
         # force R to be diagonal
@@ -220,163 +175,167 @@ class KalmanFilter(AbstractFilter):
         x_post = tf.add( x_pri, tf.matmul( K, innov_plus ), name = 'x_post' )
         P_post = tf.matmul( tf.subtract( tf.eye( tf.shape( P_pri )[0], dtype=tf.float64), tf.matmul( K, self._H ) ), P_pri, name = 'P_post' )
 
-        return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
+        return [ x_pri, x_post, P_pri, P_post, K, tf.add(self._kf_ctr,1) ]
 
 ###############################################################################
 
-    def _buildModel(self):
+    #def _buildModel(self):
 
-        """
-        Builds F, Q, H and R based on inputs
-        """
+        # """
+        # Builds F, Q, H and R based on inputs
+        # """
         # ZV
-        if self._dimensions[1] == 1:
+        # if self._dimensions[1] == 1:
 
-            if self._f_model == 'fixed':
+        #     if self._f_model == 'fixed':
 
-                F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
+        #         F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
 
-            elif self._f_model == 'random':
+        #     elif self._f_model == 'random':
 
-                F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
+        #         F = np.kron(np.eye(self._n_signals), np.array([[1.0]]))
 
-            elif self._f_model == 'learned':
+        #     elif self._f_model == 'learned':
 
-                F = tf.get_variable(name='F',
-                                    shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
-                                    initializer=tf.initializers.glorot_normal,
-                                    trainable=True,
-                                    dtype=tf.float64)
+        #         F = tf.get_variable(name='F',
+        #                             shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+        #                             initializer=tf.initializers.glorot_normal,
+        #                             trainable=True,
+        #                             dtype=tf.float64)
 
-            Q = np.kron(np.eye(self._n_signals), np.array([[self._q]]))
-            H = np.kron(np.eye(self._n_signals), np.array([self._h]))
+        #     Q = np.kron(np.eye(self._n_signals), np.array([[self._q]]))
+        #     H = np.kron(np.eye(self._n_signals), np.array([self._h]))
 
-        # NCV
-        elif self._dimensions[1] == 2:
+        # # NCV
+        # elif self._dimensions[1] == 2:
 
-            if hasattr(self,'_F'):
+        #     st()
+            
+        #     if hasattr(self,'_F'):
 
-                F = self._F
+        #         F = self._F
 
-            elif self._f_model == 'learned':
+        #     elif self._f_model == 'learned':
 
-                with tf.variable_scope(name_or_scope='KF',
-                                       regularizer=None,
-                                       reuse=tf.AUTO_REUSE):
+        #         with tf.variable_scope(name_or_scope='KF',
+        #                                regularizer=None,
+        #                                reuse=tf.AUTO_REUSE):
 
-                    F = tf.get_variable(name='F',
-                                        shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
-                                        initializer=self._weight_initializer,
-                                        trainable=True,
-                                        dtype=tf.float64)
+        #             F = tf.get_variable(name='F',
+        #                                 shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+        #                                 initializer=self._weight_initializer,
+        #                                 trainable=True,
+        #                                 dtype=tf.float64)
 
-            # backwards compatibility
-            else:
+        #     # backwards compatibility
+        #     else:
 
-                F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._sample_freq**-1],[0.0,1.0]]))
+        #         F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._sample_freq**-1],[0.0,1.0]]))
 
-            if hasattr(self,'_H'):
+        #     if hasattr(self,'_H'):
 
-                H = self._H
+        #         H = self._H
 
-            elif self._h_model == 'learned':
+        #     elif self._h_model == 'learned':
 
-                with tf.variable_scope(name_or_scope='KF',
-                                       regularizer=None,
-                                       reuse=tf.AUTO_REUSE):
+        #         with tf.variable_scope(name_or_scope='KF',
+        #                                regularizer=None,
+        #                                reuse=tf.AUTO_REUSE):
 
-                    H = tf.get_variable(name='H',
-                                        shape=(self._n_signals,self._n_signals*self._dimensions[1]),
-                                        initializer=self._weight_initializer,
-                                        trainable=True,
-                                        dtype=tf.float64)
+        #             H = tf.get_variable(name='H',
+        #                                 shape=(self._n_signals,self._n_signals*self._dimensions[1]),
+        #                                 initializer=self._weight_initializer,
+        #                                 trainable=True,
+        #                                 dtype=tf.float64)
 
-            # backwards compatibility
-            else:
+        #     # backwards compatibility
+        #     else:
 
-                H = np.kron(np.eye(self._n_signals), np.array([1.0,0.0]))
+        #         H = np.kron(np.eye(self._n_signals), np.array([1.0,0.0]))
 
-            # Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]]))
-            Q = np.kron(np.eye(self._n_signals),np.full((self._dimensions[1],self._dimensions[1]), self._q))
+        #     # Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0],[0.0,self._q]]))
+        #     Q = np.kron(np.eye(self._n_signals),np.full((self._dimensions[1],self._dimensions[1]), self._q))
 
-        # NCA
-        elif self._dimensions[1] == 3:
+        # # NCA
+        # elif self._dimensions[1] == 3:
 
-            if hasattr(self,'_F'):
+        #     if hasattr(self,'_F'):
 
-                F = self._F
+        #         F = self._F
 
-            elif self._f_model == 'learned':
+        #     elif self._f_model == 'learned':
 
-                with tf.variable_scope(name_or_scope='KF',
-                                       regularizer=None,
-                                       reuse=tf.AUTO_REUSE):
+        #         with tf.variable_scope(name_or_scope='KF',
+        #                                regularizer=None,
+        #                                reuse=tf.AUTO_REUSE):
 
-                    F = tf.get_variable(name='F',
-                                        shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
-                                        initializer=self._weight_initializer,
-                                        trainable=True,
-                                        dtype=tf.float64)
+        #             F = tf.get_variable(name='F',
+        #                                 shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+        #                                 initializer=self._weight_initializer,
+        #                                 trainable=True,
+        #                                 dtype=tf.float64)
 
-            if hasattr(self,'_H'):
+        #     if hasattr(self,'_H'):
 
-                H = self._H
+        #         H = self._H
 
-            elif self._h_model == 'learned':
+        #     elif self._h_model == 'learned':
 
-                with tf.variable_scope(name_or_scope='KF',
-                                       regularizer=None,
-                                       reuse=tf.AUTO_REUSE):
+        #         with tf.variable_scope(name_or_scope='KF',
+        #                                regularizer=None,
+        #                                reuse=tf.AUTO_REUSE):
 
-                    H = tf.get_variable(name='H',
-                                        shape=(self._n_signals,self._n_signals*self._dimensions[1]),
-                                        initializer=self._weight_initializer,
-                                        trainable=True,
-                                        dtype=tf.float64)
+        #             H = tf.get_variable(name='H',
+        #                                 shape=(self._n_signals,self._n_signals*self._dimensions[1]),
+        #                                 initializer=self._weight_initializer,
+        #                                 trainable=True,
+        #                                 dtype=tf.float64)
 
-            # if self._f_model == 'fixed':
+        #     # if self._f_model == 'fixed':
 
-            #     F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
+        #     #     F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
 
-            # elif self._f_model == 'random':
+        #     # elif self._f_model == 'random':
 
-            #     F = np.random.normal(size=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]))
+        #     #     F = np.random.normal(size=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]))
 
-            # elif self._f_model == 'learned':
+        #     # elif self._f_model == 'learned':
 
-            #     F = tf.get_variable(name='F',
-            #                         shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
-            #                         initializer=tf.initializers.glorot_normal,
-            #                         trainable=True,
-            #                         dtype=tf.float64)
+        #     #     F = tf.get_variable(name='F',
+        #     #                         shape=(self._n_signals*self._dimensions[1],self._n_signals*self._dimensions[1]),
+        #     #                         initializer=tf.initializers.glorot_normal,
+        #     #                         trainable=True,
+        #     #                         dtype=tf.float64)
 
-            #F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
-            Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0,0.0],[0.0,self._q,0.0],[0.0,0.0,self._q]]))
-            #H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0]))
+        #     #F = np.kron(np.eye(self._n_signals), np.array([[1.0,self._dt,0.5*self._dt**2],[0.0,1.0,self._dt],[0.0,0.0,1.0]]))
+        #     Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0,0.0],[0.0,self._q,0.0],[0.0,0.0,self._q]]))
+        #     #H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0]))
 
-        # jerk model
-        elif self._dimensions[1] == 4:
+        # # jerk model
+        # elif self._dimensions[1] == 4:
 
-            F = np.kron(np.eye(self._n_signals), np.array([[1.0, self._dt, 0.5*self._dt**2, (6**-1)*self._dt**3],
-                                                             [0.0,1.0,self._dt, 0.5*self._dt**2],
-                                                             [0.0,0.0,1.0,self._dt],
-                                                             [0.0,0.0,0.0,1.0]]))
+        #     F = np.kron(np.eye(self._n_signals), np.array([[1.0, self._dt, 0.5*self._dt**2, (6**-1)*self._dt**3],
+        #                                                      [0.0,1.0,self._dt, 0.5*self._dt**2],
+        #                                                      [0.0,0.0,1.0,self._dt],
+        #                                                      [0.0,0.0,0.0,1.0]]))
 
-            Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0,0.0,0.0],
-                                                             [0.0,self._q,0.0,0.0],
-                                                             [0.0,0.0,self._q,0.0],
-                                                             [0.0,0.0,0.0,self._q]]))
+        #     Q = np.kron(np.eye(self._n_signals), np.array([[self._q,0.0,0.0,0.0],
+        #                                                      [0.0,self._q,0.0,0.0],
+        #                                                      [0.0,0.0,self._q,0.0],
+        #                                                      [0.0,0.0,0.0,self._q]]))
 
-            H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0,0.0]))
+        #     H = np.kron(np.eye(self._n_signals), np.array([self._h,0.0,0.0,0.0]))
 
 
         # set R if parameter was passed
-        try:
+        # try:
 
-            R = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._r, dtype=np.float64)), dtype=tf.float64, name='R')
+        #     R = tf.constant(np.kron(np.eye(self._n_signals), np.array(self._r, dtype=np.float64)), dtype=tf.float64, name='R')
 
-        except:
+        # except:
 
-            R = None
+        #     R = None
 
-        return F, Q, H, R
+        # R is treated differenly since it may be learned by AEKF
+
+        #return params['F'], params['Q'], params['H'], params['R'] # params['R'] is None if R is learned, i.e. using AEKF

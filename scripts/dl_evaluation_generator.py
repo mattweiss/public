@@ -26,27 +26,20 @@ from dovebirdia.datasets.nyse_dataset import nyseDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'hilbert'
+project = 'asilomar2020'
 
 config_dict = dict()
-config_dict['dataset'] = 'petsDataset' #'DomainRandomizationDataset'
+config_dict['dataset'] = 'DomainRandomizationDataset'
 config_dict['with_val'] = False
 
 experiments = [
-    #('aekf_legendre_ncv_mask_percent_1_value_1000',[56]),
-    #('aekf_taylor_ncv_mask_percent_1_value_1000',[56]),
-    #('lstm_legendre_mask_percent_1_value_1000',[32]),
-    #('lstm_taylor_mask_percent_1_value_1000',[80]),
-    #('aekf_legendre_ncv_mask_percent_1_value_1000_ZEROS',[1]),
-    #('aekf_legendre_nca_mask_percent_1_value_1000',[7]),
-    #('aekf_legendre_ncv_mask_percent_1_value_1000_ZEROS',[29]),
-    #('aekf_legendre_ncv_mask_percent_1_value_1000_samples_100',[58]),
-    ('hilbert_legendre_ncv_mask_percent_1_value_1000_samples_100_ALPHA',[1]),
+    #('aekf_FAMILY_taylor_DYNMOD_ncv_NOISE_cauchy_R_learned_EIGEN',[8]),
+    #('aekf_FAMILY_legendre_DYNMOD_ncv_NOISE_cauchy_R_learned_EIGEN',[4]),
+    ('aekf_FAMILY_taylor_DYNMOD_ncv_NOISE_cauchy_R_learned_EIGEN_KILLME',[1]),
 ]
 
 test_dataset_files = [
-    '/home/mlweiss/Documents/wpi/research/data/pets/split/PETS2009_S2L1_dataset_SAMPLES_None_NOISE_none_MASK_percent_0-01_value_1000.pkl',
-    #'/home/mlweiss/Documents/wpi/research/data/pets/split/PETS2009_S2L1_dataset_SAMPLES_None_NOISE_none_MASK_percent_0-01_value_0.pkl',
+    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/FUNC_zero_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_PARAM_RANGE_5_FEATURES_1_N_NA.pkl'
 ]
 
 machine = socket.gethostname()
@@ -59,11 +52,9 @@ for experiment in experiments:
     model_ids = experiment[1]
 
     experiment_dir = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
-    # test_dataset_dir = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/evaluation/' + project + '/'
 
     for test_dataset_file in test_dataset_files:
 
-        # test_dataset_path = test_dataset_dir + test_dataset_file
         test_dataset_path = test_dataset_file
 
         #######################

@@ -145,7 +145,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
         assert x is not None
         assert y is not None
-
+        
         # default evaluation ops list
         eval_ops_dict = OrderedDict()
         eval_ops_dict = {
@@ -202,11 +202,12 @@ class FeedForwardNetwork(AbstractNetwork):
                 for eval_ops_key,eval_ops_result in zip(eval_ops_dict.keys(),eval_ops_results):
 
                     self._history[eval_ops_key].append(eval_ops_result)
-
+                    
         # append x and y to history
         self._history['x'] = np.asarray(x)
         self._history['y'] = np.asarray(y)
-
+        self._history.update({'y_hat':np.asarray(self._history['y_hat'])})
+        
         # add additionaly class attributes to history
         if attributes is not None:
 
@@ -506,6 +507,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x'], train_data['y'], train_data['mask'],
                                                                                 val_data['x'], val_data['y'], val_data['mask']):
 
+                    
                     # plt.figure(figsize=(18,12))
 
                     # plt.subplot(231)
@@ -565,7 +567,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                         train_feed_dict.update({self._X:x_train,self._y:y_train,self._mask:mask_train,self._t:train_data['t']})
                         sess.run(self._optimizer_op, feed_dict=train_feed_dict)
-
+                        
                     # loss op
                     train_loss, train_mse = sess.run([self._loss_op,self._mse_op],feed_dict=train_feed_dict)
                     val_feed_dict.update({self._X:x_val,self._y:y_val,self._mask:mask_val,self._t:val_data['t']})
@@ -580,31 +582,31 @@ class FeedForwardNetwork(AbstractNetwork):
                     self._history['train_mse'].append(np.asarray(train_mse).mean())
                     self._history['val_mse'].append(np.asarray(val_mse).mean())
 
-                    # if epoch % 1000 == 0:
+                    # if epoch % 1 == 0:
 
-                    #     y_hat_train, alpha_train, hidden_train = sess.run([self._y_hat,self._alpha,self._hidden], feed_dict=train_feed_dict)
-                    #     y_hat_val, alpha_val = sess.run([self._y_hat,self._alpha], feed_dict=val_feed_dict)
+                    #     plt.figure(figsize=(6,6))
 
-                    #     print(alpha_train, '\n', hidden_train)
-
-                    #     plt.figure(figsize=(12,6))
-
-                    #     plt.subplot(121)
-                    #     plt.plot(y_train[:,0],label='y0',marker=None)
-                    #     plt.plot(y_hat_train[:,0],label='yhat 0',marker=None)
+                    #     plt.subplot(111)
+                    #     plt.plot(x_train[:,0])
+                    #     plt.plot(y_train[:,0])
                     #     plt.grid()
-                    #     plt.legend()
-                    #     plt.title('Training')
+                    #     plt.title('X0')
+
+                        # plt.subplot(132)
+                        # plt.plot(x_train[:,1])
+                        # plt.plot(y_train[:,1])
+                        # plt.grid()
+                        # plt.title('X1')
+
+                        # plt.subplot(133)
+                        # plt.plot(x_train[:,2])
+                        # plt.plot(y_train[:,2])
+                        # plt.grid()
+                        # plt.title('X2')
                         
-                    #     plt.subplot(122)
-                    #     plt.plot(y_val[:,0],label='y0',marker=None)
-                    #     plt.plot(y_hat_val[:,0],label='yhat 0',marker=None)
-                    #     plt.grid()
-                    #     plt.legend()
-                    #     plt.title('Validation')
-                        
-                    #     plt.show()
-                    #     plt.close()
+                        #plt.show() 
+                        #plt.savefig(os.getcwd() + self._results_dir + str(epoch))
+                        #plt.close()
                                         
                     print('Epoch {epoch}, Training Loss/MSE {train_loss:0.4}/{train_mse:0.4}, Val Loss/MSE {val_loss:0.4}/{val_mse:0.4}'.format(epoch=epoch,
                                                                                                                                                 train_loss=self._history['train_loss'][-1],

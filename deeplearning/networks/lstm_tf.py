@@ -4,10 +4,10 @@ import numpy as np
 import tensorflow as tf
 from pdb import set_trace as st
 
-from keras import backend as K
+#from keras import backend as K
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM as LSTM_LAYER
-from keras.models import Sequential, load_model
+#from keras.models import Sequential, load_model
 from keras import optimizers, regularizers, initializers, losses
 
 from dovebirdia.deeplearning.networks.base import AbstractNetwork, FeedForwardNetwork
@@ -155,6 +155,28 @@ class LSTM(FeedForwardNetwork):
                     self._history['train_mse'].append(np.asarray(train_mse).mean())
                     self._history['val_mse'].append(np.asarray(val_mse).mean())
 
+                    # if epoch % 1 == 0:
+
+                    #     plt.figure(figsize=(18,6))
+
+                    #     plt.subplot(131)
+                    #     plt.plot(y_train[:,0])
+                    #     plt.grid()
+                    #     plt.title('X0')
+
+                    #     plt.subplot(132)
+                    #     plt.plot(y_train[:,1])
+                    #     plt.grid()
+                    #     plt.title('X1')
+
+                    #     plt.subplot(133)
+                    #     plt.plot(y_train[:,2])
+                    #     plt.grid()
+                    #     plt.title('X2')
+                        
+                    #     plt.show()
+                    #     plt.close()
+                    
                     print('Epoch {epoch}, Training Loss/MSE {train_loss:0.4}/{train_mse:0.4}, Val Loss/MSE {val_loss:0.4}/{val_mse:0.4}'.format(epoch=epoch,
                                                                                                                                                 train_loss=self._history['train_loss'][-1],
                                                                                                                                                 train_mse=self._history['train_mse'][-1],        

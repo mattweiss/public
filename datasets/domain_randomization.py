@@ -16,8 +16,6 @@ class DomainRandomizationDataset(AbstractDataset):
 
         super().__init__(params)
 
-        # self._with_mask = True if self._mask_percent != 0.0 else False
-        
     ##################
     # Public Methods #
     ##################
@@ -39,7 +37,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
         # linspace for generating function values
         t = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_samples), axis=-1)
-
+                
         # list to hold either training or testing datasets.
         self._data['x'] = list()
         self._data['y'] = list()
@@ -150,16 +148,10 @@ class DomainRandomizationDataset(AbstractDataset):
             for index, x in enumerate(self._data['x']):
                 
                     mask_indices = generateMask(x,
-                                                self._missing_percent)
+                                                self._missing_percent/100.0)
 
                     self._data['x'][index][mask_indices] = self._missing_value
                     self._data['y'][index][mask_indices] = self._missing_value
-
-            #mask_indices = generateMask(self._data['x'],
-            #                            self._missing_percent)
-
-            #self._data['x'][:,mask_indices] = self._missing_value
-            #self._data['y'][:,mask_indices] = self._missing_value
 
             # if excluding missing values from loss function
             if self._with_mask:

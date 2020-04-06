@@ -17,16 +17,18 @@ from pdb import set_trace as st
 from dovebirdia.filtering.kalman_filter import KalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
 import dovebirdia.stats.distributions as distributions
+#from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+from dovebirdia.datasets.benchmark_dataset import benchmarkDataset
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
-project = 'asilomar2'
+project = 'benchmark'
 
 experiments = [
-    ('kf_gaussian_ncv_taylor_KILLME','FUNC_taylor_NOISE_bimodal_LOC_0.5_SCALE_0.2_TRIALS_1000_SAMPLES_100_DOMAIN_0_100_FEATURES_1_N_3_7.pkl'),
+    ('kf_gaussian_ncv_sonar_KILLME','benchmark_ALPHA_dataset.pkl')
     #('ccdc_kf_ncv_alpha',(1,2),'07122019_DMMP_single_interferents_all_parts_trial_991_label_64.pkl.pkl'),
 ]
 
@@ -35,14 +37,14 @@ machine = socket.gethostname()
 ####################################
 
 meta_params = dict()
-dr_params = dict()
+ds_params = dict()
 kf_params = dict()
 model_params = dict()
 
 params_dicts = OrderedDict([
     ('meta',meta_params),
     ('model',model_params),
-    ('dr',dr_params),
+    ('ds',ds_params),
     ('kf',kf_params),
 ])
 
@@ -63,36 +65,53 @@ model_params['results_dir'] = '/results/'
 ####################################
 
 #dr_params['load_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/test_datasets/' + test_dataset_file
+ds_params['dataset_obj'] = benchmarkDataset
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
 kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = 1
+kf_params['n_signals'] = 4
 kf_params['n_samples'] = 100
 kf_params['sample_freq'] = 1.0
 kf_params['dt'] = kf_params['sample_freq']**-1
 kf_params['h'] = 1.0
-kf_params['q'] = list(np.logspace(-8,1,10))
-kf_params['r'] = list(np.linspace(1,100,10))
+#kf_params['q'] = list(np.logspace(-8,1,10))
+#kf_params['r'] = list(np.linspace(1,100,10))
 
-# Build dynamical model
-if kf_params['dimensions'][1] == 2:
+#kf_params['dimensions'] = (1,2)
+kf_params['with_z_dot'] = True
 
-    kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
+#  measurements dimensions
+kf_params['meas_dims'] = 4
 
-    # H
-    kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0]))
+#  state space dimensions
+kf_params['state_dims'] = 1
 
-if kf_params['dimensions'][1] == 3:
+# number of state estimate 
+kf_params['dt'] = 0.5
 
-    # F
-    kf_params['F'] = np.kron(np.eye(kf_params['n_signals']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
-        
-    # H
-    kf_params['H'] = np.kron(np.eye(kf_params['n_signals']), np.array([1.0,0.0,0.0]))
+# dynamical model order (i.e. ncv = 1, nca = 2, etc.)
+kf_params['model_order'] = 1
 
+# Construct F, Q, H (R is learned, set to None)
+if kf_params['model_order'] == 0:
+
+    kf_params['F'] = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0]]))
+    kf_params['H'] = np.kron(np.eye(kf_params['state_dims']), np.array([1.0]))
+    
+elif kf_params['model_order'] == 1:
+
+    kf_params['F'] = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
+    kf_params['H'] = np.tile([1.0,0.0], (kf_params['meas_dims'],kf_params['model_order']))
+
+kf_params['Q'] = 0.25 * np.eye(kf_params['model_order']+1)
+kf_params['R'] = np.eye(kf_params['meas_dims'])
+
+kf_params['diagonal_R'] = False
+kf_params['diagonal_P'] = False
+    
 ####################################
 # Determine scaler and vector parameters
 ####################################
@@ -155,7 +174,7 @@ for experiment in experiments:
 
     for config_params in itertools.product(config_params_dicts['meta'],
                                            config_params_dicts['model'],
-                                           config_params_dicts['dr'],
+                                           config_params_dicts['ds'],
                                            config_params_dicts['kf']):
 
 

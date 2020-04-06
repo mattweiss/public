@@ -133,12 +133,12 @@ class AutoencoderKalmanFilter(Autoencoder):
         assert input is not None
 
         # scale Z, L and R dimensions if including z dot
-        self._dim_scale = self._kalman_filter._dimensions[1] if self._kalman_filter._with_z_dot else 1
+        self._dim_scale = self._kalman_filter._model_order + 1 if self._kalman_filter._with_z_dot else 1
 
         z = Dense(name='z',
                   weight_initializer=self._weight_initializer,
-                  weight_regularizer=self._weight_regularizer,
-                  weight_regularizer_scale=self._weight_regularizer_scale,
+                  weight_regularizer=self._z_regularizer,
+                  weight_regularizer_scale=self._z_regularizer_scale,
                   bias_initializer=self._bias_initializer,
                   bias_regularizer=self._bias_regularizer,
                   weight_constraint=self._weight_constraint,
@@ -264,9 +264,17 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         # initial upper triangular matrix
         L = tf.contrib.distributions.fill_triangular(R, upper = False)
-        X = tf.matmul(L,L,transpose_b=True) + eps * tf.eye(tf.shape(L)[0],dtype=tf.float64)
 
-        return X
+        # ensure diagonal values of positive, necessary condition for Cholesy Decomposition
+        L_pos_diag = tf.abs(tf.diag_part(L))
+
+        # replace diagonal of original L with exponentialed diagonal
+        L = tf.linalg.set_diag(L, L_pos_diag)
+
+        R = tf.matmul(L,L,transpose_b=True)
+        #+ eps * tf.eye(tf.shape(L)[0],dtype=tf.float64)
+
+        return R
 
     def _make_spd_matrix(self, x):
 

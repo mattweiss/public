@@ -25,7 +25,7 @@ import pandas as pd
 
 from dovebirdia.utilities.base import loadDict
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
-from dovebirdia.deeplearning.networks.lstm import LSTM
+from dovebirdia.deeplearning.networks.lstm_tf import LSTM
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.datasets.nyse_dataset import nyseDataset
 
@@ -130,10 +130,11 @@ else:
         x_test, y_test = dataset['data']['x_test'], dataset['data']['x_test']
 
     # pets dataset
-    elif config_dicts['test']['dataset'] == 'petsDataset':
+    elif config_dicts['test']['dataset'] == 'petsDataset' or \
+         config_dicts['test']['dataset'] == 'mtrDataset':
 
         x_test, y_test = dataset['data']['x_test'], dataset['data']['x_true']
-        
+
     # if labels exist
     try:
 
@@ -142,7 +143,7 @@ else:
     except:
 
         labels = None
-
+        
 ################################################################################
 # Model
 ################################################################################
@@ -154,8 +155,8 @@ config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims']
 if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter':
 
     # append n_signals
-    config_dicts['model']['hidden_dims'].append(config_dicts['kf']['n_signals'])
-
+    config_dicts['model']['hidden_dims'].append(config_dicts['kf']['meas_dims'])
+    
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
 
 else:
@@ -231,12 +232,12 @@ else:
         
     if class_name == 'AutoencoderKalmanFilter':
 
-        eval_ops_list =  ['z','R','kf_results']
+        eval_ops_list =  ['kf_results']
         
     elif class_name == 'LSTM':
 
         attributes_list = ['seq_len']
-    
+
     history = nn.evaluate(x=x_test, y=y_test,labels=labels,
                           eval_ops=eval_ops_list,
                           attributes=attributes_list,
@@ -258,7 +259,8 @@ try:
 
     del config_dicts['kf']['F']
     del config_dicts['kf']['H']
-
+    config_dicts['kf'].update({'Q':np.unique(config_dicts['kf']['Q'])})
+    
 except:
 
     pass

@@ -86,9 +86,12 @@ if not os.path.exists(res_dir):
 # Dataset
 ################################################################################
 
-dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
-z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
-
+#dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
+dataset_obj = config_dicts['ds']['dataset_obj']()
+dataset = dataset_obj.getDataset(config_dicts['ds']['load_path'])
+#z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
+z_meas, z_true, t = dataset['x_test'], dataset['y_test'], dataset['t']
+st()
 ################################################################################
 # Model
 ################################################################################
@@ -96,10 +99,9 @@ z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], datase
 z_hat_list = list()
 R_list = list()
 
-for z,y in zip(z_test,y_test):
+for z in z_meas:
 
     filter = config_dicts['meta']['filter'](config_dicts['kf'])
-    #print(filter.__class__)
     filter_results = filter.fit(z)
     z_hat, R = np.squeeze(filter_results['z_hat_post'],axis=-1), filter_results['R']
     z_hat_list.append(z_hat)
@@ -108,8 +110,8 @@ for z,y in zip(z_test,y_test):
 
 # save kf data
 test_results_dict = {
-    'z':z_test,
-    'y':y_test,
+    'z':z_meas,
+    'z_true':z_true,
     'z_hat':np.asarray(z_hat_list),
     'R':np.asarray(R_list),
     't':t,
@@ -118,7 +120,7 @@ test_results_dict = {
 evaluate_save_path = config_dicts['dr']['load_path'].split('/')[-1].split('.')[0]
 saveDict(save_dict=test_results_dict, save_path='./results/' + evaluate_save_path + '.pkl')
 
-test_mse = np.square(np.subtract(np.asarray(z_hat_list),y_test)).mean()
+test_mse = np.square(np.subtract(np.asarray(z_hat_list),z_true)).mean()
 results_dict = {
     'test_mse':test_mse,
 }

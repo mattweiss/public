@@ -1,0 +1,172 @@
+import os
+import glob
+import numpy as np
+import pandas as pd
+import copy
+from sklearn.preprocessing import StandardScaler
+
+from pdb import set_trace as st
+from dovebirdia.datasets.base import AbstractDataset
+from dovebirdia.utilities.base import saveAttrDict, generateMask
+
+import matplotlib.pyplot as plt
+
+from collections import OrderedDict
+
+class mtrDataset(AbstractDataset):
+
+    def __init__(self, params=None):
+
+        """
+        Parameters:
+
+        datadir: path to text file directory
+        datafile: name of text file
+        min_len: minimum length of time series to include in dataset
+        max_len: break datasets into subsets of this length
+        standardize: whether to use StandardScaler, bool
+        begin_pad: number of leading terms to exclude from possible missing data
+        noise: noise type
+        mask_percent: percentage of values in each time series to mask
+        mask_value: fill in for missing values
+
+        """
+
+        super().__init__(params)
+
+        # Radius of the earth in meters
+        self._earth_R_mks = 6378100.0
+        
+    ##################
+    # Public Methods #
+    ##################
+
+    def getDataset(self):
+
+        # load previously saved dataset
+        if hasattr(self,'_saved_dataset'):
+
+            self._data = self.getSavedDataset(self._saved_dataset)
+
+        # create and save dataset
+        else:
+
+            ###################################
+            # Read raw data
+            ###################################
+            raw_data = pd.read_csv(self._datadir+'raw/'+self._datafile)
+
+            ###################################
+            # Read raw data into dictionary
+            ###################################
+  
+            # list of dictionaries, one for each trial
+            data_dict = OrderedDict()
+            
+            # loop over vessels
+            for vessel in raw_data.VESSEL_HASH.unique():
+
+                # loop over departure ports
+                for departure_port in raw_data.departurePortName.unique():
+
+                    # dataset for vessel and port
+                    df_vessel_port = raw_data[ ((raw_data['VESSEL_HASH']==vessel) & (raw_data['departurePortName']==departure_port)) ].sort_values(by=['TIMESTAMP'])
+
+                    # if data exists for vessel-port combination add to dictionary
+                    if df_vessel_port.shape[0] != 0:
+
+                        # custom key
+                        key = vessel + '_' + departure_port
+
+                        data_dict[key] = df_vessel_port
+
+                        lon = df_vessel_port.LON.values
+                        lat = df_vessel_port.LAT.values
+
+                        x = self._earth_R_mks * np.sin(lat) * np.cos(lon) 
+                        y = self._earth_R_mks * np.sin(lat) * np.sin(lon)
+                        z = self._earth_R_mks * np.cos(lat)
+
+                        # Add Cartesian coordinates
+                        data_dict[key].insert(len(data_dict[key].columns),'x', x)
+                        data_dict[key].insert(len(data_dict[key].columns),'y', y)
+                        data_dict[key].insert(len(data_dict[key].columns),'z', z)
+
+        ###################################
+        # Standardize Data
+        ###################################
+
+        # stack all data for standardization
+        for k,v in data_dict.items():
+
+            std_data = np.asarray([v['LON'].values,v['LAT'].values,v['x'].values,v['y'].values,v['z'].values]).T
+
+            try:
+
+                X = np.concatenate([X,std_data])
+
+            except:
+
+                X = std_data
+
+        # standardize
+        scaler = StandardScaler()
+        X_s = scaler.fit_transform(X)
+        
+        # Map standardized data to list
+        data_scaled_dict = dict()
+        x0, x1 = 0,0
+        for k,v in data_dict.items():
+
+            x1 = len(v) + x1
+            data_scaled_dict[k] = X_s[x0:x1]
+            x0 = x1
+
+        # append scaled data to data_dict
+        for k,v in data_scaled_dict.items():
+
+                data_dict[k]['LON_s'] = v[:,0]
+                data_dict[k]['LAT_s'] = v[:,1]
+                data_dict[k]['x_s'] = v[:,2]
+                data_dict[k]['y_s'] = v[:,3]
+                data_dict[k]['z_s'] = v[:,4]
+
+        ################################################
+        # Write to data dictionary and add noise to data
+        ################################################
+
+        # extract lat, lon and Cartesian coordinate data
+        coords_list = [ np.asarray( [v['LON_s'].values[:self._max_len][::self._step],
+                                     v['LAT_s'].values[:self._max_len][::self._step],
+                                     v['x_s'].values[:self._max_len][::self._step],
+                                     v['y_s'].values[:self._max_len][::self._step],
+                                      v['z_s'].values[:self._max_len][::self._step]]).T for k,v in data_dict.items() if v.shape[0] > self._max_len ]
+        
+        self._data['x_true'] = np.asarray(coords_list)
+        self._data['x_test'] = copy.deepcopy(self._data['x_true'])
+        self._data['keys'] = [ k for k,v in data_dict.items() if v.shape[0] > self._max_len ]
+
+        ############
+        # Apply mask
+        ############
+
+        if self._mask_percent is not 0.0:
+
+            for index, x_test in enumerate(self._data['x_test']):
+
+                mask_indices = generateMask(x_test,
+                                            self._mask_percent/100.0,
+                                            self._begin_pad)
+
+                #self._data['x_test'][mask_indices] = self._mask_value
+                self._data['x_test'][index][mask_indices] = self._mask_value
+
+        ##############
+        # save to disk
+        ##############
+
+        save_dir = self._datadir + 'split/' + self._dataset_name.replace(' ','_') + '.pkl'
+        saveAttrDict(save_dict=self.__dict__, save_path=save_dir)
+
+        ###################                
+        return self._data

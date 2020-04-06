@@ -42,27 +42,35 @@ class petsDataset(AbstractDataset):
         # create and save dataset
         else:
 
-            ###################################
-            # Read XML Data
-            ###################################
-            tree = ET.parse(self._datadir+'raw/'+self._dataset)
-            root = tree.getroot()
-
-            coords_dict = dict()
-
-            for node in root: 
-
-                for obj in node.find("objectlist"):
-        
-                    id = int(obj.attrib['id'])
-                    xc = float(obj.find("box").attrib['xc'])
-                    yc = float(obj.find("box").attrib['yc'])
-
-                    if id not in coords_dict.keys():
-                        
-                        coords_dict[id] = list()
+            # initial dictionary to hold all values, if a particular id is less than a mininum length it will be removed
+            coords_dict_initial = dict()
             
-                    coords_dict[id].append([xc,yc])
+            for dataset in self._datasets:
+
+                dataset_id = dataset.split('-')[1]
+                
+                ###################################
+                # Read XML Data
+                ###################################
+                tree = ET.parse(self._datadir+'raw/'+dataset)
+                root = tree.getroot()
+
+                for node in root: 
+
+                    for obj in node.find("objectlist"):
+
+                        id = int(obj.attrib['id'])
+                        dataset_person_id = dataset_id + '_' + str(id)
+                        xc = float(obj.find("box").attrib['xc'])
+                        yc = float(obj.find("box").attrib['yc'])
+                        
+                        if dataset_person_id not in coords_dict_initial.keys():
+
+                            coords_dict_initial[dataset_person_id] = list()
+
+                        coords_dict_initial[dataset_person_id].append([xc,yc])
+
+            coords_dict = { k:v for k,v in coords_dict_initial.items() if len(v) > self._min_len }
 
             ###################################
             # Standardize Data
@@ -85,7 +93,7 @@ class petsDataset(AbstractDataset):
                 scaler = StandardScaler()
                 X_s = scaler.fit_transform(X)
 
-                # Map standardized data to new dictionary
+                # Map standardized data to list
                 coords_list = list()
                 x0, x1 = 0,0
                 for k,v in coords_dict.items():
@@ -99,7 +107,8 @@ class petsDataset(AbstractDataset):
             ################################################
 
             self._data['x_true'] = np.asarray(coords_list)
-            
+            self._data['keys'] = list(coords_dict.keys())
+
             if self._noise[0] is not 'none':
 
                 coords_list_noise = list()
@@ -123,7 +132,8 @@ class petsDataset(AbstractDataset):
                 for index, x_test in enumerate(self._data['x_test']):
                 
                     mask_indices = generateMask(x_test,
-                                                self._mask_percent)
+                                                self._mask_percent/100.0,
+                                                self._begin_pad)
 
                     #self._data['x_test'][mask_indices] = self._mask_value
                     self._data['x_test'][index][mask_indices] = self._mask_value
@@ -134,6 +144,6 @@ class petsDataset(AbstractDataset):
 
             save_dir = self._datadir + 'split/' + self._dataset_name.replace(' ','_') + '.pkl'
             saveAttrDict(save_dict=self.__dict__, save_path=save_dir)
-                    
+
         ###################                
         return self._data

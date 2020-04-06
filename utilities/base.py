@@ -59,20 +59,17 @@ def loadDict(load_path=None):
 
         return np.load(load_path,allow_pickle=True).item()
 
-def generateMask(data=None,missing_percent=None):
+def generateMask(data=None,missing_percent=None,begin_pad=0):
 
     assert data is not None
     assert missing_percent is not None
 
-    #for x in data:
+    mask_indices = np.random.choice(np.arange(begin_pad,data.shape[0]-1), replace=False, size=round(data.shape[0]*missing_percent))
 
-    #mask_indices = np.random.choice(np.arange(x.shape[0]-1), replace=False, size=round(x.shape[0]*missing_percent))
-    mask_indices = np.random.choice(np.arange(data.shape[0]-1), replace=False, size=round(data.shape[0]*missing_percent))
-    
-    # randomly pad additional missing data before and after each mask index with 25% probability
+    # randomly pad additional missing data before and after each mask index with givenq probability
     for mask_index in mask_indices:
 
-        bin_index = np.random.choice([0,1],p=[0.0,1.0])
+        bin_index = np.random.choice([0,1],p=[0.5,0.5])
 
         if bin_index == 1:
 
