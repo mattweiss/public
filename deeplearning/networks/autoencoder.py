@@ -17,6 +17,7 @@ except:
 from sklearn.datasets import make_spd_matrix
 
 from dovebirdia.filtering.kalman_filter import KalmanFilter
+from dovebirdia.filtering.imm_kalman_filter import IMMKalmanFilter
 
 from dovebirdia.utilities.base import dictToAttributes, saveDict
 
@@ -81,8 +82,9 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         # instantiate Kalman Filter before parent constructor as
         # the parent calls _buildNetwork()
-        self._kalman_filter = KalmanFilter(params=kf_params)
-
+        #self._kalman_filter = KalmanFilter(params=kf_params)
+        self._kalman_filter = params['kf_type'](params=kf_params)
+        
         super().__init__(params=params)
 
     ##################

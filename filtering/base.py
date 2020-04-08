@@ -27,10 +27,10 @@ class AbstractFilter(ABC):
 
         pass
 
-    @abstractmethod
-    def predict(self):
+    # @abstractmethod
+    # def predict(self):
 
-        pass
+    #     pass
     
     ###################
     # Private Methods #

@@ -18,9 +18,6 @@ class KalmanFilter(AbstractFilter):
 
         super().__init__(params)
 
-        # constructs matrices based on NCV, NCA, etc.
-        # self._F, self._Q, self._H, self._R = self._buildModel()
-        
 ################################################################################
 
     def fit(self, inputs):
@@ -43,14 +40,6 @@ class KalmanFilter(AbstractFilter):
 
             z = tf.convert_to_tensor(inputs[0])
             
-            ########################
-            # force R to be diagonal
-            ########################
-            if self._diagonal_R:
-
-                self._R = tf.map_fn(tf.diag_part,self._R)
-                self._R = tf.map_fn(tf.diag,self._R)
-            
         else:
 
             # if R is not passed set z
@@ -67,13 +56,12 @@ class KalmanFilter(AbstractFilter):
         # self._x0 = tf.reshape(tf.concat([x0,x0_dots],axis=1),[-1, tf.shape(x0)[1]])
         # self._P0 = tf.matmul(self._x0,self._x0,transpose_b=True)
         
-        self._x0 = tf.constant(np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np.float64), dtype=tf.float64, name='x0')
-        self._P0 = tf.constant(np.eye((self._model_order+1)*self._state_dims, dtype=np.float64), dtype=tf.float64, name='P0')
-        self._K0 = tf.constant(np.zeros(self._H.T.shape, dtype=np.float64), dtype=tf.float64, name='K0')
+        self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np.float64)
+        self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np.float64)
         
-        x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, K, self._kf_ctr = tf.scan(self._kfScan,
-                                                                                z,
-                                                                                initializer = [ self._x0, self._x0, self._P0, self._P0, self._K0, tf.constant(0) ], name='kfScan')
+        x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
+                                                                             z,
+                                                                             initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
 
         z_hat_pri  = tf.matmul(self._H, x_hat_pri, name='z_pri', transpose_b=False)
         z_hat_post = tf.matmul(self._H, x_hat_post, name='z_post', transpose_b=False)
@@ -82,7 +70,6 @@ class KalmanFilter(AbstractFilter):
             'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,
             'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,
             'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,
-            'K':K,
             'z':z,
             'R':self._R,
             }
@@ -114,71 +101,67 @@ class KalmanFilter(AbstractFilter):
 
 ################################################################################
 
-    def predict(self, x=None, t=None, x_key='z_hat_post', save_results=True):
-
-        pass
-
-################################################################################
-
     def _kfScan(self, state, z):
 
-        """ This is where the acutal Kalman Filter is implemented. """
+        """ This is where the Kalman Filter is implemented. """
 
-        #x_pri, x_post, P_pri, P_post, self._kf_ctr = state
-        _, x_post, _, P_post, K, self._kf_ctr = state
+        _, x_post, _, P_post, self._kf_ctr = state
 
-        ########################
-        # force R to be diagonal
-        ########################
-        if self._diagonal_P:
-
-            P_post = tf.diag_part(P_post)
-            P_post = tf.diag(P_post)
-            
-        # reset state estimate each minibatch
-
-        # backwards compatibility - n_measurements may not be an attribute
-        # try:
-        
-        #     x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_measurements ),
-        #                                                           lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
-        #                                                           lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
-        
-        # except:
-        
-        #      x_pri, x_post, P_pri, P_post, self._kf_ctr = tf.cond( tf.less( self._kf_ctr, self._n_samples ),
-        #                                                           lambda: [ x_pri, x_post, P_pri, P_post, self._kf_ctr ],
-        #                                                           lambda: [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ])
-
+        ##########
         # Predict
+        ##########
+        
+        x_pri, P_pri = self._predict(x_post,P_post)
 
-        x_pri = tf.matmul(self._F, x_post, name='x_pri' )
-        P_pri = tf.add( tf.matmul( self._F, tf.matmul( P_post, self._F, transpose_b=True ) ), self._Q, name='P_pri' )
+        #########
+        # Update
+        #########
 
-        # assume R is scalar
+        x_post, P_post = self._update(z, x_pri, P_pri)
+        
+        return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
+
+###############################################################################
+
+    def _predict(self,x=None,P=None):
+
+        assert x is not None
+        assert P is not None
+
+        x_pri = tf.matmul(self._F, x, name='x_pri' )
+        P_pri = tf.add( tf.matmul( self._F, tf.matmul( P, self._F, transpose_b=True ) ), self._Q, name='P_pri' )
+
+        return x_pri, P_pri
+
+    def _update(self,z,x,P):
+
+        assert z is not None
+        assert x is not None
+        assert P is not None
+        
+        # indexed R
         try:
 
-            R = self._R[self._kf_ctr,:,:]
+            R = self._R[self._kf_ctr]
 
+        # Fixed R
         except:
 
             R = self._R
             
-        S = tf.matmul(self._H, tf.matmul(P_pri, self._H, transpose_b=True)) + R
+        S = tf.matmul(self._H, tf.matmul(P, self._H, transpose_b=True)) + R
         S_inv = tf.linalg.inv(S)
 
-        K = tf.matmul(P_pri,tf.matmul(self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
+        K = tf.matmul(P,tf.matmul(self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
 
-        # Update
-        innov_plus = tf.subtract( z, tf.matmul( self._H, x_pri ), name='innov_plus' )
+        innov_plus = tf.subtract( z, tf.matmul( self._H, x ), name='innov_plus' )
 
-        x_post = tf.add( x_pri, tf.matmul( K, innov_plus ), name = 'x_post' )
-        P_post = tf.matmul( tf.subtract( tf.eye( tf.shape( P_pri )[0], dtype=tf.float64), tf.matmul( K, self._H ) ), P_pri, name = 'P_post' )
+        x_post = tf.add( x, tf.matmul( K, innov_plus ), name = 'x_post' )
+        P_post = tf.matmul( tf.subtract( tf.eye( tf.shape( P )[0], dtype=tf.float64), tf.matmul( K, self._H ) ), P, name = 'P_post' )
 
-        return [ x_pri, x_post, P_pri, P_post, K, tf.add(self._kf_ctr,1) ]
-
+        return x, P
+        
 ###############################################################################
-
     #def _buildModel(self):
 
         # """

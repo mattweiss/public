@@ -14,7 +14,8 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter, HilbertAutoencoderKalmanFilter
+from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+from dovebirdia.filtering.kalman_filter import KalmanFilter
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 from dovebirdia.deeplearning.activations.base import sineline, psineline, tanhpoly
 import dovebirdia.utilities.dr_functions as drfns
@@ -59,7 +60,7 @@ model_params['mbsize'] = 100
 ds_params['missing_percent'] = 0.0
 
 # model params
-
+model_params['kf_type'] = KalmanFilter
 model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 2
 model_params['output_dim'] = model_params['input_dim']
@@ -170,9 +171,6 @@ elif kf_params['model_order'] == 1:
 
 kf_params['Q'] = [ q * np.eye( kf_params['state_dims']  * (kf_params['model_order']+1) ) for q in list(np.logspace(1,-2,4)) ]
 kf_params['R'] = None
-
-kf_params['diagonal_R'] = False
-kf_params['diagonal_P'] = False
 
 ########################################
 # Determine scaler and vector parameters
