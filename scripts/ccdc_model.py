@@ -89,41 +89,37 @@ nn = config_dicts['meta']['network'](config_dicts['model'])
 
 history = nn.fit(dataset)
 
-train_loss = np.asarray(history['loss'][-1])
-val_loss = np.asarray(history['val_loss'][-1])
-test_loss = np.asarray(history['test_loss'])
-test_subset_accuracy = history['test_subset_accuracy']
-val_subset_accuracy = history['val_subset_accuracy']
+for k,v in history.items():
 
+    try:
+    
+        print(k,v)
 
-print('Training Loss: {train_loss:0.4}\nValidation Loss: {val_loss:0.4}\nTesting Loss: {test_loss:0.4}'.format(train_loss=train_loss,
-                                                                                                               val_loss=val_loss,
-                                                                                                               test_loss=test_loss))
+    except:
 
-print('Validation Accuracy: {val_subset_accuracy:0.4}\nTesting Accuracy: {test_subset_accuracy:0.4}'.format(val_subset_accuracy=val_subset_accuracy,
-                                                                                                            test_subset_accuracy=test_subset_accuracy))
-
-
-n_labels = 5
-print('First {n_labels} Test Truth and Predictions:\n{test_true}\n\n{test_pred}'.format(n_labels=n_labels,
-                                                                                       test_true=history['test_true'][:n_labels],
-                                                                                       test_pred=history['test_pred'][:n_labels]))
+        print(k,v)
         
+# train_loss = np.asarray(history['loss'][-1])
+# val_loss = np.asarray(history['val_loss'][-1])
+# test_loss = np.asarray(history['test_loss'])
+# test_subset_accuracy = history['test_subset_accuracy']
+# val_subset_accuracy = history['val_subset_accuracy']
 
-results_dict = {
-    'train_loss':train_loss,
-    'val_loss':val_loss,
-    'test_loss':test_loss,
-    'test_subset_accuracy':test_subset_accuracy,
-    'val_subset_accuracy':val_subset_accuracy,
-    'runtime':history['runtime'],
-}
+# results_dict = {
+#     'train_loss':train_loss,
+#     'val_loss':val_loss,
+#     'test_loss':test_loss,
+#     'test_subset_accuracy':test_subset_accuracy,
+#     'val_subset_accuracy':val_subset_accuracy,
+#     'runtime':history['runtime'],
+# }
+results_dict = history
 
 # save test predictions to disk
-test_pred_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_pred'
-test_true_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_true'
-np.save(test_pred_file_path,history['test_pred'])
-np.save(test_true_file_path,history['test_true'])
+# test_pred_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_pred'
+# test_true_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_true'
+# np.save(test_pred_file_path,history['test_pred'])
+# np.save(test_true_file_path,history['test_true'])
 
 ################################################################################
 # CSV

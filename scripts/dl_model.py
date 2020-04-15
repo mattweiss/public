@@ -120,7 +120,7 @@ else:
     # data from domain randomization tests
     if config_dicts['test']['dataset'] == 'DomainRandomizationDataset':
 
-        x_test, y_test = dataset['data']['x'], dataset['data']['y']
+        x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
         
     # existing dataset (i.e. weather, stock market, s5)
     elif config_dicts['test']['dataset'] == 'nyseDataset' or \
@@ -254,12 +254,21 @@ else:
 # CSV
 ################################################################################
 
-# Remove F and H from config_dicts['kf']
+# Write Kalman Filter Parameters to Separate File
 try:
 
-    del config_dicts['kf']['F']
-    del config_dicts['kf']['H']
-    config_dicts['kf'].update({'Q':np.unique(config_dicts['kf']['Q'])})
+    fo = open(os.getcwd() + config_dicts['model']['results_dir'] + 'kf_params.txt', 'w')
+
+    for k, v in config_dicts['kf'].items():
+
+        fo.write('# '+ str(k) + '\n\n' + str(v) + '\n\n')
+
+    fo.close()
+
+    del config_dicts['kf']
+    # del config_dicts['kf']['F']
+    # del config_dicts['kf']['H']
+    # config_dicts['kf'].update({'Q':np.unique(config_dicts['kf']['Q'])})
     
 except:
 

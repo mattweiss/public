@@ -26,20 +26,18 @@ from dovebirdia.datasets.nyse_dataset import nyseDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'asilomar2020'
+project = 'imm'
 
 config_dict = dict()
 config_dict['dataset'] = 'DomainRandomizationDataset'
 config_dict['with_val'] = False
 
 experiments = [
-    #('aekf_FAMILY_taylor_DYNMOD_ncv_NOISE_cauchy_R_learned_EIGEN',[8]),
-    #('aekf_FAMILY_legendre_DYNMOD_ncv_NOISE_cauchy_R_learned_EIGEN',[4]),
-    ('aekf_FAMILY_taylor_DYNMOD_ncv_NOISE_cauchy_R_learned_EIGEN_KILLME',[1]),
+    ('aeimmkf_legendre_gaussian_F1_NCV_Q1_1e-2_F2_NCV_Q2_1e-8_G_T_R_EXP_EPS_1e-1',[37]),
 ]
 
 test_dataset_files = [
-    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/FUNC_zero_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_PARAM_RANGE_5_FEATURES_1_N_NA.pkl'
+    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-1_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl'
 ]
 
 machine = socket.gethostname()

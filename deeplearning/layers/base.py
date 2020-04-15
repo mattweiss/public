@@ -1,4 +1,5 @@
 import tensorflow as tf
+tf_float_prec = tf.float64
 from dovebirdia.utilities.base import dictToAttributes
 from pdb import set_trace as st
 
@@ -66,7 +67,7 @@ class Dense():
                                     initializer=self._weight_initializer,
                                     constraint=self._weight_constraint,
                                     trainable=True,
-                                    dtype=tf.float64)
+                                    dtype=tf_float_prec)
 
             if self._use_bias:
 
@@ -81,7 +82,7 @@ class Dense():
                                         initializer=self._bias_initializer,
                                         constraint=self._bias_constraint,
                                         trainable=True,
-                                        dtype=tf.float64)
+                                        dtype=tf_float_prec)
 
             x = tf.matmul(x,W)
 

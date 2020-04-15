@@ -91,7 +91,8 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
                 ssd_dict['sensors'] = list(self._sensors.keys())
                 ssd_dict['time'] = label_data.iloc[0].time[:self._n_max_samples]
                 ssd_dict['label'] = label_data.iloc[0].label
-                ssd_dict['multi_label'] = label_data.iloc[0].multi_label
+                ssd_dict['binary_presence_label'] = label_data.iloc[0].binary_presence_label
+                ssd_dict['concentration_label'] = label_data.iloc[0].concentration_label
                 #ssd_dict['y_multi_label'] = label_data.iloc[0].y
 
                 # synthetic curve domain

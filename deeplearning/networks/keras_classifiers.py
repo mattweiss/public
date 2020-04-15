@@ -76,7 +76,6 @@ class KerasMultiLabelClassifier():
             self._model.add(MaxScale(units=self._output_dim,input_dim=self._output_dim))
 
         # compile model
-        #
 
         if self._loss.__name__ == 'categorical_crossentropy':
 
@@ -92,7 +91,7 @@ class KerasMultiLabelClassifier():
 
         self._model.compile(optimizer=self._optimizer(**self._optimizer_params),
                             loss=loss,
-                            # metrics=['categorical_accuracy']
+                            metrics=list(self._metrics)
                             )
 
         print(self._model.summary())
@@ -120,26 +119,47 @@ class KerasMultiLabelClassifier():
         history.history['runtime'] = (time() - start_time) / 60.0
 
         # validataion set metrics
-        val_pred = self._model.predict(x=dataset['x_val'])
-        history.history['val_true'] = dataset['y_val'][:,:self._output_dim]
-        history.history['val_pred'] = val_pred
-        history.history['val_subset_accuracy'] = accuracy_score(y_true=history.history['val_true'],
-                                                                y_pred=(history.history['val_pred'] >= 0.5).astype(float))
+        # val_pred = self._model.predict(x=dataset['x_val'])
+        # history.history['val_true'] = dataset['y_val'][:,:self._output_dim]
+        # history.history['val_pred'] = val_pred
+        # history.history['val_subset_accuracy'] = accuracy_score(y_true=history.history['val_true'],
+        #                                                         y_pred=(history.history['val_pred'] >= 0.5).astype(float))
         # test set metrics
-        test_pred = self._model.predict(x=dataset['x_test'])
-        history.history['test_true'] = dataset['y_test'][:,:self._output_dim]
-        history.history['test_pred'] = test_pred
-        history.history['test_subset_accuracy'] = accuracy_score(y_true=history.history['test_true'],
-                                                                 y_pred=(history.history['test_pred'] >= 0.5).astype(float))
+        #test_pred = self._model.predict(x=dataset['x_test'])
+        #history.history['test_true'] = dataset['y_test'][:,:self._output_dim]
+        #history.history['test_pred'] = test_pred
+        # history.history['test_subset_accuracy'] = accuracy_score(y_true=history.history['test_true'],
+        #                                                          y_pred=(history.history['test_pred'] >= 0.5).astype(float))
 
+        # relabel training set metric keys
+        for train_key in self._model.metrics_names:
+
+            history.history['train_' + train_key] = history.history.pop(train_key)
+
+        # add test set metrics to history
         test_metrics = [self._model.evaluate(x=dataset['x_test'],y=dataset['y_test'][:,:self._output_dim])]
-
-        model_metrics_names  = self._model.metrics_names
-
-        for metric_name,metric in zip(model_metrics_names,test_metrics):
+        
+        for metric_name,metric in zip(self._model.metrics_names,test_metrics[0]):
 
             metric_name = 'test_' + metric_name
-
+            
             history.history[metric_name] = metric
 
-        return history.history
+
+        # dictionary with final returned results
+        output_history = dict()
+                
+        # select last entry in each metrics list
+        for k,v in history.history.items():
+            
+            # if list, i.e. training and validataion
+            try:
+
+                output_history[k] = history.history[k][-1]
+
+            # if scalar, i.e. test metrics and runtime
+            except:
+
+                output_history[k] = history.history[k]
+            
+        return output_history

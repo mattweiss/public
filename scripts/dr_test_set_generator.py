@@ -11,10 +11,10 @@ import dovebirdia.stats.distributions as distributions
 # if parameters is a tuple that is the range from which the parameter is drawn
 
 dr_params = dict()
-dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/FUNC_zero_NOISE_cauchy_LOC_na_SCALE_na_TRIALS_100_SAMPLES_100_PARAM_RANGE_5_FEATURES_1_N_NA.pkl'
+dr_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-1_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl'
 dr_params['ds_type'] = 'test'
 dr_params['x_range'] = (-1,1)
-dr_params['n_trials'] = 100
+dr_params['n_trials'] = 10
 dr_params['n_baseline_samples'] = 0
 dr_params['n_samples'] = 100
 dr_params['n_features'] = 2
@@ -26,19 +26,19 @@ dr_params['param_range'] = 1.0
 dr_params['max_N'] = 7
 dr_params['min_N'] = 3
 dr_params['fns'] = (
-    ['zeros', drfns.zeros, []],
+    #['zeros', drfns.zeros, []],
     #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
     #['sine', drfns.sine, [(0.0,10.0),(0.04,0.1)]],
     #['taylor_poly', drfns.taylor_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(dr_params['max_N']+1)],
-    #['legendre_poly', drfns.legendre_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(dr_params['max_N']+1)],
+    ['legendre_poly', drfns.legendre_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(dr_params['max_N']+1)],
     #['trig_poly', drfns.trig_poly, [(-dr_params['param_range'],dr_params['param_range'])]*(2*dr_params['max_N']+1)],
 )
 
 dr_params['noise'] = (
-    #['gaussian', np.random.normal, {'loc':0.0, 'scale':1.0}],
+    ['gaussian', np.random.normal, {'loc':0.0, 'scale':0.1}],
     # ['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.2, 'loc2':-0.05, 'scale2':0.2}],
-    ['cauchy', np.random.standard_cauchy, {}],
+    #['cauchy', np.random.standard_cauchy, {}],
     #['stable', distributions.stable, {'alpha':(1.0,2.0),'scale':0.1}],
 )
 

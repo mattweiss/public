@@ -14,10 +14,9 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.filtering.kalman_filter import KalmanFilter
+from dovebirdia.filtering.interacting_multiple_model import InteractingMultipleModel
 import dovebirdia.utilities.dr_functions as drfns 
 import dovebirdia.stats.distributions as distributions
-from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 
 ####################################
 # Test Name and Description
@@ -27,10 +26,8 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'imm'
 
 experiments = [
-    ('kf_benchmark_gaussian',
+    ('imm_benchmark_gaussian',
      '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-1_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl')
-    
-
 ]
 
 #****************************************************************************************************************************
@@ -53,7 +50,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = KalmanFilter
+meta_params['filter'] = InteractingMultipleModel
 
 ####################################
 # Model Parameters
@@ -85,16 +82,37 @@ kf_params['H'] = np.kron(np.eye(kf_params['meas_dims']), np.eye(kf_params['model
 # Models
 #########
 
-kf_params['F'] = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
+F1 = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
+F2 = F1 #np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
 
-G1 = np.array([[kf_params['dt']**2/2.0,0.0],
+G1 = np.array([
+               [kf_params['dt']**2/2.0,0.0],
                [kf_params['dt'],0.0],
                [0.0,kf_params['dt']**2/2.0],
-               [0.0,kf_params['dt']]])
+               [0.0,kf_params['dt']],
+])
 
-kf_params['Q'] = 1e-2*G1@G1.T
+Q1 = 1e-8*G1@G1.T
+Q2 = 1e-2*G1@G1.T
+# Q1 = 0.0 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,0.0]]))
+# Q2 = 0.0 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]))
 
 kf_params['R'] = np.eye(kf_params['meas_dims'])
+
+kf_params['models'] = {
+    'NCV1':[F1,Q1],
+    'NCV2':[F2,Q2],
+}
+
+####################
+# Mixing Parameters
+####################
+
+kf_params['p'] = np.array([
+    [0.95,0.5],
+    [0.5,0.95],
+])
+kf_params['mu'] = np.array([[0.5],[0.5]])
     
 ####################################
 # Determine scaler and vector parameters
@@ -163,6 +181,7 @@ for experiment in experiments:
 
 
         config_params[2]['load_path'] = test_dataset_full_path
+        #config_params[3]['dimensions'] = kf_dims
         
         # Create Directories
         experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/kalman_filter/' + experiment_name + '/'

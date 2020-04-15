@@ -1,10 +1,12 @@
 import numpy as np
 import tensorflow as tf
+tf_float_prec = tf.float64
 from scipy import stats
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.layers.base import Dense
 from tensorflow.python.ops.distributions.special_math import ndtri as tf_ndtri
+from dovebirdia.math.linalg import pos_diag
 
 try:
 
@@ -17,7 +19,7 @@ except:
 from sklearn.datasets import make_spd_matrix
 
 from dovebirdia.filtering.kalman_filter import KalmanFilter
-from dovebirdia.filtering.imm_kalman_filter import IMMKalmanFilter
+from dovebirdia.filtering.interacting_multiple_model import InteractingMultipleModel
 
 from dovebirdia.utilities.base import dictToAttributes, saveDict
 
@@ -139,8 +141,8 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         z = Dense(name='z',
                   weight_initializer=self._weight_initializer,
-                  weight_regularizer=self._z_regularizer,
-                  weight_regularizer_scale=self._z_regularizer_scale,
+                  weight_regularizer=self._weight_regularizer,
+                  weight_regularizer_scale=self._weight_regularizer_scale,
                   bias_initializer=self._bias_initializer,
                   bias_regularizer=self._bias_regularizer,
                   weight_constraint=self._weight_constraint,
@@ -177,7 +179,7 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         elif self._R_model == 'identity':
 
-            R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf.float64)
+            R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf_float_prec)
             R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
         # for backwards compatibility
@@ -262,19 +264,13 @@ class AutoencoderKalmanFilter(Autoencoder):
         # SPD Matrix Based on BPKF Paper
         ################################
 
-        eps = 1e-1
-
         # initial upper triangular matrix
         L = tf.contrib.distributions.fill_triangular(R, upper = False)
 
-        # ensure diagonal values of positive, necessary condition for Cholesy Decomposition
-        L_pos_diag = tf.abs(tf.diag_part(L))
-
-        # replace diagonal of original L with exponentialed diagonal
-        L = tf.linalg.set_diag(L, L_pos_diag)
-
+        # ensure diagonal of L is positive
+        # L = pos_diag(L,diag_func=tf.exp)
+        
         R = tf.matmul(L,L,transpose_b=True)
-        #+ eps * tf.eye(tf.shape(L)[0],dtype=tf.float64)
 
         return R
 
@@ -282,7 +278,7 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         """ Wrapper for sklearn make_spd_matrix """
 
-        return tf.py_func(make_spd_matrix, [x], tf.float64)
+        return tf.py_func(make_spd_matrix, [x], tf_float_prec)
 
     def _shapiro_wilk(self, x):
 
@@ -290,7 +286,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         print('X.shape in Shapiro-Wilk:%s' % (tf.shape(x)))
 
         # number of samples
-        # n_samples = tf.shape(x, out_type=tf.float32)[0]
+        # n_samples = tf.shape(x, out_type=tf_float_prec)[0]
         n_samples = tf.to_float(tf.shape(x)[0])
 
         # sample range
@@ -301,10 +297,10 @@ class AutoencoderKalmanFilter(Autoencoder):
         tf.add(n_samples,0.25))), sample_range)
 
         # m
-        m = tf.cast(tf.reduce_sum(tf.square(m_i)), dtype=tf.float32)
+        m = tf.cast(tf.reduce_sum(tf.square(m_i)), dtype=tf_float_prec)
 
         # u
-        u = 1.0 / tf.sqrt(tf.cast(n_samples,dtype=tf.float32))
+        u = 1.0 / tf.sqrt(tf.cast(n_samples,dtype=tf_float_prec))
 
         # a[n-1]
         a_n_1 = tf.multiply(-3.582633,tf.pow(u,5)) + \
@@ -340,9 +336,9 @@ class AutoencoderKalmanFilter(Autoencoder):
         a = tf.concat([a,tf.expand_dims(a_n,axis=0)],0)
 
         # compute W
-        # x = tf.Variable(np.sort(x), name='x', dtype=tf.float32)
+        # x = tf.Variable(np.sort(x), name='x', dtype=tf_float_prec)
         x, _ = tf.nn.top_k(x, k=tf.size(x), sorted=True)
-        x = tf.cast(x, dtype=tf.float32)
+        x = tf.cast(x, dtype=tf_float_prec)
         print('X.shape: %s' % (x.shape,))
         W_top = tf.square(tf.reduce_sum(tf.multiply(a,x)))
         W_bottom = tf.reduce_sum(tf.square(x - tf.reduce_mean(x)))

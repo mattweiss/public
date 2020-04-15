@@ -39,8 +39,8 @@ class DomainRandomizationDataset(AbstractDataset):
         t = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1], self._n_samples), axis=-1)
                 
         # list to hold either training or testing datasets.
-        self._data['x'] = list()
-        self._data['y'] = list()
+        self._data['x_test'] = list()
+        self._data['y_test'] = list()
         noise_types = list()
 
         for trial in range(self._n_trials):
@@ -131,16 +131,16 @@ class DomainRandomizationDataset(AbstractDataset):
             # Add first dimension
             #####################
 
-            self._data['y'].append(y)
-            self._data['x'].append(x)
+            self._data['y_test'].append(y)
+            self._data['x_test'].append(x)
 
         # set dataset_dict
-        self._data['y'] = np.asarray(self._data['y'])
-        self._data['x'] = np.asarray(self._data['x'])
+        self._data['y_test'] = np.asarray(self._data['y_test'])
+        self._data['x_test'] = np.asarray(self._data['x_test'])
         self._data['t'] = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1],
                                                      self._n_baseline_samples+self._n_samples), axis=-1)
         self._data['noise_type'] = noise_types
-        self._data['mask'] = np.ones(shape=self._data['x'].shape)
+        self._data['mask'] = np.ones(shape=self._data['x_test'].shape)
 
         # add missing values
         if self._missing_percent != 0.0:

@@ -67,82 +67,81 @@ class ccdcMixturesDataset(AbstractDataset):
 
         self._data_test  = pd.DataFrame( [ pd.read_pickle( self._dataset_dir + '/testing/' + pf ) for pf in self._pickle_files_test ] )
 
+        ###############
         # training set
+        ###############
         self._data['x_train'] = np.asarray([ trial[self._samples[0]:self._samples[1],self._sensors] for trial in self._data_train[self._resistance_type].values ])
-
-        # if self._standardize:
-
-        #     # if second argument is True fit and transform, otherwise only transform
-        #     self._data['x_train'] = np.asarray(list(map(self._preprocess,self._data['x_train'],repeat(True))))
-
         self._data['x_train'] = self._data['x_train'].reshape(-1,  self._data['x_train'].shape[1]*self._data['x_train'].shape[2] )
 
         if self._standardize:
 
             # if second argument is True fit and transform, otherwise only transform
             self._data['x_train'] = self._preprocess(data=self._data['x_train'],fit=True)
-        
-        if self._multi_label:
 
-            # self._data['y_train'] = np.stack(self._data_train['concentration'].apply(lambda x : [ float(i) for i in x.split(",") ]))
-            # self._data['y_train'] = np.where(self._data['y_train']!=0,1,self._data['y_train'])
-            self._data['y_train'] = np.stack(self._data_train.multi_label)
+        if self._labels == 'binary_presence':
 
-        else:
+            self._data['y_train'] = np.stack(self._data_train.binary_presence_label)
 
-            self._data['y_train'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_train.label])
+        elif self._labels == 'concentration':
 
+            self._data['y_train'] = np.stack(self._data_train.concentration_label)
+ 
+        #################
+        # validation set
+        #################
         if self._with_val:
 
             # validation set
             self._data['x_val'] = np.asarray([ trial[self._samples[0]:self._samples[1],self._sensors] for trial in self._data_val[self._resistance_type].values ])
-
-            # if self._standardize:
-
-            #     # if second argument is True fit and transform, otherwise only transform
-            #     self._data['x_val'] = np.asarray(list(map(self._preprocess,self._data['x_val'],repeat(False))))
-                
             self._data['x_val'] = self._data['x_val'].reshape(-1,  self._data['x_val'].shape[1]*self._data['x_val'].shape[2] )
 
             if self._standardize:
 
                 # if second argument is True fit and transform, otherwise only transform
-                self._data['x_val'] = self._preprocess(data=self._data['x_val'])
+                self._data['x_val'] = self._preprocess(data=self._data['x_val'],fit=False)
+
+            if self._labels == 'binary_presence':
+
+                self._data['y_val'] = np.stack(self._data_val.binary_presence_label)
+
+            elif self._labels == 'concentration':
+
+                self._data['y_val'] = np.stack(self._data_val.concentration_label)
                 
-            if self._multi_label:
+            # if self._multi_label:
 
-                # self._data['y_val'] = np.stack(self._data_val['concentration'].apply(lambda x : [ float(i) for i in x.split(",") ]))
-                # self._data['y_val'] = np.where(self._data['y_val']!=0,1,self._data['y_val'])
-                self._data['y_val'] = np.stack(self._data_val.multi_label.values)
+            #     self._data['y_val'] = np.stack(self._data_val.multi_label.values)
 
-            else:
+            # else:
 
-                self._data['y_val'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_val.label])
+            #     self._data['y_val'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_val.label])
 
-        # testing set
+        #################
+        # test set
+        #################
         self._data['x_test'] = np.asarray([ trial[self._samples[0]:self._samples[1],self._sensors] for trial in self._data_test[self._resistance_type].values ])
-
-        # if self._standardize:
-
-        #         # if second argument is True fit and transform, otherwise only transform
-        #         self._data['x_test'] = np.asarray(list(map(self._preprocess,self._data['x_test'],repeat(False))))
-
         self._data['x_test'] = self._data['x_test'].reshape(-1,  self._data['x_test'].shape[1]*self._data['x_test'].shape[2] )
 
         if self._standardize:
 
                 # if second argument is True fit and transform, otherwise only transform
-                self._data['x_test'] = self._preprocess(data=self._data['x_test'])
+                self._data['x_test'] = self._preprocess(data=self._data['x_test'],fit=False)
 
-        if self._multi_label:
+        if self._labels == 'binary_presence':
 
-            # self._data['y_test'] = np.stack(self._data_test['concentration'].apply(lambda x : [ float(i) for i in x.split(",") ]))
-            # self._data['y_test'] = np.where(self._data['y_test']!=0,1,self._data['y_test'])
-            self._data['y_test'] = np.stack(self._data_test.multi_label)
+            self._data['y_test'] = np.stack(self._data_test.binary_presence_label)
 
-        else:
+        elif self._labels == 'concentration':
 
-            self._data['y_test'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_test.label])
+            self._data['y_test'] = np.stack(self._data_test.concentration_label)
+
+        # if self._multi_label:
+
+        #     self._data['y_test'] = np.stack(self._data_test.multi_label)
+
+        # else:
+
+        #     self._data['y_test'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_test.label])
 
         return self._data
 

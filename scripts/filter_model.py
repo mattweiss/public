@@ -26,7 +26,7 @@ import pandas as pd
 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.filtering.kalman_filter import KalmanFilter
-from dovebirdia.utilities.base import saveDict
+from dovebirdia.utilities.base import saveDict, loadDict
 
 import matplotlib
 matplotlib.use('Agg') 
@@ -87,11 +87,12 @@ if not os.path.exists(res_dir):
 ################################################################################
 
 #dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
-dataset_obj = config_dicts['ds']['dataset_obj']()
-dataset = dataset_obj.getDataset(config_dicts['ds']['load_path'])
+#dataset_obj = config_dicts['ds']['dataset_obj']()
+#dataset = dataset_obj.getDataset(config_dicts['ds']['load_path'])
 #z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
-z_meas, z_true, t = dataset['x_test'], dataset['y_test'], dataset['t']
-st()
+dataset = loadDict(config_dicts['ds']['load_path'])
+z_meas, z_true, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
+
 ################################################################################
 # Model
 ################################################################################
@@ -117,7 +118,7 @@ test_results_dict = {
     't':t,
 }
 
-evaluate_save_path = config_dicts['dr']['load_path'].split('/')[-1].split('.')[0]
+evaluate_save_path = config_dicts['ds']['load_path'].split('/')[-1].split('.')[0]
 saveDict(save_dict=test_results_dict, save_path='./results/' + evaluate_save_path + '.pkl')
 
 test_mse = np.square(np.subtract(np.asarray(z_hat_list),z_true)).mean()

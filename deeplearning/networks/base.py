@@ -3,6 +3,7 @@ from time import time
 import numpy as np
 from scipy import stats
 import tensorflow as tf
+tf_float_prec = tf.float64
 from pdb import set_trace as st
 
 from abc import ABC, abstractmethod
@@ -247,15 +248,15 @@ class FeedForwardNetwork(AbstractNetwork):
     def _setPlaceholders(self):
 
         # input and output placeholders
-        self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
-        self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
-        self._t = tf.placeholder(dtype=tf.float64, shape=(None,1), name='t')
-        self._mask = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='mask')
+        self._X = tf.placeholder(dtype=tf_float_prec, shape=(None,self._input_dim), name='X')
+        self._y = tf.placeholder(dtype=tf_float_prec, shape=(None,self._input_dim), name='y')
+        self._t = tf.placeholder(dtype=tf_float_prec, shape=(None,1), name='t')
+        self._mask = tf.placeholder(dtype=tf_float_prec, shape=(None,self._input_dim), name='mask')
         
     def _setLoss(self):
 
-        self._mse_op = tf.cast(self._loss(self._y,self._y_hat,weights=self._mask), tf.float64)
-        self._loss_op = self._mse_op + tf.cast(tf.losses.get_regularization_loss(), tf.float64)
+        self._mse_op = tf.cast(self._loss(self._y,self._y_hat,weights=self._mask), tf_float_prec)
+        self._loss_op = self._mse_op + tf.cast(tf.losses.get_regularization_loss(), tf_float_prec)
 
     def _setOptimizer(self):
 
@@ -502,10 +503,10 @@ class FeedForwardNetwork(AbstractNetwork):
                 val_loss_list = list()
                 train_mse_list = list()
                 val_mse_list = list()
-                
+
                 # train on all trials
-                for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x'], train_data['y'], train_data['mask'],
-                                                                                val_data['x'], val_data['y'], val_data['mask']):
+                for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x_test'], train_data['y_test'], train_data['mask'],
+                                                                                val_data['x_test'], val_data['y_test'], val_data['mask']):
 
                     
                     # plt.figure(figsize=(18,12))
