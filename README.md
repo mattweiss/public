@@ -5,7 +5,8 @@
       
         base.py - AbstractNetwork, FeedForwardNetwork
         autoencoder.py - Autoencoder, AutoencoderKalmanFilter
-        lstm.py - LSTM
+        lstm.py - Keras LSTM
+        lstm_tf.py - Tensorflow LSTM
       
     layers/ - Network Layer Classes
     
@@ -22,6 +23,13 @@
 
     base.py - AbstractFilter
     kalman_filter.py - KalmanFilter
+    interacting_multiple_model.py - Interacting Mixture Model Estimator
+    
+## math/
+
+    divergences.py - various divegences
+    metrics.py - various metrics
+    linalg.py - linear algebra functions
     
 ## utilities/
 
