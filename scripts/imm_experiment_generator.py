@@ -27,7 +27,7 @@ project = 'imm'
 
 experiments = [
     ('imm_benchmark_gaussian',
-     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-1_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl')
+     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl')
 ]
 
 #****************************************************************************************************************************
@@ -92,8 +92,8 @@ G1 = np.array([
                [0.0,kf_params['dt']],
 ])
 
-Q1 = 1e-8*G1@G1.T
-Q2 = 1e-2*G1@G1.T
+Q1 = 1e-2*G1@G1.T
+Q2 = 1e-8*G1@G1.T
 # Q1 = 0.0 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,0.0]]))
 # Q2 = 0.0 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]))
 

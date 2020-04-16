@@ -45,9 +45,9 @@ class InteractingMultipleModel(KalmanFilter):
 
 ################################################################################
 
-    def _update(self,z,x,P,eps=0.0):
+    def _update(self,z,x,P):
 
-        x_post, P_post, Lambda = super()._update(z,x,P,eps=eps)
+        x_post, P_post, _, Lambda = super()._update(z,x,P)
         
         return x_post, P_post, Lambda       
         
@@ -57,7 +57,7 @@ class InteractingMultipleModel(KalmanFilter):
 
         """ This is where the Kalman Filter is implemented. """
 
-        _, x_post, _, P_post, self._kf_ctr = state
+        _, x_post, _, P_post, _, self._kf_ctr = state
 
         # Hold accumlated a priori and a posteriori x and P along with likelihood of residual
         self._x_pri = list()
@@ -94,8 +94,7 @@ class InteractingMultipleModel(KalmanFilter):
             ##########
             x_post, P_post, Lambda = self._update(z,
                                                   self._x_pri_mixed[model_index],
-                                                  self._P_pri_mixed[model_index],
-                                                  eps=1e-1)
+                                                  self._P_pri_mixed[model_index])
 
             self._x_post.append(x_post)
             self._P_post.append(P_post)
@@ -107,7 +106,7 @@ class InteractingMultipleModel(KalmanFilter):
         # estimate and covaraince combination
         x_post_comb, P_post_comb = self._combined_estimate_and_covariance(self._x_post,self._P_post)
             
-        return [ x_pri_comb, x_post_comb, P_pri_comb, P_post_comb, tf.add(self._kf_ctr,1) ]
+        return [ x_pri_comb, x_post_comb, P_pri_comb, P_post_comb, _, tf.add(self._kf_ctr,1) ]
 
 ################################################################################
 

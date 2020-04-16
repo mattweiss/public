@@ -45,10 +45,6 @@ class Autoencoder(FeedForwardNetwork):
 
     def _buildNetwork(self):
 
-        # input and output placeholders
-        # self._X = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='X')
-        # self._y = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='y')
-
         # encoder and decoder
         self._encoder = self._buildEncoder(input=self._X)
         self._decoder = self._buildDecoder(input=self._encoder)
@@ -105,16 +101,24 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         self._z, self._R = self._preKalmanFilterAffineLayer(self._encoder)
 
-        #self._z_hat_pri, self._z_hat_post = self._kalmanFilterLayer([self._z, self._R])
-        #self._kf_results = self._kalmanFilterLayer([self._z, self._R])
         self._kf_results = self._kalman_filter.fit([self._z,self._R])
-
+        
         self._post_kf_affine = self._postKalmanFilterAffineLayer(tf.squeeze(self._kf_results['z_hat_pri'],axis=-1))
 
         self._decoder = self._decoderLayer(self._post_kf_affine)
 
         self._y_hat = self._outputLayer(self._decoder)
 
+    def _setLoss(self):
+
+        super()._setLoss()
+
+        # KH to identity
+        # KH = tf.map_fn(lambda k: tf.eye(tf.shape(k)[0],dtype=tf_float_prec)-k@self._kalman_filter._H, self._kf_results['K'])
+        # self._KH_loss = tf.reduce_sum(tf.square(KH))
+
+        # self._loss_op += 1e-4 * self._KH_loss
+        
     def _encoderLayer(self, input=None):
 
         assert input is not None
@@ -182,17 +186,6 @@ class AutoencoderKalmanFilter(Autoencoder):
             R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf_float_prec)
             R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
-        # for backwards compatibility
-        #try:
-
-        #     if self._R_activation is not None:
-
-        #         R = self._R_activation(R)
-
-        # except:
-
-        #     pass
-
         return z, R
 
     def _kalmanFilterLayer(self, input=None):
@@ -200,7 +193,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         z, R = input
 
         self._kf_results = self._kalman_filter.fit([z,R])
-        
+
     def _postKalmanFilterAffineLayer(self, input=None):
 
         assert input is not None
@@ -268,9 +261,10 @@ class AutoencoderKalmanFilter(Autoencoder):
         L = tf.contrib.distributions.fill_triangular(R, upper = False)
 
         # ensure diagonal of L is positive
-        # L = pos_diag(L,diag_func=tf.exp)
-        
-        R = tf.matmul(L,L,transpose_b=True)
+        #L = pos_diag(L,diag_func=tf.abs)
+
+        eps = 1e-8
+        R = tf.matmul(L,L,transpose_b=True) + eps * tf.eye(tf.shape(L)[0],dtype=tf_float_prec)
 
         return R
 
@@ -348,16 +342,16 @@ class AutoencoderKalmanFilter(Autoencoder):
         # return W, a, epsilon, u, m, m_i
         return W
 
-class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
+class AutoencoderInteractingMultipleModel(AutoencoderKalmanFilter):
 
     """
-    Orthogonal Polynomial-Autoencoder KalmanFilter Class
+    Autoencoder-Interacting Multiple Model Class
     """
 
     def __init__(self, params=None, kf_params=None):
 
-        super().__init__(params=params, kf_params=kf_params)
-
+        super().__init__(params=params,kf_params=kf_params)
+        
     ##################
     # Public Methods #
     ##################
@@ -366,4 +360,6 @@ class HilbertAutoencoderKalmanFilter(AutoencoderKalmanFilter):
     # Private Methods #
     ###################
 
-   
+    def _setLoss(self):
+
+        super()._setLoss()

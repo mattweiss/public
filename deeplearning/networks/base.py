@@ -194,7 +194,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                 #     Y = np.squeeze(Y,axis=-1)
 
-                test_feed_dict = {self._X:X, self._y:Y,self._mask:np.ones(shape=Y.shape)}
+                test_feed_dict = {self._X:X, self._y:Y}
 
                 # run ops
                 eval_ops_results = sess.run(list(eval_ops_dict.values()),feed_dict=test_feed_dict)
@@ -251,11 +251,10 @@ class FeedForwardNetwork(AbstractNetwork):
         self._X = tf.placeholder(dtype=tf_float_prec, shape=(None,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf_float_prec, shape=(None,self._input_dim), name='y')
         self._t = tf.placeholder(dtype=tf_float_prec, shape=(None,1), name='t')
-        self._mask = tf.placeholder(dtype=tf_float_prec, shape=(None,self._input_dim), name='mask')
         
     def _setLoss(self):
 
-        self._mse_op = tf.cast(self._loss(self._y,self._y_hat,weights=self._mask), tf_float_prec)
+        self._mse_op = tf.cast(self._loss(self._y,self._y_hat), tf_float_prec)
         self._loss_op = self._mse_op + tf.cast(tf.losses.get_regularization_loss(), tf_float_prec)
 
     def _setOptimizer(self):
@@ -505,8 +504,8 @@ class FeedForwardNetwork(AbstractNetwork):
                 val_mse_list = list()
 
                 # train on all trials
-                for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x_test'], train_data['y_test'], train_data['mask'],
-                                                                                val_data['x_test'], val_data['y_test'], val_data['mask']):
+                for x_train, y_train, x_val, y_val in zip(train_data['x_test'], train_data['y_test'],
+                                                          val_data['x_test'], val_data['y_test']):
 
                     
                     # plt.figure(figsize=(18,12))
@@ -560,18 +559,16 @@ class FeedForwardNetwork(AbstractNetwork):
                         y_val = x_val
 
                     # train on minibatches
-                    x_train_mb, y_train_mb, mask_train_mb = self._generateMinibatches(x_train,y_train,mask_train)
+                    x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train )
+                    
+                    for x_mb, y_mb in zip(x_train_mb,y_train_mb):
 
-                    for x_mb, y_mb, mask_mb in zip(x_train_mb,y_train_mb,mask_train_mb):
-
-                        x_mb, y_mb, mask_mb = x_mb, y_mb, mask_mb
-
-                        train_feed_dict.update({self._X:x_train,self._y:y_train,self._mask:mask_train,self._t:train_data['t']})
+                        train_feed_dict.update({self._X:x_train,self._y:y_train,self._t:train_data['t']})
                         sess.run(self._optimizer_op, feed_dict=train_feed_dict)
                         
                     # loss op
                     train_loss, train_mse = sess.run([self._loss_op,self._mse_op],feed_dict=train_feed_dict)
-                    val_feed_dict.update({self._X:x_val,self._y:y_val,self._mask:mask_val,self._t:val_data['t']})
+                    val_feed_dict.update({self._X:x_val,self._y:y_val,self._t:val_data['t']})
                     val_loss, val_mse = sess.run([self._loss_op,self._mse_op],feed_dict=val_feed_dict)
                     train_loss_list.append(train_loss)
                     val_loss_list.append(val_loss)
@@ -635,9 +632,9 @@ class FeedForwardNetwork(AbstractNetwork):
                 
         return self._history
 
-    def _generateMinibatches(self, X, y=None,mask=None):
+    def _generateMinibatches(self, X, y=None):
 
-        X_mb, y_mb, mask_mb = None, None, None
+        X_mb, y_mb = None, None
         
         X_mb = [X[i * self._mbsize:(i + 1) * self._mbsize,:] for i in range((X.shape[0] + self._mbsize - 1) // self._mbsize )]
 
@@ -645,11 +642,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
             y_mb = [y[i * self._mbsize:(i + 1) * self._mbsize] for i in range((y.shape[0] + self._mbsize - 1) // self._mbsize )]
 
-        if mask is not None:
-
-            mask_mb = [mask[i * self._mbsize:(i + 1) * self._mbsize] for i in range((mask.shape[0] + self._mbsize - 1) // self._mbsize )]
-
-        return X_mb, y_mb, mask_mb
+        return X_mb, y_mb
 
     def _saveModel(self, tf_session=None, model_name=None):
 

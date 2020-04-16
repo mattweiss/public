@@ -84,8 +84,8 @@ class LSTM(FeedForwardNetwork):
                 val_mse_list = list()
                 
                 # loop over trials
-                for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x'],train_data['y'],train_data['mask'],
-                                                                                val_data['x'],val_data['y'],val_data['mask']):
+                for x_train, y_train, x_val, y_val in zip(train_data['x'],train_data['y'],
+                                                          val_data['x'],val_data['y']):
 
                     # plt.figure(figsize=(18,12))
 
@@ -124,28 +124,25 @@ class LSTM(FeedForwardNetwork):
                     # plt.close()
                     
                     # generate minibatches
-                    x_train_mb, y_train_mb, mask_train_mb = self._generateMinibatches(x_train,y_train,mask_train)
+                    x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train)
 
                     # Generate LSTM 3-rank tensors
-                    x_train_mb, y_train_mb, mask_train_mb = self._generateDataset(x_train_mb, y_train_mb, mask_train_mb) if self._train_ground else self._generateDataset(x_train_mb, x_train_mb, mask_train_mb)
-                    x_val, y_val, mask_val = self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(y_val,axis=0), np.expand_dims(mask_val,axis=0)) if self._train_ground else \
-                        self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(x_val,axis=0), np.expand_dims(mask_val,axis=0))
+                    x_train_mb, y_train_mb = self._generateDataset(x_train_mb, y_train_mb) if self._train_ground else self._generateDataset(x_train_mb, x_train_mb)
+                    x_val, y_val = self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(y_val,axis=0)) if self._train_ground else \
+                        self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(x_val,axis=0))
 
-                    for x_mb, y_mb, mask_mb in zip(x_train_mb,y_train_mb,mask_train_mb):
+                    for x_mb, y_mb in zip(x_train_mb,y_train_mb):
 
-                        # mask_mb = np.ones(shape=mask_mb.shape)
-                        
-                        train_feed_dict.update({self._X:x_mb,self._y:y_mb,self._mask:mask_mb})
+                        train_feed_dict.update({self._X:x_mb,self._y:y_mb})
                         sess.run(self._optimizer_op, feed_dict=train_feed_dict)
-
 
                     train_loss, train_mse = sess.run([self._loss_op,self._mse_op],feed_dict=train_feed_dict)
                     train_loss_list.append(train_loss)
                     train_mse_list.append(train_mse)
                     
-                    for x_v, y_v, mask_v in zip(x_val,y_val,mask_val):
+                    for x_v, y_v in zip(x_val,y_val):
                     
-                        val_feed_dict.update({self._X:x_v,self._y:y_v,self._mask:mask_v})
+                        val_feed_dict.update({self._X:x_v,self._y:y_v})
                         val_loss, val_mse = sess.run([self._loss_op,self._mse_op],feed_dict=val_feed_dict)
                         val_loss_list.append(val_loss)
                         val_mse_list.append(val_mse)
@@ -254,13 +251,11 @@ class LSTM(FeedForwardNetwork):
         # input and output placeholders
         self._X = tf.placeholder(dtype=tf.float32, shape=(None,self._seq_len,self._input_dim), name='X')
         self._y = tf.placeholder(dtype=tf.float32, shape=(None,self._input_dim), name='y')
-        self._mask = tf.placeholder(dtype=tf.float32, shape=(None,self._input_dim), name='mask')
 
-    def _generateDataset( self, x, y, mask=None ):
+    def _generateDataset( self, x, y):
 
         x_wins = list()
         y_wins = list()
-        mask_wins = list()
             
         #for trial_idx in range(x.shape[0]):
         for x_trial,y_trial in zip(x,y):
@@ -275,17 +270,4 @@ class LSTM(FeedForwardNetwork):
             x_wins.append(np.asarray(x_wins_trial))
             y_wins.append(np.asarray(y_wins_trial))
 
-        # generate mask
-        if mask is not None:
-            
-            for mask_trial in mask:
-
-                mask_wins_trial = list()
-
-                for sample_idx in range(x_trial.shape[0]-self._seq_len):
-
-                    mask_wins_trial.append(mask_trial[sample_idx+self._seq_len,:])
-
-                mask_wins.append(np.asarray(mask_wins_trial))
-            
-        return x_wins, y_wins, mask_wins
+        return x_wins, y_wins

@@ -58,7 +58,6 @@ model_params['hidden_dims'] = (128,64) #[(128,64,32),(128,64),(64,32,16),(64,32)
 model_params['learning_rate'] = 1e-3 # list(np.logspace(-3,-5,3))
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['mbsize'] = 100
-ds_params['missing_percent'] = 0.0
 
 # model params
 model_params['kf_type'] = KalmanFilter
@@ -89,7 +88,8 @@ model_params['train_ground'] = True
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 1000
+
+model_params['epochs'] = 100
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -113,8 +113,6 @@ ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
 ds_params['max_N'] = 7
 ds_params['min_N'] = 3
-ds_params['missing_value'] = 1000.0
-ds_params['with_mask'] = False
 ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     #['zeros', drfns.zeros, []],

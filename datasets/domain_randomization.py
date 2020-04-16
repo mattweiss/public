@@ -5,7 +5,7 @@ import random
 import copy
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
-from dovebirdia.utilities.base import saveAttrDict, loadDict, generateMask
+from dovebirdia.utilities.base import saveAttrDict, loadDict
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy.stats import shapiro
 import copy
@@ -140,23 +140,6 @@ class DomainRandomizationDataset(AbstractDataset):
         self._data['t'] = np.expand_dims(np.linspace(self._x_range[0], self._x_range[1],
                                                      self._n_baseline_samples+self._n_samples), axis=-1)
         self._data['noise_type'] = noise_types
-        self._data['mask'] = np.ones(shape=self._data['x_test'].shape)
-
-        # add missing values
-        if self._missing_percent != 0.0:
-
-            for index, x in enumerate(self._data['x']):
-                
-                    mask_indices = generateMask(x,
-                                                self._missing_percent/100.0)
-
-                    self._data['x'][index][mask_indices] = self._missing_value
-                    self._data['y'][index][mask_indices] = self._missing_value
-
-            # if excluding missing values from loss function
-            if self._with_mask:
-
-                self._data['mask'][index][mask_indices] = 0.0
 
         # save dataset logic
         if getattr(self, '_save_path', None) is not None:

@@ -47,9 +47,6 @@ class LSTM(FeedForwardNetwork):
         assert self._loss_op is not None
         assert self._optimizer_op is not None
 
-        #self._mask = K.variable(np.ones(shape=(self._mbsize-self._seq_len,self._input_dim)))
-        self._mask = tf.placeholder(dtype=tf.float64, shape=(None,self._input_dim), name='mask')
-        
         # compile model
         self._model.compile(loss = self._loss_op, optimizer=self._optimizer_op, metrics=['mse'])
 
@@ -254,24 +251,22 @@ class LSTM(FeedForwardNetwork):
             for epoch in range(1, self._epochs+1):
 
                 # set x_train, y_train, x_val and y_val in dataset_dict attribute of DomainRandomizationDataset
-                train_data = self._dr_dataset.generateDataset(with_mask=False)
-                val_data = self._dr_dataset.generateDataset(with_mask=False)
+                train_data = self._dr_dataset.generateDataset()
+                val_data = self._dr_dataset.generateDataset()
 
                 # loop over trials
-                for x_train, y_train, mask_train, x_val, y_val, mask_val in zip(train_data['x'],train_data['y'],train_data['mask'],
-                                                                                val_data['x'],val_data['y'],val_data['mask']):
+                for x_train, y_train, x_val, y_val in zip(train_data['x'],train_data['y'],
+                                                          val_data['x'],val_data['y']):
 
                     # train on minibatches
-                    x_train_mb, y_train_mb, mask_train_mb = self._generateMinibatches(x_train,y_train,mask_train)
+                    x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train)
 
                     # Generate LSTM 3-rank tensors
-                    x_train_mb, y_train_mb, mask_train_mb = self._generateDataset(x_train_mb, y_train_mb, mask_train_mb) if self._train_ground else self._generateDataset(x_train_mb, x_train_mb, mask_train_mb)
-                    x_val, y_val, mask_val = self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(y_val,axis=0), np.expand_dims(mask_val,axis=0)) if self._train_ground else \
-                        self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(x_val,axis=0), np.expand_dims(mask_val,axis=0))
+                    x_train_mb, y_train_mb = self._generateDataset(x_train_mb, y_train_mb) if self._train_ground else self._generateDataset(x_train_mb, x_train_mb)
+                    x_val, y_val = self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(y_val,axis=0)) if self._train_ground else \
+                        self._generateDataset(np.expand_dims(x_val,axis=0), np.expand_dims(x_val,axis=0))
 
-                    for x_mb, y_mb, mask_mb in zip(x_train_mb,y_train_mb,mask_train_mb):
-
-                        tf.keras.backend.set_value(self._mask, mask_mb)
+                    for x_mb, y_mb in zip(x_train_mb,y_train_mb):
 
                         history = sess.run([self._model.fit(x_mb, y_mb,
                                                             batch_size=self._mbsize-self._seq_len,
@@ -284,10 +279,6 @@ class LSTM(FeedForwardNetwork):
                         #                           epochs=1,
                         #                           #validation_data=(x_v, y_v)
                         #)
-
-                    st()
-                        
-                    tf.keras.backend.set_value(self._mask, mask_val)
 
                     val_loss, val_mse = self._model.evaluate(x=x_v, y=y_v, batch_size=self._mbsize-self._seq_len, verbose=0)
                     print(val_loss,val_mse)
@@ -363,7 +354,7 @@ class LSTM(FeedForwardNetwork):
 
     def _setLoss(self):
 
-        self._loss_op = self._maskLoss
+        self._loss_op = self._loss(y_true,y_pred)
     
     def _setOptimizer(self):
 
@@ -381,7 +372,7 @@ class LSTM(FeedForwardNetwork):
         #self._model.save_weights(self._trained_model_file)
         self._model.save(self._trained_model_file)
 
-    def _generateDataset( self, x, y, mask=None ):
+    def _generateDataset( self, x, y):
 
         x_wins = list()
         y_wins = list()
@@ -399,22 +390,5 @@ class LSTM(FeedForwardNetwork):
 
             x_wins.append(np.asarray(x_wins_trial))
             y_wins.append(np.asarray(y_wins_trial))
-
-        # generate mask
-        if mask is not None:
             
-            for mask_trial in mask:
-
-                mask_wins_trial = list()
-
-                for sample_idx in range(x_trial.shape[0]-self._seq_len):
-
-                    mask_wins_trial.append(mask_trial[sample_idx+self._seq_len,:])
-
-                mask_wins.append(np.asarray(mask_wins_trial))
-            
-        return x_wins, y_wins, mask_wins
-
-    def _maskLoss(self,y_true,y_pred):
-
-        return self._loss(y_true,y_pred,weights=self._mask)
+        return x_wins, y_wins

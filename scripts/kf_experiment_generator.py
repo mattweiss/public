@@ -28,7 +28,7 @@ project = 'imm'
 
 experiments = [
     ('kf_benchmark_gaussian',
-     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-1_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl')
+     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl')
     
 
 ]

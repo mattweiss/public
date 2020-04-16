@@ -24,7 +24,7 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'pets'
-experiment_name = 'lstm_taylor_mask_percent_5_value_1000_EPOCHS_10000'
+experiment_name = 'lstm_taylor_value_1000_EPOCHS_10000'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -54,7 +54,6 @@ model_params['learning_rate'] = list(np.logspace(-4,-5,2))
 model_params['seq_len'] = [1,2,3,4,5,15]
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['mbsize'] = 100
-ds_params['missing_percent'] = 5.0
 
 # model parameters
 
@@ -101,8 +100,6 @@ ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
 ds_params['max_N'] = 10
 ds_params['min_N'] = 3
-ds_params['missing_value'] = 1000
-ds_params['with_mask'] = True
 ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     # ['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],

@@ -33,11 +33,11 @@ config_dict['dataset'] = 'DomainRandomizationDataset'
 config_dict['with_val'] = False
 
 experiments = [
-    ('aeimmkf_legendre_gaussian_F1_NCV_Q1_1e-2_F2_NCV_Q2_1e-8_G_T_R_EXP_EPS_1e-1',[37]),
+    ('aeimm_legendre_gaussian_F1_NCV_Q1_1e-2_F2_NCV_Q2_1e-8_G_True',[51]),
 ]
 
 test_dataset_files = [
-    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-1_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl'
+    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl'
 ]
 
 machine = socket.gethostname()

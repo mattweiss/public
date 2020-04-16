@@ -30,7 +30,8 @@ class KalmanFilter(AbstractFilter):
         
         self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np_float_prec)
         self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np_float_prec)
-
+        self._K0 = np.zeros((self._H.T.shape),dtype=np_float_prec)
+        
 ################################################################################
 
     def fit(self, inputs):
@@ -65,9 +66,9 @@ class KalmanFilter(AbstractFilter):
 
             z = tf.convert_to_tensor(inputs)
             
-        x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, self._kf_ctr = tf.scan(self._kfScan,
-                                                                             z,
-                                                                             initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
+        x_hat_pri, x_hat_post, P_hat_pri, P_hat_post, K, self._kf_ctr = tf.scan(self._kfScan,
+                                                                                z,
+                                                                                initializer = [ self._x0, self._x0, self._P0, self._P0, self._K0, tf.constant(0) ], name='kfScan')
 
         z_hat_pri  = tf.matmul(self._H, x_hat_pri, name='z_pri', transpose_b=False)
         z_hat_post = tf.matmul(self._H, x_hat_post, name='z_post', transpose_b=False)
@@ -76,6 +77,7 @@ class KalmanFilter(AbstractFilter):
             'x_hat_pri':x_hat_pri, 'x_hat_post':x_hat_post,
             'z_hat_pri':z_hat_pri, 'z_hat_post':z_hat_post,
             'P_hat_pri':P_hat_pri, 'P_hat_post':P_hat_post,
+            'K':K,
             'z':z,
             'R':tf.convert_to_tensor(self._R),
             }
@@ -109,7 +111,7 @@ class KalmanFilter(AbstractFilter):
 
         """ This is where the Kalman Filter is implemented. """
 
-        _, x_post, _, P_post, self._kf_ctr = state
+        _, x_post, _, P_post, K, self._kf_ctr = state
 
         ##########
         # Predict
@@ -121,9 +123,9 @@ class KalmanFilter(AbstractFilter):
         # Update
         #########
 
-        x_post, P_post, _ = self._update(z, x_pri, P_pri)
+        x_post, P_post, K, _ = self._update(z, x_pri, P_pri)
         
-        return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
+        return [ x_pri, x_post, P_pri, P_post, K, tf.add(self._kf_ctr,1) ]
 
 ###############################################################################
 
@@ -137,7 +139,7 @@ class KalmanFilter(AbstractFilter):
         
         return x_pri, P_pri
 
-    def _update(self,z,x,P,eps=0.0):
+    def _update(self,z,x,P):
 
         assert z is not None
         assert x is not None
@@ -153,25 +155,28 @@ class KalmanFilter(AbstractFilter):
 
             R = self._R
 
-        S = tf.matmul(self._H, tf.matmul(P, self._H, transpose_b=True)) + R
+        S = tf.matmul(self._H,tf.matmul(P,self._H,transpose_b=True))+R
 
         S_inv = tf.linalg.inv(S)
 
-        K = tf.matmul(P,tf.matmul(self._H, S_inv, transpose_a=True, name = 'KF_H-S_inv' ), name='KF_K' )
+        K = tf.matmul(P,tf.matmul(self._H,S_inv,transpose_a=True,name='KF_H-S_inv'),name='KF_K')
 
-        y = tf.subtract( z, tf.matmul( self._H, x ), name='innov_plus' )
+        y = tf.subtract(z,tf.matmul(self._H,x),name='innov_plus')
 
-        x_post = tf.add( x, tf.matmul(K, y), name = 'x_post' )
+        x_post = tf.add(x,tf.matmul(K,y),name='x_post')
         P_post = (tf.eye(tf.shape(P)[0],dtype=tf_float_prec)-K@self._H)@P
 
         # compute likelihood
         likelihood = tfp.distributions.MultivariateNormalTriL(loc=tf.zeros(y.get_shape()[0],dtype=tf_float_prec),
-                                                              scale_tril=tf.linalg.cholesky(S)).prob(tf.transpose(y))[0]
+                                                              scale_tril=tf.cholesky(S)).prob(tf.transpose(y))[0]
 
         # ensure likelihood is greater than 0
-        likelihood = tf.cond(tf.equal(likelihood,0.0),
-                             lambda:np.finfo(np_float_prec).tiny,
-                             #lambda:likelihood + 1e-8,
-                             lambda:likelihood)
+        # likelihood = tf.cond(tf.equal(likelihood,0.0),
+        #                      lambda:likelihood + np.finfo(np_float_prec).tiny,
+        #                      lambda:tf.cast(1e-40,dtype=tf_float_prec),
+        #                      lambda:likelihood)
+
+        # likelihood = tf.random_uniform(minval=1e-20,maxval=1e-10,shape=[],dtype=tf_float_prec)
+        likelihood += 1e-20
         
-        return x_post, P_post, likelihood
+        return x_post, P_post, K, likelihood

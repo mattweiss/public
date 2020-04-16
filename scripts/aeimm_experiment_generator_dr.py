@@ -15,7 +15,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
+from dovebirdia.deeplearning.networks.autoencoder import AutoencoderInteractingMultipleModel
 from dovebirdia.filtering.kalman_filter import KalmanFilter
 from dovebirdia.filtering.interacting_multiple_model import InteractingMultipleModel
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
@@ -28,11 +28,10 @@ import dovebirdia.stats.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'imm'
-experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}_G_{G}_R_{R}_EPS_{EPS}_EPOCHS_{epochs}'.format(F1='NCV',Q1='1e-2',
-                                                                                                           F2='NCV',Q2='1e-8',
-                                                                                                           G='T',
-                                                                                                           R='HPHT_None',EPS='1e-1',
-                                                                                                           epochs='KILLME')
+experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}_G_{G}_{Note}'.format(F1='NCV',Q1='1e-2',
+                                                                                         F2='NCV',Q2='1e-8',
+                                                                                                G='True',
+                                                                                                Note='KILLME')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -53,7 +52,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['network'] = AutoencoderKalmanFilter
+meta_params['network'] = AutoencoderInteractingMultipleModel
 
 ####################################
 # Regularly edited Parameters
@@ -63,7 +62,6 @@ model_params['hidden_dims'] = [(256,64,16,8),(256,64,32,16),(256,64,32),(256,64,
 model_params['learning_rate'] = list(np.logspace(-3,-5,12))
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['mbsize'] = 100
-ds_params['missing_percent'] = 0.0
 
 # model params
 
@@ -93,7 +91,7 @@ model_params['train_ground'] = True
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100
+model_params['epochs'] = 10
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -117,8 +115,6 @@ ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
 ds_params['max_N'] = 20
 ds_params['min_N'] = 10
-ds_params['missing_value'] = 1000.0
-ds_params['with_mask'] = False
 ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     #['zeros', drfns.zeros, []],
@@ -146,7 +142,7 @@ ds_params['noise'] = [
 kf_params['with_z_dot'] = False
 
 #  measurements dimensions
-kf_params['meas_dims'] = 8
+kf_params['meas_dims'] = 2
 
 #  state space dimensions
 kf_params['state_dims'] = kf_params['meas_dims']
@@ -185,7 +181,7 @@ kf_params['R'] = None
 
 kf_params['models'] = {
     'NCV_1':[F_NCV_1,Q_NCV_1],
-    'NCA_2':[F_NCV_2,Q_NCV_2],
+    'NCV_2':[F_NCV_2,Q_NCV_2],
 }
 
 ####################
