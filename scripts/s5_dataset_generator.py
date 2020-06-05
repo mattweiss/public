@@ -13,7 +13,7 @@ dataset_params = {
     'n_samples':None,
     'benchmark':'A1',
     'dataset_name':'s5_A1',
-    'standardize':True,
+    'standardize':False,
 }
 
 dataset = s5Dataset(params=dataset_params).getDataset()

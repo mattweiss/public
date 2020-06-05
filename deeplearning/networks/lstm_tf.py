@@ -2,6 +2,7 @@ import os, socket
 from time import time
 import numpy as np
 import tensorflow as tf
+tf_float_prec = tf.float64
 from pdb import set_trace as st
 
 #from keras import backend as K
@@ -47,7 +48,7 @@ class LSTM(FeedForwardNetwork):
                  attributes=None,
                  save_results=None):
 
-        x, y, _ = self._generateDataset(x,y)
+        x, y = self._generateDataset(x,y)
 
         return super().evaluate(x=x,y=y,attributes=attributes,save_results=save_results)
         
@@ -82,10 +83,10 @@ class LSTM(FeedForwardNetwork):
                 val_loss_list = list()
                 train_mse_list = list()
                 val_mse_list = list()
-                
+
                 # loop over trials
-                for x_train, y_train, x_val, y_val in zip(train_data['x'],train_data['y'],
-                                                          val_data['x'],val_data['y']):
+                for x_train, y_train, x_val, y_val in zip(train_data['x_test'],train_data['y_test'],
+                                                          val_data['x_test'],val_data['y_test']):
 
                     # plt.figure(figsize=(18,12))
 
@@ -271,3 +272,15 @@ class LSTM(FeedForwardNetwork):
             y_wins.append(np.asarray(y_wins_trial))
 
         return x_wins, y_wins
+
+    def _setLoss(self):
+
+        dt = 0.004 #self._kalman_filter.__dict__['_dt']
+
+        y_hat = self._y_hat[:,:2]
+        y_hat_diff = tf.divide(tf.subtract(y_hat[1:],y_hat[:-1]),dt)
+        y_hat_dot = self._y_hat[:-1,2:]
+
+        self._mse_op = tf.cast(self._loss(self._y,y_hat) + self._loss(y_hat_diff,y_hat_dot),tf_float_prec)
+        #self._mse_op = tf.cast(self._loss(self._y,y_hat),tf_float_prec)
+        self._loss_op = self._mse_op + tf.cast(tf.losses.get_regularization_loss(), tf_float_prec)

@@ -23,7 +23,7 @@ from dovebirdia.deeplearning.networks.keras_classifiers import KerasMultiLabelCl
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/ccdc_model.py'
 project = 'ccdc_mixtures'
-experiment_name = '01_23_19_DATASET_resistance_SAMPLES_600_1000_STEP_100_SYN_True_MODEL_con'
+experiment_name = '07_12_19_mean_T_std_F'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -48,12 +48,12 @@ meta_params['network'] = KerasMultiLabelClassifier
 # Dataset Parameters
 ####################################
 
-dataset_params['dataset_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/01_23_19/'
+dataset_params['dataset_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark_3/split/07_12_19_mean_T_std_F/'
 dataset_params['with_val'] = True
-dataset_params['resistance_type'] = 'resistance' # ['resistance','resistance_kf0','resistance_kf1']
+dataset_params['resistance_type'] = 'resistance_z' # ['resistance','resistance_kf0','resistance_kf1']
 dataset_params['labels'] = None
 dataset_params['sensors'] = None
-dataset_params['with_synthetic'] = True
+dataset_params['with_synthetic'] = False
 dataset_params['samples'] = [(0,600),(0,700),(0,800),(0,900),(0,1000)]
 dataset_params['labels'] = 'concentration' #'binary_presence' # 'binary_presence' in {0,1}, 'concentration' in R^n
 dataset_params['standardize'] = True
@@ -63,8 +63,8 @@ dataset_params['standardize'] = True
 ####################################
 
 model_params['results_dir'] = '/results/'
-model_params['output_dim'] = 2 # number of classes
-model_params['hidden_dims'] = [(512,256,128,16),(256,64,32),(512,256,64)]
+model_params['output_dim'] = 5 # number of classes
+model_params['hidden_dims'] = [(512,256,64,32),(256,64,32),(512,256,64)]
 model_params['activation'] = tf.nn.leaky_relu
 model_params['output_activation'] = tf.nn.relu
 model_params['use_bias'] = True
@@ -89,10 +89,10 @@ model_params['loss'] = tf.keras.losses.mean_squared_error
 # tf.keras.losses.mean_squared_error
 # tf.keras.losses.categorical_crossentropy
 model_params['from_logits'] = True
-model_params['metrics'] = ('mse','mae','accuracy','categorical_accuracy')
+model_params['metrics'] = (['mse'])
 
 # training
-model_params['epochs'] = 10000
+model_params['epochs'] = 1000
 model_params['mbsize'] = [32,64]
 model_params['optimizer'] = tf.train.AdamOptimizer
 model_params['optimizer_params'] = [{'learning_rate':lr} for lr in np.logspace(-4,-6,3)]

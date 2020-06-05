@@ -119,13 +119,13 @@ class KerasMultiLabelClassifier():
         history.history['runtime'] = (time() - start_time) / 60.0
 
         # validataion set metrics
-        # val_pred = self._model.predict(x=dataset['x_val'])
+        val_pred = self._model.predict(x=dataset['x_val'])
         # history.history['val_true'] = dataset['y_val'][:,:self._output_dim]
         # history.history['val_pred'] = val_pred
         # history.history['val_subset_accuracy'] = accuracy_score(y_true=history.history['val_true'],
         #                                                         y_pred=(history.history['val_pred'] >= 0.5).astype(float))
         # test set metrics
-        #test_pred = self._model.predict(x=dataset['x_test'])
+        test_pred = self._model.predict(x=dataset['x_test'])
         #history.history['test_true'] = dataset['y_test'][:,:self._output_dim]
         #history.history['test_pred'] = test_pred
         # history.history['test_subset_accuracy'] = accuracy_score(y_true=history.history['test_true'],
@@ -144,7 +144,6 @@ class KerasMultiLabelClassifier():
             metric_name = 'test_' + metric_name
             
             history.history[metric_name] = metric
-
 
         # dictionary with final returned results
         output_history = dict()

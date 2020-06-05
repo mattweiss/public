@@ -85,7 +85,7 @@ class ccdcMixturesDataset(AbstractDataset):
         elif self._labels == 'concentration':
 
             self._data['y_train'] = np.stack(self._data_train.concentration_label)
- 
+            
         #################
         # validation set
         #################
@@ -108,14 +108,7 @@ class ccdcMixturesDataset(AbstractDataset):
 
                 self._data['y_val'] = np.stack(self._data_val.concentration_label)
                 
-            # if self._multi_label:
-
-            #     self._data['y_val'] = np.stack(self._data_val.multi_label.values)
-
-            # else:
-
-            #     self._data['y_val'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_val.label])
-
+                
         #################
         # test set
         #################
@@ -134,14 +127,6 @@ class ccdcMixturesDataset(AbstractDataset):
         elif self._labels == 'concentration':
 
             self._data['y_test'] = np.stack(self._data_test.concentration_label)
-
-        # if self._multi_label:
-
-        #     self._data['y_test'] = np.stack(self._data_test.multi_label)
-
-        # else:
-
-        #     self._data['y_test'] = np.asarray([np.squeeze(np.asarray(label)) for label in self._data_test.label])
 
         return self._data
 

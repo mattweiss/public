@@ -24,8 +24,8 @@ import dovebirdia.stats.distributions as distributions
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/nyse_model.py'
-project = 'kdd'
-experiment_name = 'model_AEKF_train_NYSE_FEATURES_2'
+project = 'ucr'
+experiment_name = 'model_AEKF_train_Lightning7_ALPHA'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -49,65 +49,149 @@ params_dicts = OrderedDict([
 meta_params['network'] = AutoencoderKalmanFilter
 
 ####################################
-# Important Parameters
+# Regularly edited Parameters
 ####################################
-model_params['hidden_dims'] = [(32,),(64,),(64,32),(32,16)]
-model_params['learning_rate'] = 1e-3#list(np.logspace(-3,-4,3))
-kf_params['q'] = list(np.logspace(-1,-3,3))
-kf_params['with_z_dot'] = False
-model_params['optimizer'] = tf.train.MomentumOptimizer #[tf.train.MomentumOptimizer,tf.train.AdamOptimizer]
-model_params['mbsize'] = [32,64]
-model_params['weight_regularizer'] = [tf.keras.regularizers.l1,tf.keras.regularizers.l2]
-model_params['weight_regularizer_scale'] = [1e-4,1e-5]
 
-# model parameters
+model_params['hidden_dims'] = [(128,64,32),(128,64),(64,32,16),(64,32)]
+model_params['learning_rate'] = list(np.logspace(-3,-5,12))
+model_params['optimizer'] = tf.train.AdamOptimizer
+model_params['mbsize'] = 500
 
+# model params
+model_params['kf_type'] = KalmanFilter
 model_params['results_dir'] = '/results/'
-model_params['input_dim'] = 4
+model_params['input_dim'] = 2
 model_params['output_dim'] = model_params['input_dim']
-model_params['activation'] = tf.nn.elu
 model_params['output_activation'] = None
+model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
 model_params['weight_initializer'] = tf.initializers.glorot_normal
-model_params['bias_initializer'] = tf.initializers.ones
-
+model_params['bias_initializer'] = tf.initializers.zeros
+model_params['weight_regularizer'] = None #[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
+model_params['weight_regularizer_scale'] = 0.0 #[1e-4,1e-5]
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
-model_params['bias_constraint'] = None#tf.keras.constraints.MaxNorm(3.0)
+model_params['weight_constraint'] = None
+model_params['bias_constraint'] = None
 model_params['input_dropout_rate'] = 0.0
 model_params['dropout_rate'] = 0.0
-model_params['weight_constraint'] = None#tf.keras.constraints.MaxNorm(3.0)
+model_params['z_regularizer'] = None #[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
+model_params['z_regularizer_scale'] = 0.0 # [1e-7,1e-8]
 model_params['R_model'] = 'learned' # learned, identity
 model_params['R_activation'] = None
+model_params['train_ground'] = False
 
 # loss
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 100
+
+model_params['epochs'] = 10
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
-model_params['decay_steps'] = 1000
-model_params['decay_rate'] = 1.0
+model_params['decay_steps'] = 100
+model_params['decay_rate'] = 0.96
 model_params['staircase'] = False
 
 ####################################
-# Dataset Parameters
+# Domain Randomization Parameters
 ####################################
 
-ds_params['saved_dataset'] = '/home/mlweiss/Documents/wpi/research/data/nyse/split/nyse_all_train_test_split_n_securities_1_n_samples_None_features_4.pkl'
+ds_params['ds_type'] = 'train'
+ds_params['x_range'] = (-1,1)
+
+# set dt here based on x range and mb size, for use in scaling noise and the Kalman Filter
+dt = (ds_params['x_range'][1]-ds_params['x_range'][0])/model_params['mbsize']
+
+ds_params['n_trials'] = 1
+ds_params['n_baseline_samples'] = 0
+ds_params['n_samples'] = model_params['mbsize']
+ds_params['n_features'] = model_params['input_dim']
+ds_params['n_noise_features'] = ds_params['n_features']
+ds_params['standardize'] = False
+ds_params['feature_range'] = None
+ds_params['baseline_shift'] = None
+ds_params['param_range'] = 1.0
+ds_params['max_N'] = 3
+ds_params['min_N'] = 1
+ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
+ds_params['fns'] = (
+    #['zeros', drfns.zeros, []],
+    #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
+    #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
+    #['sine', drfns.sine, [(0,10.0),(0.01,0.01)]],
+    ['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    #['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    #['trig_poly', drfns.trig_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(2*ds_params['max_N']+1)],
+)
+
+ds_params['noise'] = [
+    #[None, None, None],
+
+    ['gaussian', np.random.multivariate_normal, {'mean':np.zeros(ds_params['n_features']),
+                                                 'cov':dt*np.eye(ds_params['n_features'])}
+    ],
+
+    # ['bimodal', distributions.bimodal, {'mean1':np.full(ds_params['n_features'],0.25),
+    #                                     'cov1':0.02*np.eye(ds_params['n_features']),
+    #                                     'mean2':np.full(ds_params['n_features'],-0.25),
+    #                                     'cov2':0.02*np.eye(ds_params['n_features'])}],
+
+    #['cauchy', np.random.standard_cauchy, {}],
+
+    #['stable', distributions.stable, {'alpha':(1.0),'scale':(0.0)}], # alpha = 2 Gaussian, alpha = 1 Cauchy
+]
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
-kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = 16
-#kf_params['n_measurements'] = model_params['mbsize']
-kf_params['dt'] = 1e0#list(np.linspace(0,1,6))
-kf_params['f_model'] = 'fixed' # fixed, random, learned
-kf_params['h_model'] = 'fixed' # fixed, random, learned, identity
-#kf_params['weight_initializer'] = tf.initializers.glorot_uniform # if learning F and H
+kf_params['with_z_dot'] = with_z_dot = False
+
+#  measurements dimensions
+kf_params['meas_dims'] = meas_dims = 8
+
+#  state space dimensions
+kf_params['state_dims'] = state_dims = kf_params['meas_dims']
+
+# number of state estimate 
+kf_params['dt'] = dt
+
+# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
+kf_params['model_order'] = model_order = 3
+
+kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
+
+# state-transition model
+
+F_NCV = np.zeros((model_order+1,model_order+1))
+F_NCA = np.zeros((model_order+1,model_order+1))
+F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+              [0.0,1.0,dt,0.5*dt**2],
+              [0.0,0.0,1.0,dt],
+              [0.0,0.0,0.0,1.0]])
+
+F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
+F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
+F_JERK = F
+
+# process covariance
+
+Q_NCV = np.zeros((model_order+1,model_order+1))
+Q_NCA = np.zeros((model_order+1,model_order+1))
+Q = np.eye(model_order+1)
+
+Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
+Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
+Q_JERK = Q
+
+#######################
+# Choose Model Matrices
+#######################
+
+kf_params['F'] = np.kron(np.eye(state_dims),F_NCA)
+kf_params['Q'] = 1e-4 * np.kron(np.eye(state_dims), Q_NCA)
+kf_params['R'] = None
 
 ####################################
 # Determine scaler and vector parameters

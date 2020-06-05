@@ -1,7 +1,7 @@
 #!/bin/env python3
 #SBATCH -N 1
-#SBATCH -n 4
-#SBATCH --mem=8G
+#SBATCH -n 1
+#SBATCH --mem=32G
 #SBATCH -p short
 #SBATCH -t 24:00:00
 

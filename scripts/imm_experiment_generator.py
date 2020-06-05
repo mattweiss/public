@@ -16,7 +16,6 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.filtering.interacting_multiple_model import InteractingMultipleModel
 import dovebirdia.utilities.dr_functions as drfns 
-import dovebirdia.stats.distributions as distributions
 
 ####################################
 # Test Name and Description
@@ -26,8 +25,8 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'imm'
 
 experiments = [
-    ('imm_benchmark_gaussian',
-     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl')
+    ('imm_benchmark',
+     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/benchmark.pkl')
 ]
 
 #****************************************************************************************************************************
@@ -62,58 +61,79 @@ model_params['results_dir'] = '/results/'
 # Kalman Filter Parameters
 ####################################
 
-kf_params['with_z_dot'] = False
+kf_params['with_z_dot'] = with_z_dot = False
 
 #  measurements dimensions
-kf_params['meas_dims'] = 2
+kf_params['meas_dims'] = meas_dims = 2
 
 #  state space dimensions
-kf_params['state_dims'] = kf_params['meas_dims']
+kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = 1.0
+kf_params['dt'] = dt = 0.1
 
-# dynamical model order (i.e. ncv = 1, nca = 2, etc.)
-kf_params['model_order'] = 1
+# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
+kf_params['model_order'] = model_order = 3
 
-kf_params['H'] = np.kron(np.eye(kf_params['meas_dims']), np.eye(kf_params['model_order']+1)) if kf_params['with_z_dot'] else np.kron(np.eye(kf_params['meas_dims']), np.array([1.0,0.0]))
+kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
 
 #########
 # Models
 #########
 
-F1 = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
-F2 = F1 #np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
+# state-transition model
 
-G1 = np.array([
-               [kf_params['dt']**2/2.0,0.0],
-               [kf_params['dt'],0.0],
-               [0.0,kf_params['dt']**2/2.0],
-               [0.0,kf_params['dt']],
-])
+F_NCV = np.zeros((model_order+1,model_order+1))
+F_NCA = np.zeros((model_order+1,model_order+1))
+F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+              [0.0,1.0,dt,0.5*dt**2],
+              [0.0,0.0,1.0,dt],
+              [0.0,0.0,0.0,1.0]])
 
-Q1 = 1e-2*G1@G1.T
-Q2 = 1e-8*G1@G1.T
-# Q1 = 0.0 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,0.0]]))
-# Q2 = 0.0 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]))
+F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
+F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
+F_JERK = F
 
-kf_params['R'] = np.eye(kf_params['meas_dims'])
+# process covariance
+
+Q_NCV = np.zeros((model_order+1,model_order+1))
+Q_NCA = np.zeros((model_order+1,model_order+1))
+Q = np.eye(model_order+1)
+
+Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
+Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
+Q_JERK = Q
+
+# dictionary of models
 
 kf_params['models'] = {
-    'NCV1':[F1,Q1],
-    'NCV2':[F2,Q2],
+    'NCV1':[np.kron(np.eye(state_dims),F_NCV),0.5*1e-0*np.kron(np.eye(state_dims),Q_NCV)],
+    #'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-8*np.kron(np.eye(state_dims),Q_NCV)],
+    #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-2*np.kron(np.eye(state_dims),Q_NCV)],
+    'NCA1':[np.kron(np.eye(state_dims),F_NCA),0.5*1e-0*np.kron(np.eye(state_dims),Q_NCA)],
+    #'NCA2':[np.kron(np.eye(state_dims),F_NCA),1e-4*np.kron(np.eye(state_dims),Q_NCA)],
+    #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
+    #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
+    #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
+    # 'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-8*np.kron(np.eye(state_dims),Q_NCV)],
+    # 'NCA2':[np.kron(np.eye(state_dims),F_NCA),1e-8*np.kron(np.eye(state_dims),Q_NCA)],
+    # 'JERK2':[np.kron(np.eye(state_dims),F_JERK),1e-8*np.kron(np.eye(state_dims),Q_JERK)],
 }
+n_models = len(kf_params['models'].keys())
+
+kf_params['R'] = 20 * np.eye(meas_dims)
 
 ####################
 # Mixing Parameters
 ####################
 
-kf_params['p'] = np.array([
-    [0.95,0.5],
-    [0.5,0.95],
-])
-kf_params['mu'] = np.array([[0.5],[0.5]])
-    
+p_trans = 0.1
+
+kf_params['p'] = np.full((n_models,n_models),p_trans)
+np.fill_diagonal(kf_params['p'],1.0-(n_models-1)*p_trans)
+                                  
+kf_params['mu'] = np.full((n_models,1),0.5)
+
 ####################################
 # Determine scaler and vector parameters
 ####################################
@@ -184,7 +204,7 @@ for experiment in experiments:
         #config_params[3]['dimensions'] = kf_dims
         
         # Create Directories
-        experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/kalman_filter/' + experiment_name + '/'
+        experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
         model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'
         model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
         results_dir = model_dir + '/results/'

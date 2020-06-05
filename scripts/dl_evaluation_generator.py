@@ -16,7 +16,6 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns
-import dovebirdia.stats.distributions as distributions
 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.datasets.nyse_dataset import nyseDataset
@@ -26,18 +25,20 @@ from dovebirdia.datasets.nyse_dataset import nyseDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'imm'
+project = 'aekf_meas_cov_analysis'
 
 config_dict = dict()
 config_dict['dataset'] = 'DomainRandomizationDataset'
 config_dict['with_val'] = False
 
 experiments = [
-    ('aeimm_legendre_gaussian_F1_NCV_Q1_1e-2_F2_NCV_Q2_1e-8_G_True',[51]),
+    #('aekf_taylor_Noise_gaussian_F_NCV_N_3_7_R_learned',[57]),
+    #('aekf_taylor_Noise_bimodal_F_NCV_N_3_7_R_learned',[12]),
+    ('aekf_taylor_Noise_cauchy_F_NCV_N_3_7_R_learned_ev_reg_BETA',[1,2]),
 ]
 
 test_dataset_files = [
-    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl'
+    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/aekf_meas_cov_analysis/eval/benchmark_taylor_cauchy_R1_1k.pkl'
 ]
 
 machine = socket.gethostname()

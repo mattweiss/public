@@ -9,8 +9,8 @@ from pdb import set_trace as st
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
-from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
-from dovebirdia.datasets.outliers import generate_outliers
+from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset as DomainRandomizationDataset
+#from dovebirdia.datasets.flight_kinematics import FlightKinematicsDataset as DomainRandomizationDataset
 from dovebirdia.deeplearning.layers.base import Dense
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 
@@ -317,20 +317,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                         x_train_trial = np.expand_dims(x_train_trial,axis=-1)
 
-                    # add outliers to training data
-                    if self._outliers:
-
-                        train_outliers = generate_outliers(shape=x_train_trial.shape,
-                                                           p_outlier=self._p_outlier,
-                                                           outlier_range=self._outlier_range)
-
-                        # truth and truth + outliers
-                        x_train_trial = x_train_trial + train_outliers
-                        y_train_trial = x_train_trial
-                        
-                    else:
-
-                        x_train_trial, y_train_trial = x_train_trial, x_train_trial
+                    x_train_trial, y_train_trial = x_train_trial, x_train_trial
 
                     # plt.figure(figsize=(6,6))
                     # plt.plot(x_train_trial,label='x',marker=None)
@@ -354,6 +341,15 @@ class FeedForwardNetwork(AbstractNetwork):
                         _, train_loss, train_mse = sess.run([self._optimizer_op,self._loss_op,self._mse_op], feed_dict={self._X:x_train_mb, self._y:y_train_mb})
                         epoch_train_loss.append(train_loss)
                         epoch_train_mse.append(train_mse)
+
+                    # y_train_hat = sess.run(self._y_hat, feed_dict={self._X:x_train_trial, self._y:y_train_trial})
+                    # plt.figure(figsize=(6,6))
+                    # plt.plot(y_train_trial,label='True')
+                    # plt.plot(y_train_hat,label='Pred')
+                    # plt.grid()
+                    # plt.legend()
+                    # plt.show()
+                    # plt.close()
                         
                 # validation loss
                 try:
@@ -367,20 +363,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                             x_val_trial = np.expand_dims(x_val_trial,axis=-1)
 
-                        # add noise to training data
-                        if self._outliers:
-
-                            val_outliers = generate_outliers(shape=x_val_trial.shape,
-                                                             p_outlier=self._p_outlier,
-                                                             outlier_range=self._outlier_range)
-
-                            # truth and truth + outliers
-                            x_val_trial = x_val_trial + val_outliers
-                            y_val_trial = x_val_trial
-
-                        else:
-
-                            x_val_trial, y_val_trial = x_val_trial, x_val_trial 
+                        x_val_trial, y_val_trial = x_val_trial, x_val_trial 
 
                         val_loss, val_mse = sess.run([self._loss_op,self._mse_op], feed_dict={self._X:x_val_trial, self._y:y_val_trial})
                         epoch_val_loss.append(val_loss)
@@ -453,8 +436,8 @@ class FeedForwardNetwork(AbstractNetwork):
             # save model
             if save_model:
 
-                self._saveModel(sess)
-
+                self._saveModel(sess,'trained_model.ckpt')
+                
         plt.figure(figsize=(6,6))
         plt.plot(self._history['train_loss'],label='Train Loss')
         plt.plot(self._history['val_loss'],label='Val Loss')
@@ -471,7 +454,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
         # create domainRandomizationDataset object
         self._dr_dataset = DomainRandomizationDataset(dr_params)
-        
+
         # dictionaries to hold training and validation data
         train_feed_dict = dict()
         val_feed_dict = dict()
@@ -507,65 +490,64 @@ class FeedForwardNetwork(AbstractNetwork):
                 for x_train, y_train, x_val, y_val in zip(train_data['x_test'], train_data['y_test'],
                                                           val_data['x_test'], val_data['y_test']):
 
-                    
                     # plt.figure(figsize=(18,12))
 
-                    # plt.subplot(231)
-                    # plt.plot(x_train[:,0],label='x0',marker=None)
+                    # plt.subplot(121)
+                    # plt.plot(np.arange(x_train[:,0].shape[0]),x_train[:,0],label='x0',marker=None,c='C1')
                     # plt.plot(y_train[:,0],label='y0',marker=None)
                     # plt.title(np.array_equal(x_train[:,0],y_train[:,0]))
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(232)
-                    # plt.plot(x_train[:,1],label='x1',marker=None)
+                    # plt.scatter(np.arange(x_train[:,1].shape[0]),x_train[:,1],label='x1',marker=None,c='C1',s=5)
                     # plt.plot(y_train[:,1],label='y1',marker=None)
                     # plt.title(np.array_equal(x_train[:,1],y_train[:,1]))
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(233)
-                    # plt.scatter(x_train[:,0],x_train[:,1],label='x',marker=None)
-                    # plt.scatter(y_train[:,0],y_train[:,1],label='x',marker=None)
+                    # plt.scatter(x_train[:,0],x_train[:,1],label='x',marker=None,s=5)
+                    # plt.plot(y_train[:,0],y_train[:,1],label='x',marker=None,c='C1')
                     # plt.grid()
                     # plt.legend()
 
-                    # plt.subplot(234)
-                    # plt.plot(x_val[:,0],label='x0',marker=None)
+                    # plt.subplot(122)
+                    # plt.scatter(np.arange(x_val[:,0].shape[0]),x_val[:,0],label='x0',marker=None,c='C1',s=5)
                     # plt.plot(y_val[:,0],label='y0',marker=None)
                     # plt.title(np.array_equal(x_val[:,0],y_val[:,0]))
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(235)
-                    # plt.plot(x_val[:,1],label='x1',marker=None)
+                    # plt.scatter(np.arange(x_val[:,1].shape[0]),x_val[:,1],label='x1',marker=None,c='C1',s=5)
                     # plt.plot(y_val[:,1],label='y1',marker=None)
                     # plt.title(np.array_equal(x_val[:,1],y_val[:,1]))
                     # plt.grid()
                     # plt.legend()
 
                     # plt.subplot(236)
-                    # plt.scatter(x_val[:,0],x_val[:,1],label='x',marker=None)
-                    # plt.scatter(y_val[:,0],y_val[:,1],label='y',marker=None)
+                    # plt.scatter(x_val[:,0],x_val[:,1],label='x',marker=None,s=5)
+                    # plt.plot(y_val[:,0],y_val[:,1],label='y',marker=None,c='C1')
                     # plt.grid()
                     # plt.legend()
                     
                     # plt.show()
                     # plt.close()
-                                    
+
                     if not self._train_ground:
 
                         y_train = x_train
                         y_val = x_val
 
                     # train on minibatches
-                    x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train )
-                    
+                    x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train)
+
                     for x_mb, y_mb in zip(x_train_mb,y_train_mb):
 
                         train_feed_dict.update({self._X:x_train,self._y:y_train,self._t:train_data['t']})
                         sess.run(self._optimizer_op, feed_dict=train_feed_dict)
-                        
+
                     # loss op
                     train_loss, train_mse = sess.run([self._loss_op,self._mse_op],feed_dict=train_feed_dict)
                     val_feed_dict.update({self._X:x_val,self._y:y_val,self._t:val_data['t']})
@@ -580,31 +562,32 @@ class FeedForwardNetwork(AbstractNetwork):
                     self._history['train_mse'].append(np.asarray(train_mse).mean())
                     self._history['val_mse'].append(np.asarray(val_mse).mean())
 
-                    # if epoch % 1 == 0:
+                    # if epoch % 100 == 0:
 
-                    #     plt.figure(figsize=(6,6))
-
-                    #     plt.subplot(111)
-                    #     plt.plot(x_train[:,0])
-                    #     plt.plot(y_train[:,0])
-                    #     plt.grid()
-                    #     plt.title('X0')
-
-                        # plt.subplot(132)
-                        # plt.plot(x_train[:,1])
-                        # plt.plot(y_train[:,1])
-                        # plt.grid()
-                        # plt.title('X1')
-
-                        # plt.subplot(133)
-                        # plt.plot(x_train[:,2])
-                        # plt.plot(y_train[:,2])
-                        # plt.grid()
-                        # plt.title('X2')
+                    #     y_hat_train = sess.run(self._y_hat,feed_dict=train_feed_dict)
+                    #     y_hat_val = sess.run(self._y_hat,feed_dict=val_feed_dict)
                         
-                        #plt.show() 
-                        #plt.savefig(os.getcwd() + self._results_dir + str(epoch))
-                        #plt.close()
+                    #     fig, ax = plt.subplots(1,2,figsize=(12,6))
+
+                    #     train_mse=np.square(np.subtract(y_hat_train,y_train)).mean()
+                    #     ax[0].scatter(x_train[:,0],x_train[:,1],c='C0',s=5)
+                    #     ax[0].plot(y_train[:,0],y_train[:,1],c='C1')
+                    #     ax[0].plot(y_hat_train[:,0],y_hat_train[:,1],c='C3')
+                    #     ax[0].grid()
+                    #     ax[0].set_title('Train\nMSE {mse}'.format(mse=train_mse))
+                    #     ax[0].axis('equal')
+                        
+                    #     val_mse=np.square(np.subtract(y_hat_val,y_val)).mean()
+                    #     ax[1].scatter(x_val[:,0],x_val[:,1],c='C0',s=5)
+                    #     ax[1].plot(y_val[:,0],y_val[:,1],c='C1')
+                    #     ax[1].plot(y_hat_val[:,0],y_hat_val[:,1],c='C3')
+                    #     ax[1].grid()
+                    #     ax[1].set_title('Validation\nMSE {mse}'.format(mse=val_mse))
+                    #     ax[1].axis('equal')
+                        
+                    #     plt.show() 
+                    #     #plt.savefig(os.getcwd() + self._results_dir + 'epoch_{epoch}'.format(epoch=str(epoch)))
+                    #     plt.close()
                                         
                     print('Epoch {epoch}, Training Loss/MSE {train_loss:0.4}/{train_mse:0.4}, Val Loss/MSE {val_loss:0.4}/{val_mse:0.4}'.format(epoch=epoch,
                                                                                                                                                 train_loss=self._history['train_loss'][-1],
@@ -619,7 +602,7 @@ class FeedForwardNetwork(AbstractNetwork):
             if save_model:
 
                 self._saveModel(sess,'trained_model.ckpt')
-
+            
         plt.figure(figsize=(6,6))
         plt.plot(self._history['train_loss'],label='Train Loss')
         plt.plot(self._history['val_loss'],label='Val Loss')

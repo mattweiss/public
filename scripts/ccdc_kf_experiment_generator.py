@@ -16,7 +16,7 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.filtering.kalman_filter import KalmanFilter
 import dovebirdia.utilities.dr_functions as drfns
-import dovebirdia.stats.distributions as distributions
+import dovebirdia.math.distributions as distributions
 
 ####################################
 # Test Name and Description
@@ -27,7 +27,7 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/ccdc_filt
 project = 'ccdc_mixtures'
 
 experiments = [
-    '01_23_19'
+    '07_12_19'
 ]
 
 #****************************************************************************************************************************
@@ -61,8 +61,8 @@ dataset_params['with_val'] = True
 #dataset_params['resistance_type'] = 'resistance_z'
 dataset_params['labels'] = None
 dataset_params['sensors'] = None
-dataset_params['with_synthetic'] = True
-dataset_params['samples'] = (0,1000)
+dataset_params['with_synthetic'] = False
+dataset_params['samples'] = (0,600)
 dataset_params['multi_label'] = True
 dataset_params['feature_range'] = None # None if not using
 
@@ -76,16 +76,64 @@ model_params['results_dir'] = '/results/'
 # Kalman Filter Parameters
 ####################################
 
-kf_params['dimensions'] = (1,2)
-kf_params['n_signals'] = 20 #if dataset_params['sensors'] == None else dataset_params['sensors']
-kf_params['dt'] = 1.0
-kf_params['f_model'] = 'fixed' # fixed, random, learned
-kf_params['h_model'] = 'fixed' # fixed, random, learned
-kf_params['diagonal_R'] = False
-kf_params['diagonal_P'] = False
-kf_params['q'] = 1e-6 #[1e-2,1e-4,1e-6,1e-8]
+# kf_params['dimensions'] = (1,2)
+# kf_params['n_signals'] = 20 #if dataset_params['sensors'] == None else dataset_params['sensors']
+# kf_params['dt'] = 1.0
+# kf_params['f_model'] = 'fixed' # fixed, random, learned
+# kf_params['h_model'] = 'fixed' # fixed, random, learned
+# kf_params['diagonal_R'] = False
+# kf_params['diagonal_P'] = False
+# kf_params['q'] = 1e-4 #[1e-2,1e-4,1e-6,1e-8]
+# kf_params['r'] = 1.0
+# kf_params['with_z_dot'] = False
+
+
+kf_params['with_z_dot'] = with_z_dot = False
+
+#  measurements dimensions
+kf_params['meas_dims'] = meas_dims = 20
+
+#  state space dimensions
+kf_params['state_dims'] = state_dims = kf_params['meas_dims']
+
+# number of state estimate 
+kf_params['dt'] = dt = 1.0
+
+# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
+kf_params['model_order'] = model_order = 2
+
+kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0]))
+
+# state-transition model
+
+F_NCV = np.zeros((model_order+1,model_order+1))
+F_NCA = np.zeros((model_order+1,model_order+1))
+F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+              [0.0,1.0,dt,0.5*dt**2],
+              [0.0,0.0,1.0,dt],
+              [0.0,0.0,0.0,1.0]])
+
+F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
+F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
+F_JERK = F
+
+# process covariance
+
+Q_NCV = np.zeros((model_order+1,model_order+1))
+Q_NCA = np.zeros((model_order+1,model_order+1))
+Q = np.eye(model_order+1)
+
+Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
+Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
+Q_JERK = Q
+
+kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
+
+kf_params['q'] = 1e-4
+kf_params['Q'] = kf_params['q'] * np.kron(np.eye(state_dims), Q_NCV)
+
 kf_params['r'] = 1.0
-kf_params['with_z_dot'] = False
+kf_params['R'] = kf_params['r'] * np.eye(meas_dims)
 
 ####################################
 # Determine scaler and vector parameters

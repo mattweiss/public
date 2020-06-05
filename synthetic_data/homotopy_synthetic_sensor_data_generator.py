@@ -61,8 +61,8 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                 self._sensors[sensor] = sensor_names.index(sensor)
 
-            # resistance values for given label, 3 dimensional array (trials, samples, sexnsors)
-            resistance = np.asarray(list(label_data.resistance.values))
+            # resistance values for given label, 3 dimensional array (trials, samples, sensors)
+            resistance = np.asarray(list(label_data.resistance_z.values))
 
             # some resistance arrays are not 3d
             if np.ndim(resistance) == 3:
@@ -109,7 +109,7 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                 y_raw_syn = (homotopy_parameter**1)*y_raw_1 + (1.0-homotopy_parameter**1)*y_raw_2
 
-                ssd_dict['resistance'] = y_raw_syn
+                ssd_dict['resistance_z'] = y_raw_syn
 
                 # save synthetic data
                 synthetic_data_filename = label_data.iloc[0]['csv_file'].split('_')[0].replace('&','-') + '_synthetic_label_{label}_{syn_ctr}'.format(label=label, syn_ctr=str(synthetic_sensor_ctr))

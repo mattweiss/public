@@ -21,17 +21,15 @@ from dovebirdia.filtering.interacting_multiple_model import InteractingMultipleM
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 from dovebirdia.deeplearning.activations.base import sineline, psineline, tanhpoly
 import dovebirdia.utilities.dr_functions as drfns
-import dovebirdia.stats.distributions as distributions
+import dovebirdia.math.distributions as distributions
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'imm'
-experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}_G_{G}_{Note}'.format(F1='NCV',Q1='1e-2',
-                                                                                         F2='NCV',Q2='1e-8',
-                                                                                                G='True',
-                                                                                                Note='KILLME')
+experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}'.format(F1='NCV',Q1='1e-4',
+                                                                                   F2='NCA',Q2='1e-4')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -58,10 +56,10 @@ meta_params['network'] = AutoencoderInteractingMultipleModel
 # Regularly edited Parameters
 ####################################
 
-model_params['hidden_dims'] = [(256,64,16,8),(256,64,32,16),(256,64,32),(256,64,16),(128,64,32),(128,64),(64,32,16),(64,32)]
+model_params['hidden_dims'] = [(128,64,32),(128,64),(64,32,16),(64,32)]
 model_params['learning_rate'] = list(np.logspace(-3,-5,12))
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['mbsize'] = 100
+model_params['mbsize'] = 500
 
 # model params
 
@@ -74,7 +72,7 @@ model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
 model_params['weight_initializer'] = tf.initializers.glorot_normal
-model_params['bias_initializer'] = tf.initializers.ones
+model_params['bias_initializer'] = tf.initializers.zeros
 model_params['weight_regularizer'] = None #[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
 model_params['weight_regularizer_scale'] = 0.0 #[1e-4,1e-5]
 model_params['bias_regularizer'] = None
@@ -91,7 +89,7 @@ model_params['train_ground'] = True
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10
+model_params['epochs'] = 10000
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -104,6 +102,10 @@ model_params['staircase'] = False
 
 ds_params['ds_type'] = 'train'
 ds_params['x_range'] = (-1,1)
+
+# set dt here based on x range and mb size, for use in scaling noise and the Kalman Filter
+dt = (ds_params['x_range'][1]-ds_params['x_range'][0])/model_params['mbsize']
+
 ds_params['n_trials'] = 1
 ds_params['n_baseline_samples'] = 0
 ds_params['n_samples'] = model_params['mbsize']
@@ -113,87 +115,106 @@ ds_params['standardize'] = False
 ds_params['feature_range'] = None
 ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
-ds_params['max_N'] = 20
-ds_params['min_N'] = 10
+ds_params['max_N'] = 3
+ds_params['min_N'] = 1
 ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     #['zeros', drfns.zeros, []],
     #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
     #['sine', drfns.sine, [(0,10.0),(0.01,0.01)]],
-    #['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
-    ['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    ['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    #['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
     #['trig_poly', drfns.trig_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(2*ds_params['max_N']+1)],
 )
 
 ds_params['noise'] = [
     #[None, None, None],
-    ['gaussian', np.random.normal, {'loc':0.0, 'scale':0.2}],
-    #['bimodal', distributions.bimodal, {'loc1':0.25, 'scale1':0.02, 'loc2':-0.25, 'scale2':0.02}],
+
+    ['gaussian', np.random.multivariate_normal, {'mean':np.zeros(ds_params['n_features']),
+                                                 'cov':dt*np.eye(ds_params['n_features'])}],
+
+    # ['bimodal', distributions.bimodal, {'mean1':np.full(ds_params['n_features'],0.25),
+    #                                     'cov1':0.02*np.eye(ds_params['n_features']),
+    #                                     'mean2':np.full(ds_params['n_features'],-0.25),
+    #                                     'cov2':0.02*np.eye(ds_params['n_features'])}],
+
     #['cauchy', np.random.standard_cauchy, {}],
-    #['stable', distributions.stable, {'alpha':(1.85,2.0),'scale':(0.0,0.2)}], # alpha = 2 Gaussian, alpha = 1 Cauchy
-    #['stable', distributions.stable, {'alpha':(2.0), 'scale':0.2}],
+
+    #['stable', distributions.stable, {'alpha':(1.0),'scale':(0.0)}], # alpha = 2 Gaussian, alpha = 1 Cauchy
 ]
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
-kf_params['with_z_dot'] = False
+kf_params['with_z_dot'] = with_z_dot = False
 
 #  measurements dimensions
-kf_params['meas_dims'] = 2
+kf_params['meas_dims'] = meas_dims = 8
 
 #  state space dimensions
-kf_params['state_dims'] = kf_params['meas_dims']
+kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = 1.0
+kf_params['dt'] = dt
 
-# dynamical model order (i.e. ncv = 1, nca = 2, etc.)
-kf_params['model_order'] = 1
+# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
+kf_params['model_order'] = model_order = 3
 
-#########
-# Models
-#########
+kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
 
-kf_params['H'] = np.kron(np.eye(kf_params['meas_dims']), np.eye(kf_params['model_order']+1)) if kf_params['with_z_dot'] else np.kron(np.eye(kf_params['meas_dims']), np.array([1.0,0.0])).astype(np_float_prec)
+# state-transition model
 
-#F_NCV = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt'],0.0],[0.0,1.0,0.0],[0.0,0.0,0.0]]))
-#F_NCA = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
-F_NCV_1 = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt']],[0.0,1.0]])).astype(np_float_prec)
-F_NCV_2 = F_NCV_1 #np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt'],0.5*kf_params['dt']**2],[0.0,1.0,kf_params['dt']],[0.0,0.0,1.0]]))
+F_NCV = np.zeros((model_order+1,model_order+1))
+F_NCA = np.zeros((model_order+1,model_order+1))
+F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+              [0.0,1.0,dt,0.5*dt**2],
+              [0.0,0.0,1.0,dt],
+              [0.0,0.0,0.0,1.0]])
 
-G_NCV = np.array([
-                  [kf_params['dt']**2/2.0,0.0],
-                  [kf_params['dt'],0.0],
-                  [0.0,kf_params['dt']**2/2.0],
-                  [0.0,kf_params['dt']],
-])
+F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
+F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
+F_JERK = F
 
+# process covariance
 
-Q_NCV_1 = 1e-2*np.kron(np.eye(kf_params['state_dims']//2),G_NCV@G_NCV.T)
-Q_NCV_2 = 1e-8*np.kron(np.eye(kf_params['state_dims']//2),G_NCV@G_NCV.T)
-#Q_NCV_1 = 1e-2 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0],[0.0,1.0]]))
-#Q_NCV_2 = 1e-2 * np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,0.0],[0.0,1.0]]))
+Q_NCV = np.zeros((model_order+1,model_order+1))
+Q_NCA = np.zeros((model_order+1,model_order+1))
+Q = np.eye(model_order+1)
 
-kf_params['R'] = None
+Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
+Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
+Q_JERK = Q
+
+# dictionary of models
 
 kf_params['models'] = {
-    'NCV_1':[F_NCV_1,Q_NCV_1],
-    'NCV_2':[F_NCV_2,Q_NCV_2],
+    'NCV1':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
+    #'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)]
+    'NCA1':[np.kron(np.eye(state_dims),F_NCA),1e-4*np.kron(np.eye(state_dims),Q_NCA)],
+    #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
+    #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
+    #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
+    # 'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-8*np.kron(np.eye(state_dims),Q_NCV)],
+    # 'NCA2':[np.kron(np.eye(state_dims),F_NCA),1e-8*np.kron(np.eye(state_dims),Q_NCA)],
+    # 'JERK2':[np.kron(np.eye(state_dims),F_JERK),1e-8*np.kron(np.eye(state_dims),Q_JERK)],
 }
+n_models = len(kf_params['models'].keys())
+
+kf_params['R'] = None
 
 ####################
 # Mixing Parameters
 ####################
 
-kf_params['p'] = np.array([
-    [0.95,0.5],
-    [0.5,0.95],
-]).astype(np_float_prec)
-kf_params['mu'] = np.array([[0.5],[0.5]]).astype(np_float_prec)
+p_trans = 0.1
 
+kf_params['p'] = np.full((n_models,n_models),p_trans)
+np.fill_diagonal(kf_params['p'],1.0-(n_models-1)*p_trans)
+                                  
+kf_params['mu'] = np.full((n_models,1),0.5)
+st()
 ########################################
 # Determine scaler and vector parameters
 ########################################

@@ -1,6 +1,6 @@
 #!/bin/env python3
 #SBATCH -N 1
-#SBATCH -n 4
+#SBATCH -n 2
 #SBATCH --mem=8G
 #SBATCH -p short
 #SBATCH -t 24:00:00
@@ -118,7 +118,7 @@ else:
     dataset = loadDict(test_dataset_path)
     
     # data from domain randomization tests
-    if config_dicts['test']['dataset'] == 'DomainRandomizationDataset':
+    if config_dicts['test']['dataset'] == 'DomainRandomizationDataset' or config_dicts['test']['dataset'] == 'FlightKinematicsDataset':
 
         x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
         
@@ -157,7 +157,6 @@ try:
     
     # append n_signals
     config_dicts['model']['hidden_dims'].append(config_dicts['kf']['meas_dims'])
-    
     nn = config_dicts['meta']['network'](config_dicts['model'], config_dicts['kf'])
 
 #else:
@@ -200,15 +199,15 @@ if TRAINING:
 
     metric_sublen = dr_params=config_dicts['ds']['metric_sublen']
 
-    train_loss_sub = np.asarray(history['train_loss'][metric_sublen:]).mean()
-    train_loss_std_sub = np.asarray(history['train_loss'][metric_sublen:]).std()
-    train_mse_sub = np.asarray(history['train_mse'][metric_sublen:]).mean()
-    train_mse_std_sub = np.asarray(history['train_mse'][metric_sublen:]).std()
+    train_loss_sub = np.asarray(history['train_loss'][-metric_sublen:]).mean()
+    train_loss_std_sub = np.asarray(history['train_loss'][-metric_sublen:]).std()
+    train_mse_sub = np.asarray(history['train_mse'][-metric_sublen:]).mean()
+    train_mse_std_sub = np.asarray(history['train_mse'][-metric_sublen:]).std()
 
-    val_loss_sub = np.asarray(history['val_loss'][metric_sublen:]).mean()
-    val_std_sub = np.asarray(history['val_loss'][metric_sublen:]).std()
-    val_mse_sub = np.asarray(history['val_mse'][metric_sublen:]).mean()
-    val_mse_std_sub = np.asarray(history['val_mse'][metric_sublen:]).std()
+    val_loss_sub = np.asarray(history['val_loss'][-metric_sublen:]).mean()
+    val_std_sub = np.asarray(history['val_loss'][-metric_sublen:]).std()
+    val_mse_sub = np.asarray(history['val_mse'][-metric_sublen:]).mean()
+    val_mse_std_sub = np.asarray(history['val_mse'][-metric_sublen:]).std()
 
     results_dict = {
         'train_loss':train_loss,

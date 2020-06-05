@@ -17,14 +17,14 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.lstm_tf import LSTM
 import dovebirdia.utilities.dr_functions as drfns
-import dovebirdia.stats.distributions as distributions
+import dovebirdia.math.distributions as distributions
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project = 'pets'
-experiment_name = 'lstm_taylor_value_1000_EPOCHS_10000'
+project = 'imm'
+experiment_name = 'lstm_taylor_KILLME'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -51,20 +51,20 @@ meta_params['network'] = LSTM
 
 model_params['hidden_dims'] = [(128,64,32),(128,64),(64,32,16),(64,32)]
 model_params['learning_rate'] = list(np.logspace(-4,-5,2))
-model_params['seq_len'] = [1,2,3,4,5,15]
+model_params['seq_len'] = 10
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['mbsize'] = 100
+model_params['mbsize'] = 500
 
 # model parameters
 
 model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 2
-model_params['output_dim'] = model_params['input_dim']
+model_params['output_dim'] = 2 * model_params['input_dim']
 model_params['output_activation'] = None
-model_params['activation'] = tf.nn.leaky_relu
+model_params['activation'] = [tf.nn.elu,tf.nn.leaky_relu]
 model_params['use_bias'] = True
 model_params['weight_initializer'] = 'glorot_normal'
-model_params['bias_initializer'] = 1.0
+model_params['bias_initializer'] = 0.0
 model_params['weight_regularizer'] = None
 model_params['weight_regularizer_scale'] = 0.0
 model_params['bias_regularizer'] = None
@@ -90,6 +90,10 @@ model_params['epochs'] = 10000
 
 ds_params['ds_type'] = 'train'
 ds_params['x_range'] = (-1,1)
+
+# set dt here based on x range and mb size, for use in scaling noise and the Kalman Filter
+dt = (ds_params['x_range'][1]-ds_params['x_range'][0])/model_params['mbsize']
+
 ds_params['n_trials'] = 1
 ds_params['n_baseline_samples'] = 0
 ds_params['n_samples'] = model_params['mbsize']
@@ -98,8 +102,8 @@ ds_params['n_noise_features'] = model_params['input_dim']
 ds_params['feature_range'] = None
 ds_params['baseline_shift'] = None
 ds_params['param_range'] = 1.0
-ds_params['max_N'] = 10
-ds_params['min_N'] = 3
+ds_params['max_N'] = 1
+ds_params['min_N'] = 1
 ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     # ['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
@@ -111,13 +115,23 @@ ds_params['fns'] = (
 )
 
 ds_params['noise'] = [
-    [None, None, None],
-    #['gaussian', np.random.normal, {'loc':0.0, 'scale':0.0}],
-    # ['bimodal', distributions.bimodal, {'loc1':0.05, 'scale1':0.1, 'loc2':-0.05, 'scale2':0.1}],
-    # ['cauchy', np.random.standard_cauchy, {}],
-    # ['stable', distributions.stable, {'alpha':(1.0),'scale':0.2}],
-    #['stable', distributions.stable, {'alpha':(1.85), 'scale':0.2}],
+    
+    #[None, None, None],
+
+    ['gaussian', np.random.multivariate_normal, {'mean':np.zeros(ds_params['n_features']),
+                                                 'cov':dt*np.eye(ds_params['n_features'])}
+    ],
+
+    # ['bimodal', distributions.bimodal, {'mean1':np.full(ds_params['n_features'],0.25),
+    #                                     'cov1':0.02*np.eye(ds_params['n_features']),
+    #                                     'mean2':np.full(ds_params['n_features'],-0.25),
+    #                                     'cov2':0.02*np.eye(ds_params['n_features'])}],
+
+    #['cauchy', np.random.standard_cauchy, {}],
+
+    #['stable', distributions.stable, {'alpha':(1.0),'scale':(0.0)}], # alpha = 2 Gaussian, alpha = 1 Cauchy
 ]
+
 
 ####################################
 # Determine scaler and vector parameters

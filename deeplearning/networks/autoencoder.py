@@ -1,11 +1,12 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 tf_float_prec = tf.float64
 from scipy import stats
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.layers.base import Dense
-from tensorflow.python.ops.distributions.special_math import ndtri as tf_ndtri
+#from tensorflow.python.ops.distributions.special_math import ndtri as tf_ndtri
 from dovebirdia.math.linalg import pos_diag
 
 try:
@@ -100,7 +101,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._encoder = self._encoderLayer(self._X)
 
         self._z, self._R = self._preKalmanFilterAffineLayer(self._encoder)
-
+                
         self._kf_results = self._kalman_filter.fit([self._z,self._R])
         
         self._post_kf_affine = self._postKalmanFilterAffineLayer(tf.squeeze(self._kf_results['z_hat_pri'],axis=-1))
@@ -113,12 +114,14 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         super()._setLoss()
 
-        # KH to identity
-        # KH = tf.map_fn(lambda k: tf.eye(tf.shape(k)[0],dtype=tf_float_prec)-k@self._kalman_filter._H, self._kf_results['K'])
-        # self._KH_loss = tf.reduce_sum(tf.square(KH))
+        if self._max_ev_reg_scale != 0.0:
 
-        # self._loss_op += 1e-4 * self._KH_loss
-        
+            sigma_R, _ = tf.linalg.eigh(self._R)
+            sigma_Rinv = tf.math.reciprocal(sigma_R)
+            sigma_Rinv_max = tf.math.reduce_max(sigma_Rinv,axis=1)
+
+            self._loss_op += self._max_ev_reg_scale * sigma_Rinv_max
+       
     def _encoderLayer(self, input=None):
 
         assert input is not None
@@ -183,9 +186,8 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         elif self._R_model == 'identity':
 
-            R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(self._z)[0]], dtype=tf_float_prec)
-            R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
-
+            R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(z)[0]], dtype=tf_float_prec)
+            
         return z, R
 
     def _kalmanFilterLayer(self, input=None):
@@ -258,13 +260,13 @@ class AutoencoderKalmanFilter(Autoencoder):
         ################################
 
         # initial upper triangular matrix
-        L = tf.contrib.distributions.fill_triangular(R, upper = False)
+        L = tf.contrib.distributions.fill_triangular(R, upper = True)
 
-        # ensure diagonal of L is positive
-        #L = pos_diag(L,diag_func=tf.abs)
+        # ensure diagonal of L is positive via absolute value
+        # L = pos_diag(L,diag_func=tf.exp)
 
         eps = 1e-8
-        R = tf.matmul(L,L,transpose_b=True) + eps * tf.eye(tf.shape(L)[0],dtype=tf_float_prec)
+        R = tf.matmul(L,L,transpose_a=True) + eps * tf.eye(tf.shape(L)[0],dtype=tf_float_prec)
 
         return R
 
@@ -273,6 +275,20 @@ class AutoencoderKalmanFilter(Autoencoder):
         """ Wrapper for sklearn make_spd_matrix """
 
         return tf.py_func(make_spd_matrix, [x], tf_float_prec)
+
+    def _covariance(self,x,y):
+
+        """
+        Compute the covariance of x and y
+        """
+        
+        z = tf.stack([tf.reshape(x, [-1]),tf.reshape(y, [-1])],axis=0)
+
+        z -= tf.expand_dims(tf.reduce_mean(z, axis=1), 1)
+
+        scale = tf.cast(tf.shape(z)[1] - 1, tf.float64)
+
+        return tf.matmul(z, tf.transpose(z)) / scale
 
     def _shapiro_wilk(self, x):
 

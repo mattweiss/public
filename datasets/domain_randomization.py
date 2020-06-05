@@ -6,7 +6,6 @@ import copy
 from pdb import set_trace as st
 from dovebirdia.datasets.base import AbstractDataset
 from dovebirdia.utilities.base import saveAttrDict, loadDict
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy.stats import shapiro
 import copy
 
@@ -20,7 +19,7 @@ class DomainRandomizationDataset(AbstractDataset):
     # Public Methods #
     ##################
 
-    def getDataset(self, load_path):
+    def getDataset(self, load_path=None):
 
         assert load_path is not None
 
@@ -58,8 +57,10 @@ class DomainRandomizationDataset(AbstractDataset):
 
                     if isinstance(param, tuple):
 
-                        param_list.append(np.random.uniform(param[0], param[1]))
-
+                        #param_list.append(np.random.uniform(param[0], param[1]))
+                        param_list.append(np.random.uniform(param[1]/2, param[1]))
+                        param_list[-1] *= np.random.choice([-1,1])
+                        
                     else:
 
                         param_list.append(param)
@@ -74,10 +75,12 @@ class DomainRandomizationDataset(AbstractDataset):
 
                     pass
 
-                y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
+                y_loop_list.append(self._fn_def(t, param_list))
 
             y = np.hstack(y_loop_list)
 
+            y -= y[0,:]
+            
             ###############################################
             # randomly select training noise and parameters
             ###############################################
@@ -86,7 +89,7 @@ class DomainRandomizationDataset(AbstractDataset):
             noise_types.append(self._noise_name)
 
             if self._noise_name is not None:
-            
+
                 # randomly select noise params if tuple
                 noise_param_dict = dict()
 
@@ -100,32 +103,20 @@ class DomainRandomizationDataset(AbstractDataset):
 
                         noise_param_dict[param_key] = param
 
-                noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_noise_features))
+                # if Gaussian or Bimodal
+                if self._noise_name == 'gaussian' or self._noise_name == 'bimodal':
+
+                    noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples))
+
+                else:
+
+                    noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_features))
 
                 x = y + noise
 
             else:
 
                 x = y
-                
-            ######################
-            # Shift y
-            ######################
-
-            # try:
-
-            #     #shift_value = np.random.uniform(low=self._baseline_shift[0],high=self._baseline_shift[1],size=1)
-            #     shift_value = np.random.uniform(high=scale_max_value)
-            #     self._data['y_train'] += shift_value 
-            #     self._data['y_val'] += shift_value
-            #     self._data['y_test'] += shift_value
-            #     self._data['x_train'] += shift_value
-            #     self._data['x_val'] += shift_value
-            #     self._data['x_test'] += shift_value
-
-            # except:
-
-            #     pass
 
             #####################
             # Add first dimension

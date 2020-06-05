@@ -16,21 +16,32 @@ from collections import OrderedDict
 from pdb import set_trace as st
 from dovebirdia.filtering.kalman_filter import KalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
-import dovebirdia.stats.distributions as distributions
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+from sklearn.datasets import make_spd_matrix
+
+#################################
+# Function to generate SPD Matrix
+#################################
+def generate_spd(ndim=2,scale=1,epsilon=1e-8):
+
+    m = scale * np.random.normal(size=(ndim,ndim))
+    L = np.abs(np.triu(m))
+    return L.T@L
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
-project = 'imm'
+project = 'aekf_meas_cov_analysis'
 
 experiments = [
-    ('kf_benchmark_gaussian',
-     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/FUNC_legendre_NOISE_gaussian_LOC_0_SCALE_0-2_TRIALS_10_SAMPLES_100_PARAM_RANGE_1_FEATURES_2.pkl')
-    
-
+    ('kf_{polynomial}_{noise}_F_{F}_Q_{Q}_Cov_{cov}'.format(polynomial='baseline',
+                                                      noise='stable',
+                                                      F='NCV',
+                                                      Q='1e-4',
+                                                      cov='spd_10_R_2'),
+    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/aekf_meas_cov_analysis/eval/benchmark_baseline_R2_1k.pkl')
 ]
 
 #****************************************************************************************************************************
@@ -65,37 +76,52 @@ model_params['results_dir'] = '/results/'
 # Kalman Filter Parameters
 ####################################
 
-kf_params['with_z_dot'] = False
+kf_params['with_z_dot'] = with_z_dot = False
 
 #  measurements dimensions
-kf_params['meas_dims'] = 2
+kf_params['meas_dims'] = meas_dims = 2
 
 #  state space dimensions
-kf_params['state_dims'] = kf_params['meas_dims']
+kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = 1.0
+kf_params['dt'] = dt = 1.0
 
-# dynamical model order (i.e. ncv = 1, nca = 2, etc.)
-kf_params['model_order'] = 1
+# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
+kf_params['model_order'] = model_order = 1
 
-kf_params['H'] = np.kron(np.eye(kf_params['meas_dims']), np.eye(kf_params['model_order']+1)) if kf_params['with_z_dot'] else np.kron(np.eye(kf_params['meas_dims']), np.array([1.0,0.0]))
+kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0]))
 
-#########
-# Models
-#########
+# state-transition model
+F_NCV = np.array([[1.0,dt],
+                  [0.0,1.0]])
 
-kf_params['F'] = np.kron(np.eye(kf_params['state_dims']), np.array([[1.0,kf_params['dt']],[0.0,1.0]]))
+F_NCA = np.array([[1.0,dt,0.5*dt**2],
+                  [0.0,1.0,dt],
+                  [0.0,0.0,1.0]])
 
-G1 = np.array([[kf_params['dt']**2/2.0,0.0],
-               [kf_params['dt'],0.0],
-               [0.0,kf_params['dt']**2/2.0],
-               [0.0,kf_params['dt']]])
+F_Jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+                   [0.0,1.0,dt,0.5*dt**2],
+                   [0.0,0.0,1.0,dt],
+                   [0.0,0.0,0.0,1.0]])
 
-kf_params['Q'] = 1e-2*G1@G1.T
+#######################
+# Choose Model Matrices
+#######################
 
-kf_params['R'] = np.eye(kf_params['meas_dims'])
-    
+kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
+kf_params['Q'] = 1e-4*np.eye((model_order+1)*state_dims)
+
+# logspace diagonal
+#kf_params['R'] = [ r*np.eye(meas_dims) for r in np.logspace(2,-8,100) ]
+
+# random diagonal
+#kf_params['R'] = [ (np.random.normal(size=meas_dims,scale=10)**2)*np.eye(meas_dims) for _ in np.arange(100) ]
+
+# random spd
+kf_params['R'] = [ generate_spd(meas_dims,scale=10) for _ in np.arange(100) ]
+
+
 ####################################
 # Determine scaler and vector parameters
 ####################################
@@ -104,7 +130,8 @@ config_params_dicts = OrderedDict()
 
 for dict_name, params_dict in params_dicts.items():
 
-    # number of config files
+    # number of config files+
+    
     n_cfg_files = 1
 
     # keys for parameters that have more than one value
@@ -165,7 +192,7 @@ for experiment in experiments:
         config_params[2]['load_path'] = test_dataset_full_path
         
         # Create Directories
-        experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/kalman_filter/' + experiment_name + '/'
+        experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
         model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'
         model_dir = os.environ['HOME'] + experiment_dir + model_dir_name
         results_dir = model_dir + '/results/'

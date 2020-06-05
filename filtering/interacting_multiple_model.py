@@ -27,37 +27,34 @@ class InteractingMultipleModel(KalmanFilter):
         
         # initialize mixing probabilities
         self._mix_prob = np.zeros((self._n_models,self._n_models))
-        
-################################################################################
-
-    def _predict(self,x,P,model):
-        
-        assert x is not None
-        assert P is not None
-        assert model is not None
-
-        F, Q = model
-                
-        x_pri = tf.matmul(F,x,name='x_pri')
-        P_pri = tf.add(tf.matmul(F,tf.matmul(P,F,transpose_b=True)),Q,name='P_pri' )
-
-        return x_pri, P_pri
 
 ################################################################################
 
-    def _update(self,z,x,P):
+    def fit(self, inputs):
 
-        x_post, P_post, _, Lambda = super()._update(z,x,P)
-        
-        return x_post, P_post, Lambda       
-        
+        """
+        Apply Kalman Filter, Using Wrapper Functions
+        inputs is a list.  First element is z, second (optional) element is R
+        """
+
+        z = super()._process_inputs(inputs)
+
+        _, _, x_hat_pri, x_hat_post, P_pri, P_post, self._kf_ctr = tf.scan(self._kfScan,
+                                                                           z,
+                                                                           initializer = [ [self._x0]*self._n_models, [self._P0]*self._n_models,
+                                                                                           self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
+
+        filter_results = super()._process_results(x_hat_pri, x_hat_post, P_pri, P_post,z)
+
+        return filter_results
+    
 ################################################################################
 
     def _kfScan(self, state, z):
 
         """ This is where the Kalman Filter is implemented. """
 
-        _, x_post, _, P_post, _, self._kf_ctr = state
+        x_post, P_post, _ , _ , _ , _ , self._kf_ctr = state
 
         # Hold accumlated a priori and a posteriori x and P along with likelihood of residual
         self._x_pri = list()
@@ -72,7 +69,7 @@ class InteractingMultipleModel(KalmanFilter):
             ##########
             # predict
             ##########
-            x_pri, P_pri = self._predict(x_post,P_post,model)
+            x_pri, P_pri = self._predict(x_post[model_index],P_post[model_index],model)
 
             self._x_pri.append(x_pri)
             self._P_pri.append(P_pri)
@@ -81,10 +78,11 @@ class InteractingMultipleModel(KalmanFilter):
         self._compute_mixing_probabilities()
 
         # compute mixed initial estimate and covariance
-        self._compute_mixed_initial_conditions()
+        self._compute_mixed_state_and_covariance()
 
         # compute mixed a priori estimate and covaraince
-        x_pri_comb, P_pri_comb = self._combined_estimate_and_covariance(self._x_pri,self._P_pri) 
+        # this does not affect the iteration here and only used for post-processing
+        x_pri_out, P_pri_out = self._combined_estimate_and_covariance(self._x_pri,self._P_pri) 
         
         # loop over models, computing a posteriori estimate for each using mixed initial conditions
         for model_index, model in enumerate(self._model_list): 
@@ -104,9 +102,34 @@ class InteractingMultipleModel(KalmanFilter):
         self._mode_probability_update()
         
         # estimate and covaraince combination
-        x_post_comb, P_post_comb = self._combined_estimate_and_covariance(self._x_post,self._P_post)
-            
-        return [ x_pri_comb, x_post_comb, P_pri_comb, P_post_comb, _, tf.add(self._kf_ctr,1) ]
+        x_post_out, P_post_out = self._combined_estimate_and_covariance(self._x_post,self._P_post)
+
+        return [ self._x_post, self._P_post, # input to next iteration of IMM
+                 x_pri_out, x_post_out, P_pri_out, P_post_out, # returned as final output
+                 tf.add(self._kf_ctr,1) ]
+    
+################################################################################
+
+    def _predict(self,x,P,model):
+        
+        assert x is not None
+        assert P is not None
+        assert model is not None
+
+        F, Q = model
+                
+        x_pri = tf.matmul(F,x,name='x_pri')
+        P_pri = tf.add(tf.matmul(F,tf.matmul(P,F,transpose_b=True)),Q,name='P_pri' )
+
+        return x_pri, P_pri
+
+################################################################################
+
+    def _update(self,z,x,P):
+
+        x_post, P_post, Lambda = super()._update(z,x,P)
+        
+        return x_post, P_post, Lambda       
 
 ################################################################################
 
@@ -129,7 +152,7 @@ class InteractingMultipleModel(KalmanFilter):
 
 ################################################################################
 
-    def _compute_mixed_initial_conditions(self):
+    def _compute_mixed_state_and_covariance(self):
 
         """
         Estimation with Applications to Tracking and Navigation, pg. 455-456
