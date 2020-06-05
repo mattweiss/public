@@ -22,7 +22,7 @@ class AbstractDataset(ABC):
     ##################
 
     @abstractmethod
-    def getDataset(self):
+    def getDataset(self,load_path=None):
 
         """
         return dataset
