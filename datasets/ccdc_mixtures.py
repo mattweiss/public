@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from itertools import repeat
 
 from pdb import set_trace as st
@@ -135,9 +135,8 @@ class ccdcMixturesDataset(AbstractDataset):
         # standardize based on training set only
         if fit:
 
-            self._scaler = StandardScaler(with_mean=True,with_std=True)
+            #self._scaler = StandardScaler(with_mean=True,with_std=True)
+            self._scaler = MinMaxScaler(feature_range=(0,1))
             self._scaler.fit(data)
             
-        data = self._scaler.transform(data)
-
-        return data
+        return self._scaler.transform(data)

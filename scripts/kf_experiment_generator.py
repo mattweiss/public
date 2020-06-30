@@ -36,12 +36,11 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'aekf_meas_cov_analysis'
 
 experiments = [
-    ('kf_{polynomial}_{noise}_F_{F}_Q_{Q}_Cov_{cov}'.format(polynomial='baseline',
-                                                      noise='stable',
-                                                      F='NCV',
-                                                      Q='1e-4',
-                                                      cov='spd_10_R_2'),
-    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/aekf_meas_cov_analysis/eval/benchmark_baseline_R2_1k.pkl')
+    ('kf_{polynomial}_{noise}_F_{F}_R_Cov_{cov}'.format(polynomial='taylor',
+                                                        noise='cauchy',
+                                                        F='NCV',
+                                                        cov='sample'),
+    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/aekf_meas_cov_analysis/eval/benchmark_taylor_cauchy_R2_1k.pkl')
 ]
 
 #****************************************************************************************************************************
@@ -110,17 +109,19 @@ F_Jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
 #######################
 
 kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
-kf_params['Q'] = 1e-4*np.eye((model_order+1)*state_dims)
+
+# diagonal
+# kf_params['R'] = 1.0 * np.eye(meas_dims)
+# kf_params['Q'] = 1e-4*np.eye((model_order+1)*state_dims)
 
 # logspace diagonal
-#kf_params['R'] = [ r*np.eye(meas_dims) for r in np.logspace(2,-8,100) ]
-
-# random diagonal
-#kf_params['R'] = [ (np.random.normal(size=meas_dims,scale=10)**2)*np.eye(meas_dims) for _ in np.arange(100) ]
+#kf_params['R'] = [ r*np.eye(meas_dims) for r in np.logspace(2,-8,10) ]
+kf_params['R'] = None # [ None for r in np.logspace(2,-8,10) ]
+kf_params['Q'] = 1e-2 #[ q*np.eye((model_order+1)*state_dims) for q in np.logspace(-2,-8,4) ]
 
 # random spd
-kf_params['R'] = [ generate_spd(meas_dims,scale=10) for _ in np.arange(100) ]
-
+# kf_params['R'] = [ generate_spd(meas_dims,scale=10) for _ in np.arange(10) ]
+# kf_params['Q'] = [ generate_spd((model_order+1)*state_dims,scale=10) for _ in np.arange(10) ]
 
 ####################################
 # Determine scaler and vector parameters

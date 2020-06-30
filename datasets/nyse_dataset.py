@@ -44,9 +44,6 @@ class nyseDataset(AbstractDataset):
         # load previously saved dataset
         if hasattr(self,'_saved_dataset'):
 
-            # self._data = np.load(self._saved_dataset,allow_pickle=True).item()
-            # self._pkl_data = loadDict(self._saved_dataset)
-            # self._data = self._pkl_data['data']
             self._data = self.getSavedDataset(self._saved_dataset)
 
         # create and save dataset
@@ -68,17 +65,20 @@ class nyseDataset(AbstractDataset):
 
                 for security in random.sample(population=self._securities,k=self._n_securities):
 
-                    security_list.append(security[self._price_types].values)
-                    symbol_list.append(security.symbol.unique())
+                    if security[self._price_types].values.shape[0] == 1762:
+                    
+                        security_list.append(security[self._price_types].values)
+                        symbol_list.append(security.symbol.unique())
 
             else:
 
                 for security in self._securities:
 
-                    security_list.append(security[self._price_types].values)
-                    symbol_list.append(security.symbol.unique())
-
-            # cast to numpy arrays
+                    if security[self._price_types].values.shape[0] == 1762:
+                    
+                        security_list.append(security[self._price_types].values)
+                        symbol_list.append(security.symbol.unique())
+                
             securities = np.stack(security_list)
             symbols = np.stack(symbol_list)
 
@@ -129,10 +129,12 @@ class nyseDataset(AbstractDataset):
             # MinMax Scaler
             ###############
 
-            min_max_scaler = MinMaxScaler(feature_range=self._feature_range)
-            self._data['x_train'] = min_max_scaler.fit_transform(self._data['x_train'])
-            self._data['x_val'] = min_max_scaler.transform(self._data['x_val'])
-            self._data['x_test'] = min_max_scaler.transform(self._data['x_test'])
+            if self._feature_range is not None:
+            
+                min_max_scaler = MinMaxScaler(feature_range=self._feature_range)
+                self._data['x_train'] = min_max_scaler.fit_transform(self._data['x_train'])
+                self._data['x_val'] = min_max_scaler.transform(self._data['x_val'])
+                self._data['x_test'] = min_max_scaler.transform(self._data['x_test'])
 
             ##################
             # Reshape Datasets
@@ -142,6 +144,12 @@ class nyseDataset(AbstractDataset):
             self._data['x_val'] = self._data['x_val'].reshape(val_shape_orig)
             self._data['x_test'] = self._data['x_test'].reshape(test_shape_orig)
 
+            for trial in np.arange(self._data['x_train'].shape[0]):
+
+                self._data['x_train'][trial] -= self._data['x_train'][trial,0,:]
+                self._data['x_val'][trial] -= self._data['x_val'][trial,0,:]
+                self._data['x_test'][trial] -= self._data['x_test'][trial,0,:]
+                
             # save to disk
             save_dir = self._dataset_dir + 'split/' + self._dataset_name + '.pkl'
 

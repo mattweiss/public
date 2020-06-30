@@ -9,8 +9,6 @@ from pdb import set_trace as st
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
-from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset as DomainRandomizationDataset
-#from dovebirdia.datasets.flight_kinematics import FlightKinematicsDataset as DomainRandomizationDataset
 from dovebirdia.deeplearning.layers.base import Dense
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 
@@ -184,6 +182,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 model_results_path = './results/tensorflow_model.ckpt'
                 tf.train.Saver().restore(sess, model_results_path)
 
+                            
             for trial, (X,Y) in enumerate(zip(x,y)):
 
                 # if X.ndim > 2:
@@ -208,7 +207,7 @@ class FeedForwardNetwork(AbstractNetwork):
         self._history['x'] = np.asarray(x)
         self._history['y'] = np.asarray(y)
         self._history.update({'y_hat':np.asarray(self._history['y_hat'])})
-        
+
         # add additionaly class attributes to history
         if attributes is not None:
 
@@ -232,6 +231,8 @@ class FeedForwardNetwork(AbstractNetwork):
     ###################
 
     def _buildNetwork(self):
+
+        self._setPlaceholders()
         
         self._y_hat = Dense(name='layers',
                             weight_initializer=self._weight_initializer,
@@ -452,9 +453,9 @@ class FeedForwardNetwork(AbstractNetwork):
 
     def _fitDomainRandomization(self, dr_params=None, save_model=False):
 
-        # create domainRandomizationDataset object
-        self._dr_dataset = DomainRandomizationDataset(dr_params)
-
+        # domain randomization object
+        self._dr_dataset = dr_params.pop('class')(**dr_params)
+            
         # dictionaries to hold training and validation data
         train_feed_dict = dict()
         val_feed_dict = dict()
@@ -490,7 +491,12 @@ class FeedForwardNetwork(AbstractNetwork):
                 for x_train, y_train, x_val, y_val in zip(train_data['x_test'], train_data['y_test'],
                                                           val_data['x_test'], val_data['y_test']):
 
-                    # plt.figure(figsize=(18,12))
+                    if not self._train_ground:
+
+                        y_train = x_train
+                        y_val = x_val
+
+                    # plt.figure(figsize=(12,6))
 
                     # plt.subplot(121)
                     # plt.plot(np.arange(x_train[:,0].shape[0]),x_train[:,0],label='x0',marker=None,c='C1')
@@ -499,47 +505,16 @@ class FeedForwardNetwork(AbstractNetwork):
                     # plt.grid()
                     # plt.legend()
 
-                    # plt.subplot(232)
-                    # plt.scatter(np.arange(x_train[:,1].shape[0]),x_train[:,1],label='x1',marker=None,c='C1',s=5)
-                    # plt.plot(y_train[:,1],label='y1',marker=None)
-                    # plt.title(np.array_equal(x_train[:,1],y_train[:,1]))
-                    # plt.grid()
-                    # plt.legend()
-
-                    # plt.subplot(233)
-                    # plt.scatter(x_train[:,0],x_train[:,1],label='x',marker=None,s=5)
-                    # plt.plot(y_train[:,0],y_train[:,1],label='x',marker=None,c='C1')
-                    # plt.grid()
-                    # plt.legend()
-
                     # plt.subplot(122)
-                    # plt.scatter(np.arange(x_val[:,0].shape[0]),x_val[:,0],label='x0',marker=None,c='C1',s=5)
+                    # plt.plot(np.arange(x_val[:,0].shape[0]),x_val[:,0],label='x0',marker=None,c='C1')
                     # plt.plot(y_val[:,0],label='y0',marker=None)
                     # plt.title(np.array_equal(x_val[:,0],y_val[:,0]))
-                    # plt.grid()
-                    # plt.legend()
-
-                    # plt.subplot(235)
-                    # plt.scatter(np.arange(x_val[:,1].shape[0]),x_val[:,1],label='x1',marker=None,c='C1',s=5)
-                    # plt.plot(y_val[:,1],label='y1',marker=None)
-                    # plt.title(np.array_equal(x_val[:,1],y_val[:,1]))
-                    # plt.grid()
-                    # plt.legend()
-
-                    # plt.subplot(236)
-                    # plt.scatter(x_val[:,0],x_val[:,1],label='x',marker=None,s=5)
-                    # plt.plot(y_val[:,0],y_val[:,1],label='y',marker=None,c='C1')
                     # plt.grid()
                     # plt.legend()
                     
                     # plt.show()
                     # plt.close()
-
-                    if not self._train_ground:
-
-                        y_train = x_train
-                        y_val = x_val
-
+                    
                     # train on minibatches
                     x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train)
 
@@ -547,7 +522,7 @@ class FeedForwardNetwork(AbstractNetwork):
 
                         train_feed_dict.update({self._X:x_train,self._y:y_train,self._t:train_data['t']})
                         sess.run(self._optimizer_op, feed_dict=train_feed_dict)
-
+                        
                     # loss op
                     train_loss, train_mse = sess.run([self._loss_op,self._mse_op],feed_dict=train_feed_dict)
                     val_feed_dict.update({self._X:x_val,self._y:y_val,self._t:val_data['t']})

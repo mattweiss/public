@@ -107,7 +107,7 @@ class KerasMultiLabelClassifier():
         if self._early_stopping:
 
             self._callbacks_list.append(tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=50))
-
+            
         history = self._model.fit(x=dataset['x_train'],
                                   y=dataset['y_train'][:,:self._output_dim],
                                   batch_size=self._mbsize,
@@ -120,6 +120,7 @@ class KerasMultiLabelClassifier():
 
         # validataion set metrics
         val_pred = self._model.predict(x=dataset['x_val'])
+
         # history.history['val_true'] = dataset['y_val'][:,:self._output_dim]
         # history.history['val_pred'] = val_pred
         # history.history['val_subset_accuracy'] = accuracy_score(y_true=history.history['val_true'],

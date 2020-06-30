@@ -22,6 +22,7 @@ from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 from dovebirdia.deeplearning.activations.base import sineline, psineline, tanhpoly
 import dovebirdia.utilities.dr_functions as drfns
 import dovebirdia.math.distributions as distributions
+from dovebirdia.datasets.flight_kinematics import FlightKinematicsDataset
 
 #######################################
 trials=1
@@ -36,10 +37,10 @@ dt=0.1
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'imm'
-experiment_name = 'aeimm_turns_{turns}_{noise}_F_{F}_Q_{Q}'.format(turns=turns,
-                                                                   noise='gaussian_0_20',
-                                                                   F='NCV',
-                                                                   Q='0-5')
+experiment_name = 'aeimm_turns_{turns}_{noise}_F_{F}_Q_{Q}_RETEST'.format(turns=turns,
+                                                                          noise='gaussian_0_20',
+                                                                          F='NCV',
+                                                                          Q='0-5')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -110,6 +111,7 @@ model_params['staircase'] = False
 # Domain Randomization Parameters
 ####################################
 
+ds_params['class'] = FlightKinematicsDataset
 ds_params['n_trials']=trials
 ds_params['n_samples']=samples
 ds_params['n_turns']=turns

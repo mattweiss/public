@@ -275,12 +275,5 @@ class LSTM(FeedForwardNetwork):
 
     def _setLoss(self):
 
-        dt = 0.004 #self._kalman_filter.__dict__['_dt']
-
-        y_hat = self._y_hat[:,:2]
-        y_hat_diff = tf.divide(tf.subtract(y_hat[1:],y_hat[:-1]),dt)
-        y_hat_dot = self._y_hat[:-1,2:]
-
-        self._mse_op = tf.cast(self._loss(self._y,y_hat) + self._loss(y_hat_diff,y_hat_dot),tf_float_prec)
-        #self._mse_op = tf.cast(self._loss(self._y,y_hat),tf_float_prec)
+        self._mse_op = tf.cast(self._loss(self._y,self._y_hat),tf_float_prec)
         self._loss_op = self._mse_op + tf.cast(tf.losses.get_regularization_loss(), tf_float_prec)

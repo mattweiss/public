@@ -167,7 +167,7 @@ class FlightKinematicsDataset(DomainRandomizationDataset):
 
         # reshape data
         self._data['y_test'] = np.asarray(self._data['y_test']).reshape(self._n_trials,-1,2)        
-        
+
         # Add noise
         noise = self._noise[0](**self._noise[1],size=np.asarray(self._data['y_test']).shape)
         self._data['x_test'] = self._data['y_test'] + noise

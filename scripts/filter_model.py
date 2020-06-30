@@ -86,10 +86,6 @@ if not os.path.exists(res_dir):
 # Dataset
 ################################################################################
 
-#dataset = DomainRandomizationDataset(config_dicts['dr']).getDataset(config_dicts['dr']['load_path'])
-#dataset_obj = config_dicts['ds']['dataset_obj']()
-#dataset = dataset_obj.getDataset(config_dicts['ds']['load_path'])
-#z_test, y_test, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
 dataset = loadDict(config_dicts['ds']['load_path'])
 z_meas, z_true, t = dataset['data']['x_test'], dataset['data']['y_test'], dataset['data']['t']
 
@@ -97,50 +93,15 @@ z_meas, z_true, t = dataset['data']['x_test'], dataset['data']['y_test'], datase
 # Model
 ################################################################################
 
-# z_hat_list = list()
-# x_hat_list = list()
-# P_list = list()
-# HPHT_list = list()
-# R_list = list()
-
-# filter_results_dict = {
-#     'x_hat_pri':list(),
-#     'x_hat_post':list(),
-#     'z_hat_pri':list(),
-#     'z_hat_post':list(),
-#     'P_pri':list(),
-#     'P_post':list(),
-#     'HPHT_pri':list(),
-#     'HPHT_post':list(),
-#     'z':list(),
-#     'R':list()
-#     }
-
 filter_results_list = list()
 
 for z in z_meas:
 
     filter = config_dicts['meta']['filter'](config_dicts['kf'])
     filter_results = filter.fit(z)
-
     filter_results_list.append(filter_results)
-    
-    # append results to filter results dictionary
-    # for key in filter_results_dict.keys():
-        
-    #     filter_results_dict[key].append(filter_results[key])
-
-    # z_hat, R = np.squeeze(filter_results['z_hat_post'],axis=-1), filter_results['R']
-    # x_hat_post = np.squeeze(filter_results['x_hat_post'],axis=-1)
-
-    # z_hat_list.append(z_hat)
-    # x_hat_list.append(x_hat_post)
-    # R_list.append(np.tile(R,(z.shape[0],z.shape[-1],z.shape[-1])))
-    # P_list.append(filter_results['P_post'])
-    # HPHT_list.append(filter_results['HPHT_post'])
-    #tf.reset_default_graph()
     tf.compat.v1.reset_default_graph()
-    
+
 # extract z hat
 z_hat = np.array([ res['z_hat_post'].reshape(-1,res['z_hat_post'].shape[1]) for res in filter_results_list ])
 
@@ -149,7 +110,8 @@ test_results_dict = {
     'x':z_meas,
     'y':z_true,
     'y_hat':z_hat,
-    'kf_results':filter_results_list
+    'kf_results':filter_results_list,
+    #'Q':config_dicts['kf']['Q']
 }
 
 evaluate_save_path = config_dicts['ds']['load_path'].split('/')[-1].split('.')[0]

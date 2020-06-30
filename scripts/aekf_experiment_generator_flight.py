@@ -99,7 +99,7 @@ model_params['loss'] = tf.losses.mean_squared_error
 
 # training
 
-model_params['epochs'] = 20000
+model_params['epochs'] = 20
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100

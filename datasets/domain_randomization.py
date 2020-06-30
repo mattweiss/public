@@ -11,9 +11,47 @@ import copy
 
 class DomainRandomizationDataset(AbstractDataset):
 
-    def __init__(self, params=None):
+    #def __init__(self, params=None):
+    def __init__(self,
+                 ds_type,
+                 x_range,
+                 n_trials,
+                 n_baseline_samples,
+                 n_samples,
+                 n_features,
+                 n_noise_features,
+                 standardize,
+                 feature_range,
+                 baseline_shift,
+                 param_range,
+                 max_N,
+                 min_N,
+                 metric_sublen,
+                 fns,
+                 noise
+                 ):
 
-        super().__init__(params)
+        self._ds_type=ds_type
+        self._x_range=x_range
+        self._n_trials=n_trials
+        self._n_baseline_samples=n_baseline_samples
+        self._n_samples=n_samples
+        self._n_features=n_features
+        self._n_noise_features=n_noise_features
+        self._standardize=standardize
+        self._feature_range=feature_range
+        self._baseline_shift=baseline_shift
+        self._param_range=param_range
+        self._max_N=max_N
+        self._min_N=min_N
+        self._metric_sublen=metric_sublen
+        self._fns=fns
+        self._noise=noise
+
+        # Attributes with default values
+        self._data = dict()
+
+        #super().__init__(params)
 
     ##################
     # Public Methods #
@@ -103,11 +141,12 @@ class DomainRandomizationDataset(AbstractDataset):
 
                         noise_param_dict[param_key] = param
 
-                # if Gaussian or Bimodal
-                if self._noise_name == 'gaussian' or self._noise_name == 'bimodal':
+                # if Bimodal
+                if self._noise_name == 'bimodal':
 
                     noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples))
 
+                # if Gaussian or Cauchy
                 else:
 
                     noise = self._noise_dist(**noise_param_dict, size=(self._n_baseline_samples+self._n_samples,self._n_features))

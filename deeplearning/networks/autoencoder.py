@@ -103,25 +103,17 @@ class AutoencoderKalmanFilter(Autoencoder):
         self._z, self._R = self._preKalmanFilterAffineLayer(self._encoder)
                 
         self._kf_results = self._kalman_filter.fit([self._z,self._R])
-        
+
         self._post_kf_affine = self._postKalmanFilterAffineLayer(tf.squeeze(self._kf_results['z_hat_pri'],axis=-1))
 
         self._decoder = self._decoderLayer(self._post_kf_affine)
-
+        
         self._y_hat = self._outputLayer(self._decoder)
 
     def _setLoss(self):
 
         super()._setLoss()
-
-        if self._max_ev_reg_scale != 0.0:
-
-            sigma_R, _ = tf.linalg.eigh(self._R)
-            sigma_Rinv = tf.math.reciprocal(sigma_R)
-            sigma_Rinv_max = tf.math.reduce_max(sigma_Rinv,axis=1)
-
-            self._loss_op += self._max_ev_reg_scale * sigma_Rinv_max
-       
+      
     def _encoderLayer(self, input=None):
 
         assert input is not None
@@ -262,11 +254,13 @@ class AutoencoderKalmanFilter(Autoencoder):
         # initial upper triangular matrix
         L = tf.contrib.distributions.fill_triangular(R, upper = True)
 
-        # ensure diagonal of L is positive via absolute value
-        # L = pos_diag(L,diag_func=tf.exp)
-
-        eps = 1e-8
-        R = tf.matmul(L,L,transpose_a=True) + eps * tf.eye(tf.shape(L)[0],dtype=tf_float_prec)
+        # ensure diagonal of L is positive
+        #L = pos_diag(L,diag_func=tf.exp)
+        L = tf.multiply(L,tf.math.sign(L))
+        
+        #eps = 0.0
+        R = tf.matmul(L,L,transpose_a=True)
+        #+ eps * tf.eye(tf.shape(L)[0],dtype=tf_float_prec)
 
         return R
 

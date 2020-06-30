@@ -116,24 +116,17 @@ else:
     ################################################################################
     
     dataset = loadDict(test_dataset_path)
-    
-    # data from domain randomization tests
-    if config_dicts['test']['dataset'] == 'DomainRandomizationDataset' or config_dicts['test']['dataset'] == 'FlightKinematicsDataset':
 
+    # data from domain randomization tests
+    # if config_dicts['test']['dataset'] == 'DomainRandomizationDataset' or \
+    #    config_dicts['test']['dataset'] == 'FlightKinematicsDataset':
+    try:
+        
         x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
         
-    # existing dataset (i.e. weather, stock market, s5)
-    elif config_dicts['test']['dataset'] == 'nyseDataset' or \
-         config_dicts['test']['dataset'] == 's5Dataset' or \
-         config_dicts['test']['dataset'] == 'weatherDataset':
-    
+    except:
+
         x_test, y_test = dataset['data']['x_test'], dataset['data']['x_test']
-
-    # pets dataset
-    elif config_dicts['test']['dataset'] == 'petsDataset' or \
-         config_dicts['test']['dataset'] == 'mtrDataset':
-
-        x_test, y_test = dataset['data']['x_test'], dataset['data']['x_true']
 
     # if labels exist
     try:
@@ -143,7 +136,7 @@ else:
     except:
 
         labels = None
-        
+
 ################################################################################
 # Model
 ################################################################################
@@ -239,7 +232,10 @@ else:
 
         attributes_list = ['seq_len']
 
-    history = nn.evaluate(x=x_test, y=y_test,labels=labels,
+    history = nn.evaluate(x=x_test,
+                          #y=np.expand_dims(y_test,axis=-1),
+                          y=y_test,
+                          labels=labels,
                           eval_ops=eval_ops_list,
                           attributes=attributes_list,
                           save_results=evaluate_save_path)

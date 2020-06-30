@@ -49,7 +49,7 @@ class InteractingMultipleModel(KalmanFilter):
         return filter_results
     
 ################################################################################
-
+    
     def _kfScan(self, state, z):
 
         """ This is where the Kalman Filter is implemented. """
@@ -62,46 +62,65 @@ class InteractingMultipleModel(KalmanFilter):
         self._x_post = list()
         self._P_post = list()
         self._lambda = list()
+
+        ##################################################################
+        # Estimation with Applications to Tracking and Navigation, pg. 455
+        # Step 1 - Calculation of Mixing Probabilities
+        ##################################################################
+
+        # compute c_bar and \mu_{i|j}
+        self._compute_mixing_probabilities()
+
+        ######################################################################
+        # Estimation with Applications to Tracking and Navigation, pg. 455-456
+        # Step 2 - Mixing
+        ######################################################################
+
+        # compute mixed initial estimate and covariance
+        x_post_star, P_post_star = self._compute_mixed_state_and_covariance(x_post,P_post)
+
+        ########################
+        # Run each Kalman Filter
+        ########################
         
         # loop over models, computing a priori estimate for each 
         for model_index, model in enumerate(self._model_list): 
 
-            ##########
+            #########
             # predict
-            ##########
-            x_pri, P_pri = self._predict(x_post[model_index],P_post[model_index],model)
+            #########
+            x_pri, P_pri = self._predict(x_post_star[model_index],P_post_star[model_index],model)
 
+            # save since we're using this in the AEIMMKF
             self._x_pri.append(x_pri)
             self._P_pri.append(P_pri)
             
-        # compute mixing probabilities
-        self._compute_mixing_probabilities()
-
-        # compute mixed initial estimate and covariance
-        self._compute_mixed_state_and_covariance()
-
-        # compute mixed a priori estimate and covaraince
-        # this does not affect the iteration here and only used for post-processing
-        x_pri_out, P_pri_out = self._combined_estimate_and_covariance(self._x_pri,self._P_pri) 
-        
-        # loop over models, computing a posteriori estimate for each using mixed initial conditions
-        for model_index, model in enumerate(self._model_list): 
-
-            ##########
+            ########
             # update
-            ##########
+            ########
             x_post, P_post, Lambda = self._update(z,
-                                                  self._x_pri_mixed[model_index],
-                                                  self._P_pri_mixed[model_index])
+                                                  x_pri,
+                                                  P_pri)
 
             self._x_post.append(x_post)
             self._P_post.append(P_post)
             self._lambda.append(Lambda)
-            
-        # Mode probablity update
+
+        # compute mixed a priori estimate and covaraince
+        # this does not affect the iteration here and only used for post-processing
+        x_pri_out, P_pri_out = self._combined_estimate_and_covariance(self._x_pri,self._P_pri) 
+
+        ##################################################################
+        # Estimation with Applications to Tracking and Navigation, pg. 456
+        # Step 4 - Mode Probability Update
+        ##################################################################
         self._mode_probability_update()
+
+        ##################################################################        
+        # Estimation with Applications to Tracking and Navigation, pg. 457
+        # Step 5 - Estimate and covariance combination
+        ##################################################################
         
-        # estimate and covaraince combination
         x_post_out, P_post_out = self._combined_estimate_and_covariance(self._x_post,self._P_post)
 
         return [ self._x_post, self._P_post, # input to next iteration of IMM
@@ -151,8 +170,8 @@ class InteractingMultipleModel(KalmanFilter):
                 self._mix_prob[i][j] = (self._p[i][j] * self._mu[i]) / self._cbar[j]
 
 ################################################################################
-
-    def _compute_mixed_state_and_covariance(self):
+            
+    def _compute_mixed_state_and_covariance(self,x,P):
 
         """
         Estimation with Applications to Tracking and Navigation, pg. 455-456
@@ -160,10 +179,10 @@ class InteractingMultipleModel(KalmanFilter):
         """
 
         # mixed initial conditions and covariance lists
-        self._x_pri_mixed = list()
-        self._P_pri_mixed = list()
+        x_post_star = list()
+        P_post_star = list()
 
-        # compute mixed initial conditions
+        # compute mixed a priori estimate
         for j in range(self._n_models):
 
             # temporary sum variable
@@ -171,11 +190,11 @@ class InteractingMultipleModel(KalmanFilter):
 
             for i in range(self._n_models):
 
-                mixed_x = tf.add(mixed_x,tf.multiply(self._x_pri[i],self._mix_prob[i][j]))
+                mixed_x = tf.add(mixed_x,tf.multiply(x[i],self._mix_prob[i][j]))
                 
-            self._x_pri_mixed.append(mixed_x)
+            x_post_star.append(mixed_x)
 
-        # compute mixed initial conditions covariance
+        # compute mixed a priori estimate covariance
         for j in range(self._n_models):
 
             # temporary sum variable
@@ -184,12 +203,14 @@ class InteractingMultipleModel(KalmanFilter):
             for i in range(self._n_models):
 
                 # difference between i-th model's estimate and j-th mixed initial condition
-                x_diff = self._x_pri[i] - self._x_pri_mixed[j]
+                x_diff = x[i] - x_post_star[j]
 
-                mixed_P = tf.add(mixed_P,self._mix_prob[i][j] * (self._P_pri[i] + tf.matmul(x_diff,x_diff,transpose_b=True)))
+                mixed_P = tf.add(mixed_P,self._mix_prob[i][j] * (P[i] + tf.matmul(x_diff,x_diff,transpose_b=True)))
 
-            self._P_pri_mixed.append(mixed_P)
+            P_post_star.append(mixed_P)
 
+        return x_post_star, P_post_star
+            
 ################################################################################
 
     def _mode_probability_update(self):

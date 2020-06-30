@@ -21,15 +21,9 @@ class KalmanFilter(AbstractFilter):
         params['sample_freq'] = np.reciprocal(params['dt'])
 
         super().__init__(params)
-
-        # set x0 to initial mesurement, set all derviatives to zero
-        #x0_dots = tf.zeros( shape=(self._state_dims,self._model_order), dtype=tf_float_prec, name='x0_dots') # n_signals x 1
-        #x0 = z[0,::self._model_order+1] if self._with_z_dot else z[0]
-        #self._x0 = tf.reshape(tf.concat([x0,x0_dots],axis=1),[-1, tf.shape(x0)[1]])
-        # self._P0 = tf.matmul(self._x0,self._x0,transpose_b=True)
         
-        self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np_float_prec)
-        self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np_float_prec)
+        # self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np_float_prec)
+        # self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np_float_prec)
         
 ################################################################################
 
@@ -41,12 +35,18 @@ class KalmanFilter(AbstractFilter):
         """
 
         z = self._process_inputs(inputs)
-            
+
+        # set x0 to initial mesurement, set all derviatives to zero
+        x0_dots = tf.zeros( shape=(self._state_dims,self._model_order), dtype=tf_float_prec, name='x0_dots') # n_signals x 1
+        x0 = z[0,::self._model_order+1] if self._with_z_dot else z[0]
+        self._x0 = tf.reshape(tf.concat([x0,x0_dots],axis=1),[-1, tf.shape(x0)[1]])
+        self._P0 = tf.matmul(self._x0,self._x0,transpose_b=True)
+
         x_hat_pri, x_hat_post, P_pri, P_post, self._kf_ctr = tf.scan(self._kfScan,
                                                                      z,
                                                                      initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
 
-        filter_results = self._process_results(x_hat_pri, x_hat_post, P_pri, P_post,z)
+        filter_results = self._process_results(x_hat_pri, x_hat_post, P_pri, P_post, z)
 
         return filter_results
 
@@ -69,7 +69,7 @@ class KalmanFilter(AbstractFilter):
         #########
 
         x_post, P_post, _ = self._update(z, x_pri, P_pri)
-        
+
         return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
 
 ###############################################################################
@@ -114,18 +114,9 @@ class KalmanFilter(AbstractFilter):
         P_post = (tf.eye(tf.shape(P)[0],dtype=tf_float_prec)-K@self._H)@P
 
         # compute likelihood
-        # likelihood = tfp.distributions.MultivariateNormalTriL(loc=tf.zeros(y.get_shape()[0],dtype=tf_float_prec),
-        #                                                       scale_tril=tf.linalg.cholesky(S)).prob(tf.transpose(y))[0]
         likelihood = tfp.distributions.MultivariateNormalFullCovariance(loc=tf.zeros(y.get_shape()[0],dtype=tf_float_prec),
                                                                         covariance_matrix=S).prob(tf.transpose(y))[0]
 
-        # ensure likelihood is greater than 0
-        # likelihood = tf.cond(tf.equal(likelihood,0.0),
-        #                      lambda:likelihood + np.finfo(np_float_prec).tiny,
-        #                      lambda:tf.cast(1e-40,dtype=tf_float_prec),
-        #                      lambda:likelihood)
-
-        # likelihood = tf.random_uniform(minval=1e-20,maxval=1e-10,shape=[],dtype=tf_float_prec)
         likelihood = likelihood + tf.cast(1e-8,dtype=tf_float_prec)
         
         return x_post, P_post, likelihood
@@ -138,7 +129,7 @@ class KalmanFilter(AbstractFilter):
         if isinstance(inputs,list):
 
             # extract z and (possibly) R from inputs list
-            z = tf.convert_to_tensor(inputs[0])
+            z = inputs[0]
             self._R = inputs[1]
 
             # ensure z is rank e
@@ -148,22 +139,26 @@ class KalmanFilter(AbstractFilter):
 
             z = tf.convert_to_tensor(z)
 
-        # fixed R
+        # fixed R or sample R
         else:
 
             # if R is not passed set z
             # ensure z is rank 3
             if np.ndim(inputs) < 3:
 
-                inputs = np.expand_dims(inputs,axis=-1)
+                z = np.expand_dims(inputs,axis=-1)
+                
+            # if self._R is non use sample covariance
+            if self._R is None:
 
-            z = tf.convert_to_tensor(inputs)
-
-        return z
+                z_hat = np.squeeze(z) - np.mean(np.squeeze(z),axis=0)
+                self._R = z_hat.T@z_hat / (z_hat.shape[0]-1)
+                
+        return tf.convert_to_tensor(z)
 
 ################################################################################
 
-    def _process_results(self,x_hat_pri, x_hat_post, P_pri, P_post,z):
+    def _process_results(self,x_hat_pri, x_hat_post, P_pri, P_post, z):
 
         z_hat_pri  = tf.matmul(self._H, x_hat_pri, name='z_pri', transpose_b=False)
         z_hat_post = tf.matmul(self._H, x_hat_post, name='z_post', transpose_b=False)
@@ -188,17 +183,13 @@ class KalmanFilter(AbstractFilter):
 
             sess = tf.InteractiveSession()
             filter_result = sess.run(filter_result)
-            #tf.InteractiveSession().close()
             sess.close()
             
         except Exception as e:
 
-            print(e)
-            filter_result = filter_result
+            pass
 
-        # add H to results
-        #filter_result['H'] = self._H
-            
+        
         return filter_result
 
 ################################################################################

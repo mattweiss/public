@@ -28,8 +28,8 @@ import dovebirdia.math.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'imm'
-experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}'.format(F1='NCV',Q1='1e-4',
-                                                                                   F2='NCA',Q2='1e-4')
+experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}_KILLME'.format(F1='NCV',Q1='1e-4',
+                                                                                          F2='NCA',Q2='1e-4')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -89,7 +89,7 @@ model_params['train_ground'] = True
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 10000
+model_params['epochs'] = 5
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -131,9 +131,11 @@ ds_params['fns'] = (
 ds_params['noise'] = [
     #[None, None, None],
 
-    ['gaussian', np.random.multivariate_normal, {'mean':np.zeros(ds_params['n_features']),
-                                                 'cov':dt*np.eye(ds_params['n_features'])}],
+    # ['gaussian', np.random.multivariate_normal, {'mean':np.zeros(ds_params['n_features']),
+    #                                              'cov':dt*np.eye(ds_params['n_features'])}],
 
+    ['gaussian', np.random.normal, {'loc':0.0,'scale':dt}],
+    
     # ['bimodal', distributions.bimodal, {'mean1':np.full(ds_params['n_features'],0.25),
     #                                     'cov1':0.02*np.eye(ds_params['n_features']),
     #                                     'mean2':np.full(ds_params['n_features'],-0.25),
@@ -191,7 +193,7 @@ Q_JERK = Q
 
 kf_params['models'] = {
     'NCV1':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
-    #'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)]
+    'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
     'NCA1':[np.kron(np.eye(state_dims),F_NCA),1e-4*np.kron(np.eye(state_dims),Q_NCA)],
     #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
     #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
@@ -214,7 +216,7 @@ kf_params['p'] = np.full((n_models,n_models),p_trans)
 np.fill_diagonal(kf_params['p'],1.0-(n_models-1)*p_trans)
                                   
 kf_params['mu'] = np.full((n_models,1),0.5)
-st()
+
 ########################################
 # Determine scaler and vector parameters
 ########################################

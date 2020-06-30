@@ -25,20 +25,21 @@ from dovebirdia.datasets.nyse_dataset import nyseDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 #****************************************************************************************************************************
-project = 'aekf_meas_cov_analysis'
+project = 'nyse'
 
 config_dict = dict()
 config_dict['dataset'] = 'DomainRandomizationDataset'
+#config_dict['dataset'] = 'FlightKinematicsDataset'
 config_dict['with_val'] = False
 
 experiments = [
-    #('aekf_taylor_Noise_gaussian_F_NCV_N_3_7_R_learned',[57]),
-    #('aekf_taylor_Noise_bimodal_F_NCV_N_3_7_R_learned',[12]),
-    ('aekf_taylor_Noise_cauchy_F_NCV_N_3_7_R_learned_ev_reg_BETA',[1,2]),
+    ('aekf_dim_8_curve_legendre_Noise_gaussian_F_NCA_N_20_30_R_learned_epoch_100k_features_1_train_ground_samples_350_act_leaky',[6]),
 ]
 
 test_dataset_files = [
-    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/aekf_meas_cov_analysis/eval/benchmark_taylor_cauchy_R1_1k.pkl'
+    #'/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/benchmark.pkl',
+    '/home/mlweiss/Documents/wpi/research/data/nyse/split/nyse_all_train_test_split_n_securities_None_n_samples_None_features_1.pkl',
+    #'/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/nyse/eval/benchmark_legendre_cauchy_R1_1k.pkl'
 ]
 
 machine = socket.gethostname()
