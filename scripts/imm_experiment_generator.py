@@ -22,11 +22,11 @@ import dovebirdia.utilities.dr_functions as drfns
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
-project = 'imm'
+project = 'dissertation/imm'
 
 experiments = [
-    ('imm_benchmark',
-     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/benchmark.pkl')
+    ('imm_nca1_nca2_turn_1_gaussian_0_20_Q_0-5',
+     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/dissertation/imm/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
 #****************************************************************************************************************************
@@ -107,11 +107,11 @@ Q_JERK = Q
 # dictionary of models
 
 kf_params['models'] = {
-    'NCV1':[np.kron(np.eye(state_dims),F_NCV),0.5*1e-0*np.kron(np.eye(state_dims),Q_NCV)],
+    #'NCV1':[np.kron(np.eye(state_dims),F_NCV),0.5*np.kron(np.eye(state_dims),Q_NCV)],
     #'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-8*np.kron(np.eye(state_dims),Q_NCV)],
     #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-2*np.kron(np.eye(state_dims),Q_NCV)],
-    'NCA1':[np.kron(np.eye(state_dims),F_NCA),0.5*1e-0*np.kron(np.eye(state_dims),Q_NCA)],
-    #'NCA2':[np.kron(np.eye(state_dims),F_NCA),1e-4*np.kron(np.eye(state_dims),Q_NCA)],
+    'NCA1':[np.kron(np.eye(state_dims),F_NCA),0.5*np.kron(np.eye(state_dims),Q_NCA)],
+    'NCA2':[np.kron(np.eye(state_dims),F_NCA),0.05*np.kron(np.eye(state_dims),Q_NCA)],
     #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
     #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
     #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
@@ -121,7 +121,7 @@ kf_params['models'] = {
 }
 n_models = len(kf_params['models'].keys())
 
-kf_params['R'] = 20 * np.eye(meas_dims)
+kf_params['R'] = 5 * np.eye(meas_dims)
 
 ####################
 # Mixing Parameters

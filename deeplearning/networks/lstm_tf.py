@@ -59,7 +59,8 @@ class LSTM(FeedForwardNetwork):
     def _fitDomainRandomization(self, dr_params=None, save_model=False):
 
         # create domainRandomizationDataset object
-        self._dr_dataset = DomainRandomizationDataset(dr_params)
+        #self._dr_dataset = DomainRandomizationDataset(**dr_params)
+        self._dr_dataset = dr_params.pop('class')(**dr_params)
 
         # dictionaries to hold training and validation data
         train_feed_dict = dict()
@@ -155,23 +156,11 @@ class LSTM(FeedForwardNetwork):
 
                     # if epoch % 1 == 0:
 
-                    #     plt.figure(figsize=(18,6))
-
-                    #     plt.subplot(131)
-                    #     plt.plot(y_train[:,0])
+                    #     plt.figure(figsize=(6,6))
+                    #     plt.subplot(111)
+                    #     plt.plot(y_train[:,0],y_train[:,1],c='C0')
+                    #     plt.scatter(x_train[:,0],x_train[:,1],c='C1')
                     #     plt.grid()
-                    #     plt.title('X0')
-
-                    #     plt.subplot(132)
-                    #     plt.plot(y_train[:,1])
-                    #     plt.grid()
-                    #     plt.title('X1')
-
-                    #     plt.subplot(133)
-                    #     plt.plot(y_train[:,2])
-                    #     plt.grid()
-                    #     plt.title('X2')
-                        
                     #     plt.show()
                     #     plt.close()
                     

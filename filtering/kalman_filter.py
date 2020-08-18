@@ -22,8 +22,8 @@ class KalmanFilter(AbstractFilter):
 
         super().__init__(params)
         
-        # self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np_float_prec)
-        # self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np_float_prec)
+        self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np_float_prec)
+        self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np_float_prec)
         
 ################################################################################
 
@@ -36,15 +36,13 @@ class KalmanFilter(AbstractFilter):
 
         z = self._process_inputs(inputs)
 
-        # set x0 to initial mesurement, set all derviatives to zero
-        x0_dots = tf.zeros( shape=(self._state_dims,self._model_order), dtype=tf_float_prec, name='x0_dots') # n_signals x 1
-        x0 = z[0,::self._model_order+1] if self._with_z_dot else z[0]
-        self._x0 = tf.reshape(tf.concat([x0,x0_dots],axis=1),[-1, tf.shape(x0)[1]])
-        self._P0 = tf.matmul(self._x0,self._x0,transpose_b=True)
-
         x_hat_pri, x_hat_post, P_pri, P_post, self._kf_ctr = tf.scan(self._kfScan,
                                                                      z,
-                                                                     initializer = [ self._x0, self._x0, self._P0, self._P0, tf.constant(0) ], name='kfScan')
+                                                                     initializer = [ self._x0,
+                                                                                     self._x0,
+                                                                                     self._P0,
+                                                                                     self._P0, tf.constant(0) ],
+                                                                     name='kfScan')
 
         filter_results = self._process_results(x_hat_pri, x_hat_post, P_pri, P_post, z)
 

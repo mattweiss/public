@@ -33,12 +33,15 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
         # sampled frequency
         self._sample_freq = 20.0
-
-    def generate_samples(self):
+        
+    def generate_samples(self,save=True):
 
         """
         """
 
+        # list to hold synthetic sensors
+        self._synthetic_sensor_list = list()
+        
         # group by class label
         self._labels = [ label for label in self._data.label.unique() if label in self._labels ] if self._labels is not None else self._data.label.unique()
 
@@ -111,42 +114,53 @@ class HomotopySyntheticSensorDataGenerator(SyntheticSensorDataGenerator):
 
                 ssd_dict['resistance_z'] = y_raw_syn
 
-                # save synthetic data
-                synthetic_data_filename = label_data.iloc[0]['csv_file'].split('_')[0].replace('&','-') + '_synthetic_label_{label}_{syn_ctr}'.format(label=label, syn_ctr=str(synthetic_sensor_ctr))
-
-                with open(self._results_dir + synthetic_data_filename + '.pkl', 'wb') as handle:
-
-                    dill.dump(ssd_dict, handle, protocol=dill.HIGHEST_PROTOCOL)
+                # pickle file name
+                ssd_dict['pkl_file_name'] = label_data.iloc[0]['csv_file'].split('_')[0].replace('&','-') + '_synthetic_label_{label}_{syn_ctr}'.format(label=label, syn_ctr=str(synthetic_sensor_ctr))
+                
+                self._synthetic_sensor_list.append(ssd_dict)
 
                 synthetic_sensor_ctr += 1
 
+        if save:
+
+            # save synthetic data
+            for synthetic_sensor_dict in self._synthetic_sensor_list:
+
+                with open(self._results_dir + synthetic_sensor_dict['pkl_file_name'] + '.pkl', 'wb') as handle:
+
+                    dill.dump(synthetic_sensor_dict, handle, protocol=dill.HIGHEST_PROTOCOL)
+
+        else:
+                
+            return self._synthetic_sensor_list
+            
                 # save plots
-                if self._save_plots:
+                # if self._save_plots:
 
-                    syn_label_ctr = 0
+                #     syn_label_ctr = 0
 
-                    #for sensor_idx, sensor in enumerate(self._sensors.keys()):
-                    for sensor, sensor_idx in self._sensors.items():
+                #     #for sensor_idx, sensor in enumerate(self._sensors.keys()):
+                #     for sensor, sensor_idx in self._sensors.items():
 
-                        fig = plt.figure(figsize=(6,6))
+                #         fig = plt.figure(figsize=(6,6))
 
-                        ax1 = fig.add_subplot(111)
+                #         ax1 = fig.add_subplot(111)
 
-                        trial_list = label_data.csv_file.values
+                #         trial_list = label_data.csv_file.values
 
-                        for trial_resistance in range(resistance.shape[0]):
+                #         for trial_resistance in range(resistance.shape[0]):
 
-                            trial = int(trial_list[trial_resistance].split('_')[-1])
-                            ax1.plot(t,resistance[trial_resistance,:,sensor_idx], label = trial )
-                            syn_label_ctr = 1
+                #             trial = int(trial_list[trial_resistance].split('_')[-1])
+                #             ax1.plot(t,resistance[trial_resistance,:,sensor_idx], label = trial )
+                #             syn_label_ctr = 1
 
-                        ax1.plot(t, ssd_dict['resistance'][:,sensor_idx], label='Synthetic', color='black', zorder=10 )
-                        ax1.set_xlabel('Sample')
-                        ax1.set_ylabel('Standardized Resistance')
-                        ax1.set_title('Real Sensor Response with Synthetic Overlay\nLabel {label}, {sensor}'.format(label=label, sensor=sensor))
-                        ax1.legend()
-                        ax1.grid()
+                #         ax1.plot(t, ssd_dict['resistance'][:,sensor_idx], label='Synthetic', color='black', zorder=10 )
+                #         ax1.set_xlabel('Sample')
+                #         ax1.set_ylabel('Standardized Resistance')
+                #         ax1.set_title('Real Sensor Response with Synthetic Overlay\nLabel {label}, {sensor}'.format(label=label, sensor=sensor))
+                #         ax1.legend()
+                #         ax1.grid()
 
-                        #plt.show()
-                        plt.savefig(self._figure_dir + synthetic_data_filename + '_{sensor}'.format(sensor=sensor).replace(' ','_'))
-                        plt.close()
+                #         #plt.show()
+                #         plt.savefig(self._figure_dir + synthetic_data_filename + '_{sensor}'.format(sensor=sensor).replace(' ','_'))
+                #         plt.close()

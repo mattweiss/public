@@ -22,7 +22,7 @@ ds = FlightKinematicsDataset(n_trials=n_trials,
                              angle_range=(np.pi/4,np.pi/4),
                              cw=1,
                              noise=(np.random.normal,{'loc':0.0,'scale':20}),
-                             save_path='/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/benchmark.pkl'
+                             save_path='/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/dissertation/imm/eval/benchmark.pkl'
 )
 
 data = ds.generateDataset()

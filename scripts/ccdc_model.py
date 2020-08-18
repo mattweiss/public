@@ -83,43 +83,21 @@ dataset = ccdcMixturesDataset(params=config_dicts['dataset']).getDataset()
 
 # add output dims
 n_sensors = 20 if config_dicts['dataset']['sensors'] is None else len(config_dicts['dataset']['sensors'])
-config_dicts['model']['input_dim'] = (config_dicts['dataset']['samples'][1]-config_dicts['dataset']['samples'][0])*n_sensors
+config_dicts['model']['input_dim'] = (config_dicts['dataset']['samples'][1]-config_dicts['dataset']['samples'][0])*n_sensors if config_dicts['dataset']['pca_components']==0 else config_dicts['dataset']['pca_components']
 
 nn = config_dicts['meta']['network'](config_dicts['model'])
-
-history = nn.fit(dataset)
+#history = nn.fit(dataset)
+syn_dataset_dir = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/01_23_19/training/'
+history = nn.fitDomainRandomization(data_dir=syn_dataset_dir,
+                                    dataset=dataset)
 
 for k,v in history.items():
 
-    try:
-    
-        print(k,v)
-
-    except:
-
+    if 'error' in k:
+        
         print(k,v)
         
-# train_loss = np.asarray(history['loss'][-1])
-# val_loss = np.asarray(history['val_loss'][-1])
-# test_loss = np.asarray(history['test_loss'])
-# test_subset_accuracy = history['test_subset_accuracy']
-# val_subset_accuracy = history['val_subset_accuracy']
-
-# results_dict = {
-#     'train_loss':train_loss,
-#     'val_loss':val_loss,
-#     'test_loss':test_loss,
-#     'test_subset_accuracy':test_subset_accuracy,
-#     'val_subset_accuracy':val_subset_accuracy,
-#     'runtime':history['runtime'],
-# }
 results_dict = history
-
-# save test predictions to disk
-# test_pred_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_pred'
-# test_true_file_path = os.getcwd() + config_dicts['model']['results_dir'] + 'test_true'
-# np.save(test_pred_file_path,history['test_pred'])
-# np.save(test_true_file_path,history['test_true'])
 
 ################################################################################
 # CSV

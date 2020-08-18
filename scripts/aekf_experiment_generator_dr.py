@@ -28,18 +28,18 @@ from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 
-project = 'nyse'
+project = 'dissertation/ccdc'
 
-experiment_name = 'aekf_dim_{meas_dim}_curve_{curve}_Noise_{noise}_F_{F}_N_{order}_R_{r_mode}_epoch_{epoch}_features_{features}_train_{train}_samples_{samples}_act_{activation}'.format(meas_dim=8,
-                                                                                                                                                                                         curve='legendre',
+experiment_name = 'aekf_dim_{meas_dim}_curve_{curve}_Noise_{noise}_F_{F}_N_{order}_R_{r_mode}_epoch_{epoch}_features_{features}_train_{train}_samples_{samples}_act_{activation}_KILLME'.format(meas_dim=8,
+                                                                                                                                                                                         curve='taylor',
                                                                                                                                                                                          noise='gaussian',
-                                                                                                                                                                                         F='NCA',
-                                                                                                                                                                                         order='20_30',
+                                                                                                                                                                                         F='NCV',
+                                                                                                                                                                                         order='3_7',
                                                                                                                                                                                          r_mode='learned',
-                                                                                                                                                                                         epoch='100k',
+                                                                                                                                                                                         epoch='10k',
                                                                                                                                                                                          features=1,
                                                                                                                                                                                          train='ground',
-                                                                                                                                                                                         samples=350,
+                                                                                                                                                                                         samples=100,
                                                                                                                                                                                          activation='leaky')
 
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
@@ -72,7 +72,7 @@ meta_params['network'] = AutoencoderKalmanFilter
 model_params['hidden_dims'] = [(128,64,32),(64,32,8),(128,64),(64,32)]
 model_params['learning_rate'] = list(np.logspace(-3,-5,6))
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['mbsize'] = 350
+model_params['mbsize'] = 500
 
 # model params
 model_params['kf_type'] = KalmanFilter
@@ -96,14 +96,14 @@ model_params['z_regularizer'] = None
 model_params['z_regularizer_scale'] = 0.0
 model_params['R_model'] = 'learned' # learned, identity
 model_params['R_activation'] = None
-model_params['train_ground'] = False
+model_params['train_ground'] = True
 
 # loss
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
 
-model_params['epochs'] = 100000
+model_params['epochs'] = 10
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -114,12 +114,13 @@ model_params['staircase'] = False
 # Domain Randomization Parameters
 ####################################
 
+
 ds_params['class'] = DomainRandomizationDataset
 ds_params['ds_type'] = 'train'
 ds_params['x_range'] = (-1,1)
 
 # set dt here based on x range and mb size, for use in scaling noise and the Kalman Filter
-dt = 1.0 #(ds_params['x_range'][1]-ds_params['x_range'][0])/model_params['mbsize']
+dt = 20.0**-1 #(ds_params['x_range'][1]-ds_params['x_range'][0])/model_params['mbsize']
 
 ds_params['n_trials'] = 1
 ds_params['n_baseline_samples'] = 0
@@ -129,27 +130,29 @@ ds_params['n_noise_features'] = ds_params['n_features']
 ds_params['standardize'] = False
 ds_params['feature_range'] = None
 ds_params['baseline_shift'] = None
-ds_params['param_range'] = 0.1
-ds_params['max_N'] = 30
-ds_params['min_N'] = 20
+ds_params['param_range'] = 20
+ds_params['max_N'] = 7
+ds_params['min_N'] = 3
 ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
 ds_params['fns'] = (
     #['zeros', drfns.zeros, []],
     #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
     #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
     #['sine', drfns.sine, [(0,10.0),(0.01,0.01)]],
-    #['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
-    ['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    ['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
+    #['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
     #['trig_poly', drfns.trig_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(2*ds_params['max_N']+1)],
 )
 
 ds_params['noise'] = [
     #[None, None, None],
 
-    # ['gaussian', np.random.multivariate_normal, {'mean':np.zeros(ds_params['n_features']),
-    #                                              'cov':0.025*np.eye(ds_params['n_features'])}],
+    ['gaussian', np.random.normal, {'loc':0.0,'scale':2.0}],
 
-    ['gaussian', np.random.normal, {'loc':0.0,'scale':0.025}],
+    # ['bimodal', distributions.bimodal, {'mean1':np.full(ds_params['n_features'],1.0),
+    #                                     'cov1':-1.0*np.eye(ds_params['n_features']),
+    #                                     'mean2':np.full(ds_params['n_features'],-1.0),
+    #                                     'cov2':1.0*np.eye(ds_params['n_features'])}],
 
     # ['bimodal', distributions.bimodal, {'mean1':np.full(ds_params['n_features'],0.05),
     #                                     'cov1':0.002*np.eye(ds_params['n_features']),
@@ -165,9 +168,10 @@ ds_params['noise'] = [
 # Kalman Filter Parameters
 ####################################
 
+
 kf_params['with_z_dot'] = with_z_dot = False
 
-#  measurements dimension
+#  measurements dimensions
 kf_params['meas_dims'] = meas_dims = 8
 
 #  state space dimensions
@@ -177,29 +181,39 @@ kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 kf_params['dt'] = dt
 
 # dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
-kf_params['model_order'] = model_order = 2
+kf_params['model_order'] = model_order = 3
 
-kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0]))
+kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
 
 # state-transition model
-F_NCV = np.array([[1.0,dt],
-                  [0.0,1.0]])
 
-F_NCA = np.array([[1.0,dt,0.5*dt**2],
-                  [0.0,1.0,dt],
-                  [0.0,0.0,1.0]])
+F_NCV = np.zeros((model_order+1,model_order+1))
+F_NCA = np.zeros((model_order+1,model_order+1))
+F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+              [0.0,1.0,dt,0.5*dt**2],
+              [0.0,0.0,1.0,dt],
+              [0.0,0.0,0.0,1.0]])
 
-F_Jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-                   [0.0,1.0,dt,0.5*dt**2],
-                   [0.0,0.0,1.0,dt],
-                   [0.0,0.0,0.0,1.0]])
+F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
+F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
+F_JERK = F
+
+# process covariance
+
+Q_NCV = np.zeros((model_order+1,model_order+1))
+Q_NCA = np.zeros((model_order+1,model_order+1))
+Q = np.eye(model_order+1)
+
+Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
+Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
+Q_JERK = Q
 
 #######################
 # Choose Model Matrices
 #######################
 
-kf_params['F'] = np.kron(np.eye(state_dims),F_NCA)
-kf_params['Q'] = [ q * np.eye((model_order+1)*state_dims) for q in np.logspace(-2,-8,4) ]
+kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
+kf_params['Q'] = [ q * np.kron(np.eye(state_dims), Q_NCV) for q in np.logspace(-2,-8,4) ]
 kf_params['R'] = None
 
 ########################################

@@ -1,28 +1,24 @@
 #!/bin/env python3
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=2G
+#SBATCH --mem=8G
 #SBATCH -p short
 #SBATCH -t 24:00:00
 #SBATCH --gres=gpu:0
 
 import os, sys, socket
 import numpy as np
-np_float_prec = np.float64
 import itertools
 import tensorflow as tf
+#from keras import optimizers, losses
 import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
-from dovebirdia.filtering.kalman_filter import KalmanFilter
-from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
-from dovebirdia.deeplearning.activations.base import sineline, psineline
+from dovebirdia.deeplearning.networks.lstm_tf import LSTM
 import dovebirdia.utilities.dr_functions as drfns
 import dovebirdia.math.distributions as distributions
 from dovebirdia.datasets.flight_kinematics import FlightKinematicsDataset
-from scipy.stats import cauchy
 
 #######################################
 trials=1
@@ -37,82 +33,74 @@ dt=0.1
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'dissertation/imm'
-experiment_name = 'aekf_turns_{turns}_{noise}_F_{F}_Q_{Q}'.format(turns=turns,
-                                                                  noise='cauchy_0_5',
-                                                                  F='NCA',
-                                                                  Q='0-5')
+
+experiment_name = 'lstm_turns_{turns}_{noise}'.format(turns=turns,
+                                                      noise='cauchy_0_5')
+
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
 
 meta_params = dict()
 ds_params = dict()
-kf_params = dict()
 model_params = dict()
 
 params_dicts = OrderedDict([
     ('meta',meta_params),
     ('model',model_params),
     ('ds',ds_params),
-    ('kf',kf_params),
 ])
 
 ####################################
 # Meta Parameters
 ####################################
 
-meta_params['network'] = AutoencoderKalmanFilter
+meta_params['network'] = LSTM
 
 ####################################
-# Regularly edited Parameters
+# Important Parameters
 ####################################
 
 model_params['hidden_dims'] = [(128,64,32),(128,64),(64,32,16),(64,32)]
-model_params['learning_rate'] = list(np.logspace(-3,-5,12))
+model_params['learning_rate'] = list(np.logspace(-3,-5,6))
+model_params['seq_len'] = [5,10]
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['mbsize'] = samples
+model_params['mbsize'] = 300
 
-# model params
-model_params['kf_type'] = KalmanFilter
+# model parameters
+
 model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 2
 model_params['output_dim'] = model_params['input_dim']
 model_params['output_activation'] = None
 model_params['activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
-model_params['weight_initializer'] = tf.initializers.glorot_normal
-model_params['bias_initializer'] = tf.initializers.zeros
-model_params['weight_regularizer'] = None #[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
-model_params['weight_regularizer_scale'] = 0.0 #[1e-4,1e-5]
+model_params['weight_initializer'] = 'glorot_uniform'
+model_params['bias_initializer'] = 0.0
+model_params['weight_regularizer'] = None
+model_params['weight_regularizer_scale'] = 0.0
 model_params['bias_regularizer'] = None
 model_params['activity_regularizer'] = None
 model_params['weight_constraint'] = None
 model_params['bias_constraint'] = None
+model_params['recurrent_regularizer'] = None
 model_params['input_dropout_rate'] = 0.0
 model_params['dropout_rate'] = 0.0
-model_params['z_regularizer'] = None #[tf.keras.regularizers.l1,tf.keras.regularizers.l2]
-model_params['z_regularizer_scale'] = 0.0 # [1e-7,1e-8]
-model_params['R_model'] = 'learned' # learned, identity
-model_params['R_activation'] = None
+model_params['stateful'] = False
+model_params['return_seq'] = True
 model_params['train_ground'] = True
 
 # loss
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-
 model_params['epochs'] = 20000
-model_params['momentum'] = 0.96
-model_params['use_nesterov'] = True
-model_params['decay_steps'] = 100
-model_params['decay_rate'] = 0.96
-model_params['staircase'] = False
 
 ####################################
 # Domain Randomization Parameters
 ####################################
 
-ds_params['class'] = FlightKinematicsDataset
+ds_params['class']=FlightKinematicsDataset
 ds_params['n_trials']=trials
 ds_params['n_samples']=samples
 ds_params['n_turns']=turns
@@ -127,59 +115,8 @@ ds_params['noise']=(np.random.standard_cauchy,{},5.0) # last entry is manual sca
 ds_params['metric_sublen'] = model_params['epochs'] // 100
 
 ####################################
-# Kalman Filter Parameters
-####################################
-
-kf_params['with_z_dot'] = with_z_dot = False
-
-#  measurements dimensions
-kf_params['meas_dims'] = meas_dims = 8
-
-#  state space dimensions
-kf_params['state_dims'] = state_dims = kf_params['meas_dims']
-
-# number of state estimate 
-kf_params['dt'] = dt
-
-# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
-kf_params['model_order'] = model_order = 3
-
-kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
-
-# state-transition model
-
-F_NCV = np.zeros((model_order+1,model_order+1))
-F_NCA = np.zeros((model_order+1,model_order+1))
-F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-              [0.0,1.0,dt,0.5*dt**2],
-              [0.0,0.0,1.0,dt],
-              [0.0,0.0,0.0,1.0]])
-
-F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
-F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
-F_JERK = F
-
-# process covariance
-
-Q_NCV = np.zeros((model_order+1,model_order+1))
-Q_NCA = np.zeros((model_order+1,model_order+1))
-Q = np.eye(model_order+1)
-
-Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
-Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
-Q_JERK = Q
-
-#######################
-# Choose Model Matrices
-#######################
-
-kf_params['F'] = np.kron(np.eye(state_dims),F_NCA)
-kf_params['Q'] = 0.5 * np.kron(np.eye(state_dims), Q_NCA)
-kf_params['R'] = None
-
-########################################
 # Determine scaler and vector parameters
-########################################
+####################################
 
 config_params_dicts = OrderedDict()
 
@@ -235,8 +172,7 @@ cfg_ctr = 1
 
 for config_params in itertools.product(config_params_dicts['meta'],
                                        config_params_dicts['model'],
-                                       config_params_dicts['ds'],
-                                       config_params_dicts['kf']):
+                                       config_params_dicts['ds']):
 
     # Create Directories
     model_dir_name = experiment_name + '_model_' + str(cfg_ctr) + '/'

@@ -7,9 +7,13 @@ import tensorflow as tf
 from tensorflow import keras
 from pdb import set_trace as st
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
 from abc import ABC, abstractmethod
 from dovebirdia.utilities.base import dictToAttributes, saveAttrDict, saveDict
-from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+#from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
+from dovebirdia.synthetic_data.homotopy_synthetic_sensor_data_generator import HomotopySyntheticSensorDataGenerator
+
 
 try:
 
@@ -31,10 +35,40 @@ class MaxScale(tf.keras.layers.Layer):
 
       return tf.divide(inputs,tf.expand_dims(tf.reduce_max(inputs,axis=1),axis=-1))
 
+###########################
+# Synthetic Data Parameters
+###########################
+
+# 01-23-19
+sensors = {
+    'PCL 1':-1,
+    'ETCL 5':-1,
+    'PECH 4':-1,
+    'PEVA 4':-1,
+    'PVPGT 3':-1,
+    'NAF 4':-1,
+    'PVA 2':-1,
+    'PVPH 3':-1,
+    'PVPMM 3':-1,
+    '50 FLEX-NAF':-1,
+    'PVA 4':-1,
+    'PVPH 5':-1,
+    'PVPMM 4':-1,
+    'old PEVA 1':-1,
+    'PCL 4':-1,
+    'ETCL 1':-1,
+    'PECH 5':-1,
+    'PEVA 2':-1,
+    'PVPGT 1':-1,
+    'NAF 5':-1,
+}
+
+
+  
 class KerasMultiLabelClassifier():
 
     """
-    Sinlge label classifier in Keras
+    Single label classifier in Keras
     """
 
     def __init__(self, params=None):
@@ -70,10 +104,10 @@ class KerasMultiLabelClassifier():
                                            activation=self._output_activation))
 
 
-        if self._scale_output:
+        # if self._scale_output:
 
-            # scale output such that largest value is 1
-            self._model.add(MaxScale(units=self._output_dim,input_dim=self._output_dim))
+        #     # scale output such that largest value is 1
+        #     self._model.add(MaxScale(units=self._output_dim,input_dim=self._output_dim))
 
         # compile model
 
@@ -96,8 +130,10 @@ class KerasMultiLabelClassifier():
 
         print(self._model.summary())
 
-    def fit(self, dataset):
+    def fit(self, dataset=None):
 
+        assert dataset is not None
+        
         # start time
         start_time = time()
 
@@ -107,7 +143,7 @@ class KerasMultiLabelClassifier():
         if self._early_stopping:
 
             self._callbacks_list.append(tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=50))
-            
+
         history = self._model.fit(x=dataset['x_train'],
                                   y=dataset['y_train'][:,:self._output_dim],
                                   batch_size=self._mbsize,
@@ -118,19 +154,13 @@ class KerasMultiLabelClassifier():
         # total runtime
         history.history['runtime'] = (time() - start_time) / 60.0
 
+        train_pred = self._model.predict(x=dataset['x_train'])
+        
         # validataion set metrics
         val_pred = self._model.predict(x=dataset['x_val'])
 
-        # history.history['val_true'] = dataset['y_val'][:,:self._output_dim]
-        # history.history['val_pred'] = val_pred
-        # history.history['val_subset_accuracy'] = accuracy_score(y_true=history.history['val_true'],
-        #                                                         y_pred=(history.history['val_pred'] >= 0.5).astype(float))
         # test set metrics
         test_pred = self._model.predict(x=dataset['x_test'])
-        #history.history['test_true'] = dataset['y_test'][:,:self._output_dim]
-        #history.history['test_pred'] = test_pred
-        # history.history['test_subset_accuracy'] = accuracy_score(y_true=history.history['test_true'],
-        #                                                          y_pred=(history.history['test_pred'] >= 0.5).astype(float))
 
         # relabel training set metric keys
         for train_key in self._model.metrics_names:
@@ -161,5 +191,119 @@ class KerasMultiLabelClassifier():
             except:
 
                 output_history[k] = history.history[k]
+            
+        return output_history
+
+    def fitDomainRandomization(self,data_dir=None,dataset=None):
+
+        assert data_dir is not None
+        
+        # start time
+        start_time = time()
+
+        # define empty callbacks like
+        self._callbacks_list = list()
+
+        if self._early_stopping:
+
+            self._callbacks_list.append(tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=50))
+
+        # validation and testing data
+        x_val, y_val = dataset['x_val'], dataset['y_val']
+        x_test, y_test = dataset['x_test'], dataset['y_test']
+
+        for trial,val in enumerate(x_val):
+
+            plt.plot(val)
+            plt.savefig('val_plot_{trial}'.format(trial=trial+1))
+            plt.close()
+            
+        # history over each epoch
+        history = dict()
+
+        # synthetic data object
+        ssdg = HomotopySyntheticSensorDataGenerator(dataset_dir = data_dir,
+                                                    trials = None,
+                                                    sensors = sensors,
+                                                    labels = None,
+                                                    n_synthetic_sensors_per_label = 10,
+                                                    save_plots = False)
+
+        # read pickle files
+        ssdg.load_data()
+
+        # loop over epochs
+        for epoch in np.arange(1,self._epochs+1):
+
+            # generate training data
+            ssd_x_train = ssdg.generate_samples(save=False)
+            x_train = np.asarray([ ssd['resistance_z'] for ssd in ssd_x_train ])
+            x_train = x_train[:,:1000,:].reshape(-1,x_train[:,:1000,:].shape[1]*x_train[:,:1000,:].shape[2])
+            y_train = np.asarray([ ssd['concentration_label'] for ssd in ssd_x_train ])
+
+            scaler = MinMaxScaler(feature_range=(-1,1))
+            x_train = scaler.fit_transform(x_train)
+            x_val = scaler.transform(x_val)
+            x_test = scaler.transform(x_test)
+            
+            print('Epoch {epoch} of {total_epochs}'.format(epoch=epoch,total_epochs=self._epochs))
+            
+            # fit
+            epoch_history = self._model.fit(x=x_train,
+                                            y=y_train[:,:self._output_dim],
+                                            batch_size=self._mbsize,
+                                            epochs=1,
+                                            validation_data=(x_val,y_val[:,:self._output_dim]),
+                                            callbacks=self._callbacks_list)
+            if len(history) == 0:
+
+                history = epoch_history.history
+
+            else:
+
+                for k,v in epoch_history.history.items():
+
+                    history[k].append(v[0])
+                
+        # total runtime
+        history['runtime'] = (time() - start_time) / 60.0
+
+        train_pred = self._model.predict(x=x_train)
+        
+        # validataion set metrics
+        val_pred = self._model.predict(x=x_val)
+
+        # test set metrics
+        test_pred = self._model.predict(x=x_test)
+
+        # relabel training set metric keys
+        for train_key in self._model.metrics_names:
+
+            history['train_' + train_key] = history.pop(train_key)
+
+        # add test set metrics to history
+        test_metrics = [self._model.evaluate(x=x_test,y=y_test[:,:self._output_dim])]
+        
+        for metric_name,metric in zip(self._model.metrics_names,test_metrics[0]):
+
+            metric_name = 'test_' + metric_name
+            
+            history[metric_name] = metric
+
+        # dictionary with final returned results
+        output_history = dict()
+                
+        # select last entry in each metrics list
+        for k,v in history.items():
+
+            # if list, i.e. training and validataion
+            try:
+
+                output_history[k] = history[k][-1]
+
+            # if scalar, i.e. test metrics and runtime
+            except:
+
+                output_history[k] = history[k]
             
         return output_history

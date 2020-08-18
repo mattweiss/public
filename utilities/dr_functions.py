@@ -7,10 +7,10 @@ def exponential(x,params):
 
     assert x is not None
     assert params is not None
-    
+
     a,b,c = params
-    
-    return a * np.exp(b*x) + c
+
+    return a * np.exp(np.sign(b)*b*x) + c
 
 def sigmoid(x,params):
 

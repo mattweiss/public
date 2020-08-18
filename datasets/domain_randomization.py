@@ -113,7 +113,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
                     pass
 
-                y_loop_list.append(self._fn_def(t, param_list))
+                y_loop_list.append(np.concatenate([np.zeros((self._n_baseline_samples,1)),self._fn_def(t, param_list)]))
 
             y = np.hstack(y_loop_list)
 

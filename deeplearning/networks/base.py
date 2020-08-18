@@ -488,6 +488,7 @@ class FeedForwardNetwork(AbstractNetwork):
                 val_mse_list = list()
 
                 # train on all trials
+
                 for x_train, y_train, x_val, y_val in zip(train_data['x_test'], train_data['y_test'],
                                                           val_data['x_test'], val_data['y_test']):
 
@@ -496,25 +497,35 @@ class FeedForwardNetwork(AbstractNetwork):
                         y_train = x_train
                         y_val = x_val
 
-                    # plt.figure(figsize=(12,6))
+                    # plt.figure(figsize=(6,6))
 
-                    # plt.subplot(121)
-                    # plt.plot(np.arange(x_train[:,0].shape[0]),x_train[:,0],label='x0',marker=None,c='C1')
-                    # plt.plot(y_train[:,0],label='y0',marker=None)
-                    # plt.title(np.array_equal(x_train[:,0],y_train[:,0]))
+                    # plt.subplot(111)
+
+                    # # noise
+                    # plt.scatter(x_train[:100,0],x_train[:100,1],label='noise',c='C0')
+                    # plt.scatter(x_train[100:200,0],x_train[100:200,1],label='noise',c='C1')
+                    # plt.scatter(x_train[200:,0],x_train[200:,1],label='noise',c='C2')
+
+                    # truth
+                    # plt.plot(y_train[:,0],y_train[:,1],label='noise',c='black')
+                    # plt.plot(y_train[100:200,0],y_train[100:200,1],label='noise',c='C1')
+                    # plt.plot(y_train[200:,0],y_train[200:,1],label='noise',c='C2')
+
+                    # plt.xlabel('x (m)')
+                    # plt.ylabel('y (m)')
                     # plt.grid()
-                    # plt.legend()
+                    #plt.legend()
 
                     # plt.subplot(122)
-                    # plt.plot(np.arange(x_val[:,0].shape[0]),x_val[:,0],label='x0',marker=None,c='C1')
-                    # plt.plot(y_val[:,0],label='y0',marker=None)
-                    # plt.title(np.array_equal(x_val[:,0],y_val[:,0]))
+                    # plt.scatter(x_val[:,0],x_val[:,1],label='noise',c='C0')
+                    # plt.plot(y_val[:,0],y_val[:,1],label='truth',c='C1')
+                    # plt.title('Validation Set')
                     # plt.grid()
                     # plt.legend()
                     
-                    # plt.show()
+                    # plt.savefig('/home/mlweiss/tmp/plot_{epoch}'.format(epoch=epoch),dpi=300)
                     # plt.close()
-                    
+
                     # train on minibatches
                     x_train_mb, y_train_mb = self._generateMinibatches(x_train,y_train)
 
@@ -537,7 +548,7 @@ class FeedForwardNetwork(AbstractNetwork):
                     self._history['train_mse'].append(np.asarray(train_mse).mean())
                     self._history['val_mse'].append(np.asarray(val_mse).mean())
 
-                    # if epoch % 100 == 0:
+                    # if epoch % 1 == 0:
 
                     #     y_hat_train = sess.run(self._y_hat,feed_dict=train_feed_dict)
                     #     y_hat_val = sess.run(self._y_hat,feed_dict=val_feed_dict)
@@ -545,20 +556,31 @@ class FeedForwardNetwork(AbstractNetwork):
                     #     fig, ax = plt.subplots(1,2,figsize=(12,6))
 
                     #     train_mse=np.square(np.subtract(y_hat_train,y_train)).mean()
-                    #     ax[0].scatter(x_train[:,0],x_train[:,1],c='C0',s=5)
-                    #     ax[0].plot(y_train[:,0],y_train[:,1],c='C1')
-                    #     ax[0].plot(y_hat_train[:,0],y_hat_train[:,1],c='C3')
+                    #     ax[0].plot(np.arange(x_train.shape[0]),x_train,c='C0')
+                    #     ax[0].plot(y_train,c='C1')
+                    #     ax[0].plot(y_hat_train[:,0],c='C3')
+
+                    #     # ax[0].scatter(x_train[:,0],x_train[:,1],c='C0',s=5)
+                    #     # ax[0].plot(y_train[:,0],y_train[:,1],c='C1')
+                    #     # ax[0].plot(y_hat_train[:,0],y_hat_train[:,1],c='C3')
+
                     #     ax[0].grid()
                     #     ax[0].set_title('Train\nMSE {mse}'.format(mse=train_mse))
-                    #     ax[0].axis('equal')
+                    #     #ax[0].axis('equal')
                         
                     #     val_mse=np.square(np.subtract(y_hat_val,y_val)).mean()
-                    #     ax[1].scatter(x_val[:,0],x_val[:,1],c='C0',s=5)
-                    #     ax[1].plot(y_val[:,0],y_val[:,1],c='C1')
-                    #     ax[1].plot(y_hat_val[:,0],y_hat_val[:,1],c='C3')
+
+                    #     ax[1].plot(np.arange(x_val.shape[0]),x_val,c='C0')
+                    #     ax[1].plot(y_val,c='C1')
+                    #     ax[1].plot(y_hat_val,c='C3')
+
+                    #     # ax[1].scatter(x_val[:,0],x_val[:,1],c='C0',s=5)
+                    #     # ax[1].plot(y_val[:,0],y_val[:,1],c='C1')
+                    #     # ax[1].plot(y_hat_val[:,0],y_hat_val[:,1],c='C3')
+
                     #     ax[1].grid()
                     #     ax[1].set_title('Validation\nMSE {mse}'.format(mse=val_mse))
-                    #     ax[1].axis('equal')
+                    #     #ax[1].axis('equal')
                         
                     #     plt.show() 
                     #     #plt.savefig(os.getcwd() + self._results_dir + 'epoch_{epoch}'.format(epoch=str(epoch)))

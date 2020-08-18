@@ -118,24 +118,40 @@ else:
     dataset = loadDict(test_dataset_path)
 
     # data from domain randomization tests
-    # if config_dicts['test']['dataset'] == 'DomainRandomizationDataset' or \
-    #    config_dicts['test']['dataset'] == 'FlightKinematicsDataset':
-    try:
+    if config_dicts['test']['dataset'] == 'DomainRandomizationDataset' or \
+       config_dicts['test']['dataset'] == 'FlightKinematicsDataset':
+
+        try:
         
-        x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
+            x_test, y_test = dataset['data']['x_test'], dataset['data']['y_test']
         
-    except:
+        except:
 
-        x_test, y_test = dataset['data']['x_test'], dataset['data']['x_test']
+            x_test, y_test = dataset['data']['x_test'], dataset['data']['x_test']
 
-    # if labels exist
-    try:
+            # if labels exist
+            try:
 
-        labels = dataset['data']['y_test']
+                labels = dataset['data']['y_test']
 
-    except:
+            except:
 
-        labels = None
+                labels = None
+
+    elif config_dicts['test']['dataset'] == 'CCDCDataset':
+
+        x_test = np.transpose(dataset['resistance_z'])
+        x_test = np.expand_dims(x_test,axis=-1)
+        y_test = x_test
+        
+        # if labels exist
+        try:
+            
+            labels = dataset['label']
+                
+        except:
+
+            labels = None
 
 ################################################################################
 # Model

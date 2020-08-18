@@ -36,11 +36,11 @@ dt=0.1
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project = 'imm'
-experiment_name = 'aeimm_turns_{turns}_{noise}_F_{F}_Q_{Q}_RETEST'.format(turns=turns,
-                                                                          noise='gaussian_0_20',
-                                                                          F='NCV',
-                                                                          Q='0-5')
+project = 'dissertation/imm'
+experiment_name = 'aeimm_turns_{turns}_{noise}_F_{F}_Q_{Q}'.format(turns=turns,
+                                                                   noise='cauchy_0_5',
+                                                                   F='NCA1_NCA2',
+                                                                   Q='0-5')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -70,7 +70,7 @@ meta_params['network'] = AutoencoderInteractingMultipleModel
 model_params['hidden_dims'] = [(128,64,32),(128,64),(64,32,16),(64,32)]
 model_params['learning_rate'] = list(np.logspace(-3,-5,12))
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['mbsize'] = 300
+model_params['mbsize'] = samples
 
 # model params
 
@@ -121,7 +121,8 @@ ds_params['v0']=(100.0,0.0)
 ds_params['radius_range']=(200.0,300.0)
 ds_params['angle_range']=(np.pi/4,np.pi/4)
 ds_params['cw']=1
-ds_params['noise']=(np.random.normal,{'loc':0.0,'scale':20})
+#ds_params['noise']=(np.random.normal,{'loc':0.0,'scale':20},1.0)
+ds_params['noise']=(np.random.standard_cauchy,{},5.0) # last entry is manual scale for cauchy
 ds_params['metric_sublen'] = model_params['epochs'] // 100
 
 ####################################
@@ -170,9 +171,10 @@ Q_JERK = Q
 # dictionary of models
 
 kf_params['models'] = {
-    'NCV1':[np.kron(np.eye(state_dims),F_NCV),0.5*np.kron(np.eye(state_dims),Q_NCV)],
+    #'NCV1':[np.kron(np.eye(state_dims),F_NCV),0.5*np.kron(np.eye(state_dims),Q_NCV)],
     #'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)]
     'NCA1':[np.kron(np.eye(state_dims),F_NCA),0.5*np.kron(np.eye(state_dims),Q_NCA)],
+    'NCA2':[np.kron(np.eye(state_dims),F_NCA),0.05*np.kron(np.eye(state_dims),Q_NCA)],
     #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
     #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
     #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],

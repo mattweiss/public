@@ -6,7 +6,6 @@ from scipy import stats
 from pdb import set_trace as st
 from dovebirdia.deeplearning.networks.base import FeedForwardNetwork
 from dovebirdia.deeplearning.layers.base import Dense
-#from tensorflow.python.ops.distributions.special_math import ndtri as tf_ndtri
 from dovebirdia.math.linalg import pos_diag
 
 try:
@@ -81,7 +80,6 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         # instantiate Kalman Filter before parent constructor as
         # the parent calls _buildNetwork()
-        #self._kalman_filter = KalmanFilter(params=kf_params)
         self._kalman_filter = params['kf_type'](params=kf_params)
         
         super().__init__(params=params)
@@ -255,7 +253,7 @@ class AutoencoderKalmanFilter(Autoencoder):
         L = tf.contrib.distributions.fill_triangular(R, upper = True)
 
         # ensure diagonal of L is positive
-        #L = pos_diag(L,diag_func=tf.exp)
+        #L = pos_diag(L,diag_func=tf.abs)
         L = tf.multiply(L,tf.math.sign(L))
         
         #eps = 0.0

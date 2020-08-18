@@ -15,6 +15,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from dovebirdia.deeplearning.networks.keras_classifiers import KerasMultiLabelClassifier
 
@@ -23,7 +24,7 @@ from dovebirdia.deeplearning.networks.keras_classifiers import KerasMultiLabelCl
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/ccdc_model.py'
 project = 'ccdc_mixtures'
-experiment_name = '01_23_19_resistance_kf0'
+experiment_name = '01_23_19_resistance_z_1'
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -48,15 +49,16 @@ meta_params['network'] = KerasMultiLabelClassifier
 # Dataset Parameters
 ####################################
 
-dataset_params['dataset_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/01_23_19_KF_F_ncv_Q_4_R_eye/'
+dataset_params['dataset_dir'] = '/home/mlweiss/Documents/wpi/research/data/ccdc/dvd_dump_clark/split/01_23_19/'
 dataset_params['with_val'] = True
-dataset_params['resistance_type'] = 'resistance_kf0' # ['resistance','resistance_kf0','resistance_kf1']
+dataset_params['resistance_type'] = 'resistance_z'
 dataset_params['labels'] = None
 dataset_params['sensors'] = None
 dataset_params['with_synthetic'] = False
-dataset_params['samples'] = [(0,600),(0,700),(0,800),(0,900),(0,1000)]
-dataset_params['labels'] = 'concentration' #'binary_presence' # 'binary_presence' in {0,1}, 'concentration' in R^n
-dataset_params['standardize'] = True
+dataset_params['samples'] = (0,1000) # [(0,600),(0,700),(0,800),(0,900),(0,1000)]
+dataset_params['labels'] = 'concentration' #'binary_presence' # 'binary_presence' in {0,1}, 'concentration' in \mathcal{R}^{n}
+dataset_params['preprocessing'] = MinMaxScaler(feature_range=(-1,1)) #StandardScaler(with_mean=True,with_std=True)
+dataset_params['pca_components'] = 0
 
 ####################################
 # Model Parameters
@@ -64,12 +66,12 @@ dataset_params['standardize'] = True
 
 model_params['results_dir'] = '/results/'
 model_params['output_dim'] = 2 # number of classes
-model_params['hidden_dims'] = [(512,256,64,32),(256,64,32),(512,256,64)]
-model_params['activation'] = tf.nn.elu
-model_params['output_activation'] = tf.nn.elu
+model_params['hidden_dims'] = (256,128,32) # [(128,32),(256,32),(256,64)]
+model_params['activation'] = tf.nn.leaky_relu
+model_params['output_activation'] = tf.nn.leaky_relu
 model_params['use_bias'] = True
 model_params['kernel_initializer'] = 'glorot_normal'
-model_params['bias_initializer'] = tf.initializers.ones # [tf.initializers.zeros,tf.initializers.ones]
+model_params['bias_initializer'] = tf.initializers.zeros # [tf.initializers.zeros,tf.initializers.ones]
 model_params['kernel_regularizer'] = keras.regularizers.l2
 model_params['kernel_regularizer_scale'] = 0.0
 model_params['bias_regularizer'] = None
@@ -91,10 +93,12 @@ model_params['from_logits'] = True
 model_params['metrics'] = (['mse'])
 
 # training
-model_params['epochs'] = 10000
-model_params['mbsize'] = [16,64]
-model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['optimizer_params'] = [{'learning_rate':lr} for lr in np.logspace(-4,-6,3)]
+model_params['epochs'] = 100
+model_params['mbsize'] = None #[128,256]
+model_params['optimizer'] = tf.keras.optimizers.Adam
+model_params['optimizer_params'] ={'learning_rate':1e-4}
+#{'learning_rate':1e-4,'momentum':0.96,'nesterov':True}
+#[{'learning_rate':lr} for lr in np.logspace(-4,-6,3)]
 #[ {'learning_rate':lr,'momentum':0.95,'use_nesterov':True} for lr in np.logspace(-4,-8,5) ]
 #[{'learning_rate':lr} for lr in np.logspace(-4,-7,4)]
 

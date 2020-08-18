@@ -33,14 +33,11 @@ def generate_spd(ndim=2,scale=1,epsilon=1e-8):
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
-project = 'aekf_meas_cov_analysis'
+project = 'dissertation/imm'
 
 experiments = [
-    ('kf_{polynomial}_{noise}_F_{F}_R_Cov_{cov}'.format(polynomial='taylor',
-                                                        noise='cauchy',
-                                                        F='NCV',
-                                                        cov='sample'),
-    '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/aekf_meas_cov_analysis/eval/benchmark_taylor_cauchy_R2_1k.pkl')
+    ('kf_nca_turn_1_gaussian_0_20_Q_0-5',
+     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/dissertation/imm/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
 #****************************************************************************************************************************
@@ -84,31 +81,55 @@ kf_params['meas_dims'] = meas_dims = 2
 kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = dt = 1.0
+kf_params['dt'] = dt = 0.1
 
 # dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
-kf_params['model_order'] = model_order = 1
+kf_params['model_order'] = model_order = 3
 
-kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0]))
+kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
+
+#########
+# Models
+#########
 
 # state-transition model
-F_NCV = np.array([[1.0,dt],
-                  [0.0,1.0]])
 
-F_NCA = np.array([[1.0,dt,0.5*dt**2],
-                  [0.0,1.0,dt],
-                  [0.0,0.0,1.0]])
+F_NCV = np.zeros((model_order+1,model_order+1))
+F_NCA = np.zeros((model_order+1,model_order+1))
+F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+              [0.0,1.0,dt,0.5*dt**2],
+              [0.0,0.0,1.0,dt],
+              [0.0,0.0,0.0,1.0]])
 
-F_Jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-                   [0.0,1.0,dt,0.5*dt**2],
-                   [0.0,0.0,1.0,dt],
-                   [0.0,0.0,0.0,1.0]])
+F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
+F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
+F_JERK = F
+
+# process covariance
+
+Q_NCV = np.zeros((model_order+1,model_order+1))
+Q_NCA = np.zeros((model_order+1,model_order+1))
+Q = np.eye(model_order+1)
+
+Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
+Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
+Q_JERK = Q
 
 #######################
 # Choose Model Matrices
 #######################
 
-kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
+#############################
+# AEIMMKF Tracking Parameters
+#############################
+
+kf_params['F'] = np.kron(np.eye(state_dims),F_NCA)
+kf_params['R'] = 5 * np.eye(meas_dims)
+kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),Q_NCA)
+
+#####################
+# AEKF MCA Parameters
+#####################
 
 # diagonal
 # kf_params['R'] = 1.0 * np.eye(meas_dims)
@@ -116,8 +137,8 @@ kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
 
 # logspace diagonal
 #kf_params['R'] = [ r*np.eye(meas_dims) for r in np.logspace(2,-8,10) ]
-kf_params['R'] = None # [ None for r in np.logspace(2,-8,10) ]
-kf_params['Q'] = 1e-2 #[ q*np.eye((model_order+1)*state_dims) for q in np.logspace(-2,-8,4) ]
+# kf_params['R'] = None # [ None for r in np.logspace(2,-8,10) ]
+# kf_params['Q'] = 1e-2 #[ q*np.eye((model_order+1)*state_dims) for q in np.logspace(-2,-8,4) ]
 
 # random spd
 # kf_params['R'] = [ generate_spd(meas_dims,scale=10) for _ in np.arange(10) ]

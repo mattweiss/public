@@ -11,10 +11,10 @@ import dovebirdia.math.distributions as distributions
 # if parameters is a tuple that is the range from which the parameter is drawn
 
 ds_params = dict()
-ds_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/imm/eval/benchmark.pkl'
+ds_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/dissertation/imm/eval/benchmark_gaussian_20_turn.pkl'
 
 #######################################
-trials=100
+trials=1000
 turns = 1
 samples_per_state = 100
 samples = (2*turns+1)*samples_per_state
@@ -30,7 +30,8 @@ ds_params['v0']=(100.0,0.0)
 ds_params['radius_range']=(200.0,300.0)
 ds_params['angle_range']=(np.pi/4,np.pi/4)
 ds_params['cw']=1
-ds_params['noise']=(np.random.normal,{'loc':0.0,'scale':20})
+ds_params['noise']=(np.random.normal,{'loc':0.0,'scale':20},1.0)
+#ds_params['noise']=(np.random.standard_cauchy,{},5.0) # last entry is manual scale for cauchy
 
 # create DomainRandomizationDataset object
 dr_dataset = FlightKinematicsDataset(**ds_params)
