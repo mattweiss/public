@@ -1,6 +1,14 @@
 # dovebirdia
 ## deeplearning/
     
+    activations/ - Custom activation fuctions
+    
+        base.py
+
+    layers/ - Network Layer Classes
+    
+        base.py - Dense layer class
+        
     networks/ - Feed Forward, Autoencoder, etc.
       
         base.py - AbstractNetwork, FeedForwardNetwork
@@ -8,9 +16,6 @@
         lstm.py - Keras LSTM
         lstm_tf.py - Tensorflow LSTM
       
-    layers/ - Network Layer Classes
-    
-        base.py - Dense layer class
       
 ## datasets/
 
@@ -22,29 +27,28 @@
 ## filtering/
 
     base.py - AbstractFilter
+    distributions.py - Statistical Distributions
     kalman_filter.py - KalmanFilter
-    interacting_multiple_model.py - Interacting Mixture Model Estimator
+    interacting_multiple_model.py - Interacting Multiple Model Estimator
     
 ## math/
 
+    distributions.py - statistical distribution functions
     divergences.py - various divegences
-    metrics.py - various metrics
+    metrics.py - various distance metrics for matricies
     linalg.py - linear algebra functions
     
 ## utilities/
 
     base.py - dictToAttributes, saveDict
-    distributions.py - statistical distribution functions
+    dr_fuctions.py - Functions used to generate curve families during domain randomization
 
 ## scripts/
 
-    aekf_experiment_generator.py - creates configuration files to train aekf models
-    dl_evaluation_generator.py - creates configuration files to test previously trained aekf and ltsm models
-    dl_model.py - script used to train and test deep learning models
-    dr_test_set_generator.py - generates domain randomization test set and saves to disk
-    kf_experiment_generator.py - creates configuration files to run Kalman Filter models
-    filter_model.py - scripts used to test filter models
-    lstm_experiment_generator.py - creates configuration files to train lstm models
+    a variety of scripts used to generate experiments and scripts to run experiments
+    In general, *generator*.py files generate experiments and *model*.py scripts run experiments
+    For example, aekf_experiment_generator_dr.py generates AEKF domain randomization experiments and 
+    dl_model.py then runs these experiments.
     
 ## uml/
 
@@ -52,5 +56,8 @@
     
 ## synthetic_data/
 
-    synthetic_sensor_data_generator.py - synthetic sensor data base class
+    absorption_synthetic_data_generator.py - Produce synthetic sensor data using unique Gaussian draw at each sample in baseline curve
+    homotopy_synthetic_data_generator.py - Produce synthetic sensor data using homotopy interpolation between 2 curves in each label group
     piecewise_synthetic_sensor_data_generator.py - synthetic sensor data fit with parameters fit by piecewise, non-linear regression
+    synthetic_sensor_data_generator.py - synthetic sensor data base class
+    
