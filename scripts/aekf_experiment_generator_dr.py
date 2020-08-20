@@ -28,7 +28,7 @@ from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 
-project = 'dissertation/ccdc'
+project = 'dissertation/misc'
 
 experiment_name = 'aekf_dim_{meas_dim}_curve_{curve}_Noise_{noise}_F_{F}_N_{order}_R_{r_mode}_epoch_{epoch}_features_{features}_train_{train}_samples_{samples}_act_{activation}_KILLME'.format(meas_dim=8,
                                                                                                                                                                                          curve='taylor',

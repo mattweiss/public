@@ -28,8 +28,8 @@ import dovebirdia.math.distributions as distributions
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 project = 'imm'
-experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}_KILLME'.format(F1='NCV',Q1='1e-4',
-                                                                                          F2='NCA',Q2='1e-4')
+experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}'.format(F1='NCV',Q1='1e-4',
+                                                                                   F2='NCA',Q2='1e-4')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################

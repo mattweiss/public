@@ -82,7 +82,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
         for trial in range(self._n_trials):
 
-            # randomly select training function and parameters
+            # randomly select training function name, function, and parameters
             self._fn_name, self._fn_def, self._fn_params = random.choice(self._fns)
 
             y_loop_list = list()
@@ -93,10 +93,10 @@ class DomainRandomizationDataset(AbstractDataset):
 
                 for param in self._fn_params:
 
+                    # if parameters are sampled
                     if isinstance(param, tuple):
 
-                        #param_list.append(np.random.uniform(param[0], param[1]))
-                        param_list.append(np.random.uniform(param[1]/2, param[1]))
+                        param_list.append(np.random.uniform(param[0], param[1]))
                         param_list[-1] *= np.random.choice([-1,1])
                         
                     else:
@@ -117,6 +117,7 @@ class DomainRandomizationDataset(AbstractDataset):
 
             y = np.hstack(y_loop_list)
 
+            # shift to zero
             y -= y[0,:]
             
             ###############################################

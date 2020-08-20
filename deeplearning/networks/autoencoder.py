@@ -96,16 +96,22 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         self._setPlaceholders()
 
+        # encoder mapping
         self._encoder = self._encoderLayer(self._X)
 
+        # map encoder output to z and R via separate affine transformations
         self._z, self._R = self._preKalmanFilterAffineLayer(self._encoder)
-                
+
+        # run Kalman Filter with z and R as inputs
         self._kf_results = self._kalman_filter.fit([self._z,self._R])
 
+        # affine transformation of Kalman Filter output
         self._post_kf_affine = self._postKalmanFilterAffineLayer(tf.squeeze(self._kf_results['z_hat_pri'],axis=-1))
 
+        # decoder mapping
         self._decoder = self._decoderLayer(self._post_kf_affine)
-        
+
+        # final output
         self._y_hat = self._outputLayer(self._decoder)
 
     def _setLoss(self):
@@ -151,10 +157,8 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         z = tf.expand_dims(z, axis=-1)
 
+        # dimensions of L
         self._L_dims = np.sum(np.arange(1,self._dim_scale*self._hidden_dims[-1]+1))
-
-        # backwards compatibility
-        # try:
 
         # learned noise covariance
         if self._R_model == 'learned':
@@ -172,8 +176,10 @@ class AutoencoderKalmanFilter(Autoencoder):
                             input_dropout_rate=0.0,
                             dropout_rate=0.0).build(input, [self._L_dims])
 
+            # maps each L to R, ensuring R is positive definite
             R = tf.map_fn(self._generate_spd_cov_matrix, self._L)
 
+        # if R is fixed as identity
         elif self._R_model == 'identity':
 
             R = tf.eye(self._hidden_dims[-1], batch_shape=[tf.shape(z)[0]], dtype=tf_float_prec)
@@ -253,10 +259,10 @@ class AutoencoderKalmanFilter(Autoencoder):
         L = tf.contrib.distributions.fill_triangular(R, upper = True)
 
         # ensure diagonal of L is positive
-        #L = pos_diag(L,diag_func=tf.abs)
+        #L = pos_diag(L,diag_func=tf.abs) # see math.linalg for pos_diag function.  Alternative to line below
         L = tf.multiply(L,tf.math.sign(L))
         
-        #eps = 0.0
+        #eps = 0.0 # optionally add an epsilon for numerical stability.  See commented out lines below
         R = tf.matmul(L,L,transpose_a=True)
         #+ eps * tf.eye(tf.shape(L)[0],dtype=tf_float_prec)
 
@@ -264,7 +270,9 @@ class AutoencoderKalmanFilter(Autoencoder):
 
     def _make_spd_matrix(self, x):
 
-        """ Wrapper for sklearn make_spd_matrix """
+        """ 
+        Wrapper for sklearn make_spd_matrix
+        """
 
         return tf.py_func(make_spd_matrix, [x], tf_float_prec)
 
@@ -284,6 +292,11 @@ class AutoencoderKalmanFilter(Autoencoder):
 
     def _shapiro_wilk(self, x):
 
+        """
+        Initially envisioned as a penalty term for cost function to force autoencoder to make transformation more ``Gaussian''
+        Was not successfully or extensively utilized
+        """
+        
         x = tf.reshape(x, [tf.size(x)])
         print('X.shape in Shapiro-Wilk:%s' % (tf.shape(x)))
 
@@ -354,6 +367,9 @@ class AutoencoderInteractingMultipleModel(AutoencoderKalmanFilter):
 
     """
     Autoencoder-Interacting Multiple Model Class
+    This is a wrapper class which does not implement any new functionality
+    It just calls the functions in its parent class.  However, in the future
+    unique functionality may be necessary so this layer was created.  
     """
 
     def __init__(self, params=None, kf_params=None):

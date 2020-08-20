@@ -26,7 +26,7 @@ from dovebirdia.datasets.flight_kinematics import FlightKinematicsDataset
 
 #######################################
 trials=1
-turns = 1
+turns = 2
 samples_per_state = 100
 samples = (2*turns+1)*samples_per_state
 dt=0.1
@@ -36,9 +36,9 @@ dt=0.1
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project = 'dissertation/imm'
+project = 'asilomar2020'
 experiment_name = 'aeimm_turns_{turns}_{noise}_F_{F}_Q_{Q}'.format(turns=turns,
-                                                                   noise='cauchy_0_5',
+                                                                   noise='gaussian_0_20',
                                                                    F='NCA1_NCA2',
                                                                    Q='0-5')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
@@ -121,8 +121,8 @@ ds_params['v0']=(100.0,0.0)
 ds_params['radius_range']=(200.0,300.0)
 ds_params['angle_range']=(np.pi/4,np.pi/4)
 ds_params['cw']=1
-#ds_params['noise']=(np.random.normal,{'loc':0.0,'scale':20},1.0)
-ds_params['noise']=(np.random.standard_cauchy,{},5.0) # last entry is manual scale for cauchy
+ds_params['noise']=(np.random.normal,{'loc':0.0,'scale':20},1.0)
+#ds_params['noise']=(np.random.standard_cauchy,{},5.0) # last entry is manual scale for cauchy
 ds_params['metric_sublen'] = model_params['epochs'] // 100
 
 ####################################

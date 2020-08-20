@@ -13,6 +13,7 @@ class HilbertFilter(FeedForwardNetwork):
 
     """
     Implementation of network that learns coefficients of functions in Hilbert Space
+    *** PROTOTYPE CODE ***
     """
 
     def __init__(self, params=None):

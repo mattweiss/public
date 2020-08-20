@@ -18,6 +18,7 @@ class KalmanFilter(AbstractFilter):
         """
         Implements a Kalman Filter in Tensorflow
         """
+
         params['sample_freq'] = np.reciprocal(params['dt'])
 
         super().__init__(params)

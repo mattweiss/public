@@ -497,16 +497,16 @@ class FeedForwardNetwork(AbstractNetwork):
                         y_train = x_train
                         y_val = x_val
 
-                    # plt.figure(figsize=(6,6))
+                    # plt.figure(figsize=(12,6))
 
-                    # plt.subplot(111)
+                    # plt.subplot(121)
 
                     # # noise
                     # plt.scatter(x_train[:100,0],x_train[:100,1],label='noise',c='C0')
                     # plt.scatter(x_train[100:200,0],x_train[100:200,1],label='noise',c='C1')
                     # plt.scatter(x_train[200:,0],x_train[200:,1],label='noise',c='C2')
 
-                    # truth
+                    # # truth
                     # plt.plot(y_train[:,0],y_train[:,1],label='noise',c='black')
                     # plt.plot(y_train[100:200,0],y_train[100:200,1],label='noise',c='C1')
                     # plt.plot(y_train[200:,0],y_train[200:,1],label='noise',c='C2')
@@ -514,7 +514,7 @@ class FeedForwardNetwork(AbstractNetwork):
                     # plt.xlabel('x (m)')
                     # plt.ylabel('y (m)')
                     # plt.grid()
-                    #plt.legend()
+                    # plt.legend()
 
                     # plt.subplot(122)
                     # plt.scatter(x_val[:,0],x_val[:,1],label='noise',c='C0')
@@ -523,7 +523,8 @@ class FeedForwardNetwork(AbstractNetwork):
                     # plt.grid()
                     # plt.legend()
                     
-                    # plt.savefig('/home/mlweiss/tmp/plot_{epoch}'.format(epoch=epoch),dpi=300)
+                    # #plt.savefig('/home/mlweiss/tmp/plot_{epoch}'.format(epoch=epoch),dpi=300)
+                    # plt.show()
                     # plt.close()
 
                     # train on minibatches
