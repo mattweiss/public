@@ -7,27 +7,41 @@ import tensorflow_probability as tfp
 from sklearn.datasets import make_spd_matrix
 from scipy import stats
 from pdb import set_trace as st
-from dovebirdia.filtering.base import AbstractFilter
 from dovebirdia.utilities.base import saveDict
 from dovebirdia.math.linalg import is_invertible, pos_diag
 
-class KalmanFilter(AbstractFilter):
+class KalmanFilter():
 
-    def __init__(self, params=None):
+    def __init__(self,
+                 meas_dims=None,
+                 state_dims=None,
+                 dt=None,
+                 model_order=None,
+                 F=None,
+                 Q=None,
+                 H=None,
+                 R=None,
+                 with_z_dot=None):
 
         """
         Implements a Kalman Filter in Tensorflow
         """
 
-        params['sample_freq'] = np.reciprocal(params['dt'])
+        self._meas_dims = meas_dims
+        self._state_dims = state_dims
+        self._model_order = model_order
+        self._dt = dt
+        self._F = F
+        self._Q = Q
+        self._H = H
+        self._R = R
+        self._with_z_dot = with_z_dot
 
-        super().__init__(params)
-        
+        self._sample_freq = np.reciprocal(self._dt)
+
         self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np_float_prec)
         self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np_float_prec)
         
-################################################################################
-
     def fit(self, inputs):
 
         """
@@ -49,8 +63,6 @@ class KalmanFilter(AbstractFilter):
 
         return filter_results
 
-################################################################################
-
     def _kfScan(self, state, z):
 
         """ This is where the Kalman Filter is implemented. """
@@ -71,8 +83,6 @@ class KalmanFilter(AbstractFilter):
 
         return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
 
-###############################################################################
-
     def _predict(self,x=None,P=None):
 
         assert x is not None
@@ -82,8 +92,6 @@ class KalmanFilter(AbstractFilter):
         P_pri = tf.add(tf.matmul(self._F,tf.matmul(P,self._F,transpose_b=True)),self._Q,name='P_pri')
         
         return x_pri, P_pri
-
-###############################################################################
 
     def _update(self,z,x,P):
 
@@ -120,8 +128,6 @@ class KalmanFilter(AbstractFilter):
         
         return x_post, P_post, likelihood
 
-################################################################################
-
     def _process_inputs(self,inputs):
 
         # if learning R, z and R will be passed
@@ -154,8 +160,6 @@ class KalmanFilter(AbstractFilter):
                 self._R = z_hat.T@z_hat / (z_hat.shape[0]-1)
                 
         return tf.convert_to_tensor(z)
-
-################################################################################
 
     def _process_results(self,x_hat_pri, x_hat_post, P_pri, P_post, z):
 
@@ -191,8 +195,6 @@ class KalmanFilter(AbstractFilter):
         
         return filter_result
 
-################################################################################
-
     def evaluate(self, x=None, x_key='z_hat_post', save_results=True):
 
         assert x is not None
@@ -201,3 +203,48 @@ class KalmanFilter(AbstractFilter):
 
         return filter_result[x_key][:,:,0], filter_result['R']
     
+################################################################################
+
+class ExtendedKalmanFilter(KalmanFilter):
+
+    """
+    Tensorflow implementation of Extended Kalman Filter
+    """
+
+    def __init__(self,
+                 meas_dims=None,
+                 state_dims=None,
+                 dt=None,
+                 model_order=None,
+                 F=None,
+                 J=None,
+                 Q=None,
+                 H=None,
+                 R=None,
+                 with_z_dot=None):
+
+        super().__init__(meas_dims=meas_dims,
+                         state_dims=state_dims,
+                         dt=dt,
+                         model_order=model_order,
+                         F=F,
+                         Q=Q,
+                         H=H,
+                         R=R,
+                         with_z_dot=with_z_dot)
+
+    
+        # Jacobian
+        self._J = J
+
+    def _predict(self,x=None,P=None):
+
+        assert x is not None
+        assert P is not None
+
+        st()
+        
+        x_pri = tf.matmul(self._F(state_dims=self._state_dims,dt=self._dt),x,name='x_pri')
+        P_pri = tf.add(tf.matmul(self._J(),tf.matmul(P,self._J(),transpose_b=True)),self._Q,name='P_pri')
+        
+        return x_pri, P_pri

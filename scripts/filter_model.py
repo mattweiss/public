@@ -25,7 +25,7 @@ import csv
 import pandas as pd
 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
-from dovebirdia.filtering.kalman_filter import KalmanFilter
+from dovebirdia.filtering.kalman_filter import KalmanFilter, ExtendedKalmanFilter
 from dovebirdia.utilities.base import saveDict, loadDict
 
 import matplotlib
@@ -97,7 +97,8 @@ filter_results_list = list()
 
 for z in z_meas:
 
-    filter = config_dicts['meta']['filter'](config_dicts['kf'])
+    filter = config_dicts['meta']
+    ['filter'](**config_dicts['kf'])
     filter_results = filter.fit(z)
     filter_results_list.append(filter_results)
     tf.compat.v1.reset_default_graph()

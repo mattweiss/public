@@ -11,10 +11,10 @@ import dovebirdia.math.distributions as distributions
 # if parameters is a tuple that is the range from which the parameter is drawn
 
 ds_params = dict()
-ds_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/dissertation/imm/eval/benchmark_gaussian_20_turn.pkl'
+ds_params['save_path'] = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/benchmark_gaussian_20_turn.pkl'
 
 #######################################
-trials=1000
+trials=10
 turns = 1
 samples_per_state = 100
 samples = (2*turns+1)*samples_per_state

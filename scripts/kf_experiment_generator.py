@@ -14,7 +14,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.filtering.kalman_filter import KalmanFilter
+from dovebirdia.filtering.kalman_filter import KalmanFilter, ExtendedKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from sklearn.datasets import make_spd_matrix
@@ -33,11 +33,11 @@ def generate_spd(ndim=2,scale=1,epsilon=1e-8):
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_model.py'
 #****************************************************************************************************************************
-project = 'dissertation/imm'
+project = 'asilomar2020'
 
 experiments = [
-    ('kf_nca_turn_1_gaussian_0_20_Q_0-5',
-     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/dissertation/imm/eval/benchmark_gaussian_20_turn.pkl')
+    ('ekf_ncv_turn_1_gaussian_0_20_Q_0-5',
+     '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
 #****************************************************************************************************************************
@@ -60,7 +60,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = KalmanFilter
+meta_params['filter'] = ExtendedKalmanFilter
 
 ####################################
 # Model Parameters
@@ -123,9 +123,9 @@ Q_JERK = Q
 # AEIMMKF Tracking Parameters
 #############################
 
-kf_params['F'] = np.kron(np.eye(state_dims),F_NCA)
+kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
 kf_params['R'] = 5 * np.eye(meas_dims)
-kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),Q_NCA)
+kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),Q_NCV)
 
 #####################
 # AEKF MCA Parameters
