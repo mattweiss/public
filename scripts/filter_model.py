@@ -97,8 +97,7 @@ filter_results_list = list()
 
 for z in z_meas:
 
-    filter = config_dicts['meta']
-    ['filter'](**config_dicts['kf'])
+    filter = config_dicts['meta']['filter'](**config_dicts['kf'])
     filter_results = filter.fit(z)
     filter_results_list.append(filter_results)
     tf.compat.v1.reset_default_graph()

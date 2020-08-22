@@ -36,7 +36,7 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'asilomar2020'
 
 experiments = [
-    ('ekf_ncv_turn_1_gaussian_0_20_Q_0-5',
+    ('kf_ncv_turn_1_gaussian_0_20_Q_0-5',
      '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
@@ -60,7 +60,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = ExtendedKalmanFilter
+meta_params['filter'] = KalmanFilter
 
 ####################################
 # Model Parameters
@@ -72,8 +72,6 @@ model_params['results_dir'] = '/results/'
 # Kalman Filter Parameters
 ####################################
 
-kf_params['with_z_dot'] = with_z_dot = False
-
 #  measurements dimensions
 kf_params['meas_dims'] = meas_dims = 2
 
@@ -83,49 +81,42 @@ kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 # number of state estimate 
 kf_params['dt'] = dt = 0.1
 
-# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
+# dynamical model order (i.e. ncv = 2, nca = 3, jerk = 4)
 kf_params['model_order'] = model_order = 3
 
-kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
+kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order),0,1) )
 
 #########
 # Models
 #########
 
-# state-transition model
+# state-transition models
+# F_NCV = np.array([[1.0,dt],
+#                   [0.0,1.0]])
 
-F_NCV = np.zeros((model_order+1,model_order+1))
-F_NCA = np.zeros((model_order+1,model_order+1))
-F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-              [0.0,1.0,dt,0.5*dt**2],
-              [0.0,0.0,1.0,dt],
-              [0.0,0.0,0.0,1.0]])
+# F_NCA = np.array([[1.0,dt,0.5*dt**2],
+#                   [0.0,1.0,dt],
+#                   [0.0,0.0,1.0]])
 
-F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
-F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
-F_JERK = F
+# F_jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+#                    [0.0,1.0,dt,0.5*dt**2],
+#                    [0.0,0.0,1.0,dt],
+#                    [0.0,0.0,0.0,1.0]])
 
-# process covariance
+def F(state_dims,dt):
 
-Q_NCV = np.zeros((model_order+1,model_order+1))
-Q_NCA = np.zeros((model_order+1,model_order+1))
-Q = np.eye(model_order+1)
+    f = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+                  [0.0,1.0,dt,0.5*dt**2],
+                  [0.0,0.0,1.0,dt],
+                  [0.0,0.0,0.0,1.0]])
 
-Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
-Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
-Q_JERK = Q
+    return np.kron(np.eye(state_dims),f)
 
-#######################
-# Choose Model Matrices
-#######################
+kf_params['F'] = F
+kf_params['F_params'] = ('state_dims','dt')
 
-#############################
-# AEIMMKF Tracking Parameters
-#############################
-
-kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
 kf_params['R'] = 5 * np.eye(meas_dims)
-kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),Q_NCV)
+kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),np.eye(model_order+1))
 
 #####################
 # AEKF MCA Parameters

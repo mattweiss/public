@@ -1,4 +1,4 @@
-import sys
+import sys                     
 import tensorflow as tf
 tf_float_prec = tf.float64
 import numpy as np
@@ -18,6 +18,7 @@ class KalmanFilter():
                  dt=None,
                  model_order=None,
                  F=None,
+                 F_params=None,
                  Q=None,
                  H=None,
                  R=None,
@@ -27,73 +28,75 @@ class KalmanFilter():
         Implements a Kalman Filter in Tensorflow
         """
 
-        self._meas_dims = meas_dims
-        self._state_dims = state_dims
-        self._model_order = model_order
-        self._dt = dt
-        self._F = F
-        self._Q = Q
-        self._H = H
-        self._R = R
-        self._with_z_dot = with_z_dot
+        self.meas_dims = meas_dims
+        self.state_dims = state_dims
+        self.model_order = model_order
+        self.dt = dt
+        self.F = F
+        self.Q = Q
+        self.H = H
+        self.R = R
+        self.with_z_dot = with_z_dot
 
-        self._sample_freq = np.reciprocal(self._dt)
+        self.sample_freq = np.reciprocal(self.dt)
 
-        self._x0 = np.zeros(((self._model_order+1)*self._state_dims,1), dtype=np_float_prec)
-        self._P0 = np.eye((self._model_order+1)*self._state_dims, dtype=np_float_prec)
-        
-    def fit(self, inputs):
+        self.x0 = np.zeros(((self.model_order+1)*self.state_dims,1), dtype=np_float_prec)
+        self.P0 = np.eye((self.model_order+1)*self.state_dims, dtype=np_float_prec)
+
+        self.F_params = {k:self.__dict__[k] for k in F_params}
+
+    def fit(self,inputs):
 
         """
         Apply Kalman Filter, Using Wrapper Functions
         inputs is a list.  First element is z, second (optional) element is R
         """
 
-        z = self._process_inputs(inputs)
+        z = self.process_inputs(inputs)
 
-        x_hat_pri, x_hat_post, P_pri, P_post, self._kf_ctr = tf.scan(self._kfScan,
+        x_hat_pri, x_hat_post, P_pri, P_post, self.kf_ctr = tf.scan(self.kfScan,
                                                                      z,
-                                                                     initializer = [ self._x0,
-                                                                                     self._x0,
-                                                                                     self._P0,
-                                                                                     self._P0, tf.constant(0) ],
+                                                                     initializer = [ self.x0,
+                                                                                     self.x0,
+                                                                                     self.P0,
+                                                                                     self.P0, tf.constant(0) ],
                                                                      name='kfScan')
 
-        filter_results = self._process_results(x_hat_pri, x_hat_post, P_pri, P_post, z)
+        filter_results = self.process_results(x_hat_pri, x_hat_post, P_pri, P_post, z)
 
         return filter_results
 
-    def _kfScan(self, state, z):
+    def kfScan(self,state, z):
 
         """ This is where the Kalman Filter is implemented. """
 
-        _, x_post, _, P_post, self._kf_ctr = state
+        _, x_post, _, P_post, self.kf_ctr = state
 
         ##########
         # Predict
         ##########
         
-        x_pri, P_pri = self._predict(x_post,P_post)
+        x_pri, P_pri = self.predict(x_post,P_post)
 
         #########
         # Update
         #########
 
-        x_post, P_post, _ = self._update(z, x_pri, P_pri)
+        x_post, P_post, _ = self.update(z, x_pri, P_pri)
 
-        return [ x_pri, x_post, P_pri, P_post, tf.add(self._kf_ctr,1) ]
+        return [ x_pri, x_post, P_pri, P_post, tf.add(self.kf_ctr,1) ]
 
-    def _predict(self,x=None,P=None):
+    def predict(self,x=None,P=None):
 
         assert x is not None
         assert P is not None
 
-        x_pri = tf.matmul(self._F,x,name='x_pri')
-        P_pri = tf.add(tf.matmul(self._F,tf.matmul(P,self._F,transpose_b=True)),self._Q,name='P_pri')
+        x_pri = tf.matmul(self.F(**self.F_params),x,name='x_pri')
+        P_pri = tf.add(tf.matmul(self.F(**self.F_params),tf.matmul(P,self.F(**self.F_params),transpose_b=True)),self.Q,name='P_pri')
         
         return x_pri, P_pri
 
-    def _update(self,z,x,P):
+    def update(self,z,x,P):
 
         assert z is not None
         assert x is not None
@@ -102,23 +105,23 @@ class KalmanFilter():
         # indexed R
         try:
 
-            R = self._R[self._kf_ctr]
+            R = self.R[self.kf_ctr]
 
         # Fixed R
         except:
 
-            R = self._R
+            R = self.R
 
-        S = tf.matmul(self._H,tf.matmul(P,self._H,transpose_b=True)) + R #+ tf.cast(1e-1*tf.eye(R.shape[0]),dtype=tf_float_prec)
+        S = tf.matmul(self.H,tf.matmul(P,self.H,transpose_b=True)) + R #+ tf.cast(1e-1*tf.eye(R.shape[0]),dtype=tf_float_prec)
 
         S_inv = tf.linalg.inv(S)
 
-        K = tf.matmul(P,tf.matmul(self._H,S_inv,transpose_a=True,name='KF_H-S_inv'),name='KF_K')
+        K = tf.matmul(P,tf.matmul(self.H,S_inv,transpose_a=True,name='KF_H-S_inv'),name='KF_K')
 
-        y = tf.subtract(z,tf.matmul(self._H,x),name='innov_plus')
+        y = tf.subtract(z,tf.matmul(self.H,x),name='innov_plus')
 
         x_post = tf.add(x,tf.matmul(K,y),name='x_post')
-        P_post = (tf.eye(tf.shape(P)[0],dtype=tf_float_prec)-K@self._H)@P
+        P_post = (tf.eye(tf.shape(P)[0],dtype=tf_float_prec)-K@self.H)@P
 
         # compute likelihood
         likelihood = tfp.distributions.MultivariateNormalFullCovariance(loc=tf.zeros(y.get_shape()[0],dtype=tf_float_prec),
@@ -128,14 +131,14 @@ class KalmanFilter():
         
         return x_post, P_post, likelihood
 
-    def _process_inputs(self,inputs):
+    def process_inputs(self,inputs):
 
         # if learning R, z and R will be passed
         if isinstance(inputs,list):
 
             # extract z and (possibly) R from inputs list
             z = inputs[0]
-            self._R = inputs[1]
+            self.R = inputs[1]
 
             # ensure z is rank e
             if np.ndim(z) < 3:
@@ -153,20 +156,20 @@ class KalmanFilter():
 
                 z = np.expand_dims(inputs,axis=-1)
                 
-            # if self._R is non use sample covariance
-            if self._R is None:
+            # if self.R is non use sample covariance
+            if self.R is None:
 
                 z_hat = np.squeeze(z) - np.mean(np.squeeze(z),axis=0)
-                self._R = z_hat.T@z_hat / (z_hat.shape[0]-1)
+                self.R = z_hat.T@z_hat / (z_hat.shape[0]-1)
                 
         return tf.convert_to_tensor(z)
 
-    def _process_results(self,x_hat_pri, x_hat_post, P_pri, P_post, z):
+    def process_results(self,x_hat_pri, x_hat_post, P_pri, P_post, z):
 
-        z_hat_pri  = tf.matmul(self._H, x_hat_pri, name='z_pri', transpose_b=False)
-        z_hat_post = tf.matmul(self._H, x_hat_post, name='z_post', transpose_b=False)
-        HPHT_pri = self._H@P_pri@tf.transpose(self._H)
-        HPHT_post = self._H@P_post@tf.transpose(self._H)
+        z_hat_pri  = tf.matmul(self.H, x_hat_pri, name='z_pri', transpose_b=False)
+        z_hat_post = tf.matmul(self.H, x_hat_post, name='z_post', transpose_b=False)
+        HPHT_pri = self.H@P_pri@tf.transpose(self.H)
+        HPHT_post = self.H@P_post@tf.transpose(self.H)
         
         filter_result = {
             'x_hat_pri':x_hat_pri,
@@ -178,7 +181,7 @@ class KalmanFilter():
             'HPHT_pri':HPHT_pri,
             'HPHT_post':HPHT_post,
             'z':z,
-            'R':tf.convert_to_tensor(self._R),
+            'R':tf.convert_to_tensor(self.R),
             }
 
         # if session is currently defined try will fail and tensors will be returned, otherwise evaluate tensors and return np arrays
@@ -195,7 +198,7 @@ class KalmanFilter():
         
         return filter_result
 
-    def evaluate(self, x=None, x_key='z_hat_post', save_results=True):
+    def evaluate(self,x=None, x_key='z_hat_post', save_results=True):
 
         assert x is not None
 
@@ -217,7 +220,9 @@ class ExtendedKalmanFilter(KalmanFilter):
                  dt=None,
                  model_order=None,
                  F=None,
+                 F_params=None,
                  J=None,
+                 J_params=None,
                  Q=None,
                  H=None,
                  R=None,
@@ -228,6 +233,7 @@ class ExtendedKalmanFilter(KalmanFilter):
                          dt=dt,
                          model_order=model_order,
                          F=F,
+                         F_params=F_params,
                          Q=Q,
                          H=H,
                          R=R,
@@ -235,16 +241,16 @@ class ExtendedKalmanFilter(KalmanFilter):
 
     
         # Jacobian
-        self._J = J
+        self.J = J
 
-    def _predict(self,x=None,P=None):
+        self.J_params = {k:self.__dict__[k] for k in J_params}
+
+    def predict(self,x=None,P=None):
 
         assert x is not None
         assert P is not None
 
-        st()
-        
-        x_pri = tf.matmul(self._F(state_dims=self._state_dims,dt=self._dt),x,name='x_pri')
-        P_pri = tf.add(tf.matmul(self._J(),tf.matmul(P,self._J(),transpose_b=True)),self._Q,name='P_pri')
+        x_pri = tf.matmul(self.F(**self.F_params),x,name='x_pri')
+        P_pri = tf.add(tf.matmul(self.J(**self.J_params),tf.matmul(P,self.J(**self.J_params),transpose_b=True)),self.Q,name='P_pri')
         
         return x_pri, P_pri
