@@ -28,7 +28,7 @@ from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
 
-project = 'dissertation/misc'
+project = 'asilomar2020'
 
 experiment_name = 'aekf_dim_{meas_dim}_curve_{curve}_Noise_{noise}_F_{F}_N_{order}_R_{r_mode}_epoch_{epoch}_features_{features}_train_{train}_samples_{samples}_act_{activation}_KILLME'.format(meas_dim=8,
                                                                                                                                                                                          curve='taylor',
@@ -168,52 +168,39 @@ ds_params['noise'] = [
 # Kalman Filter Parameters
 ####################################
 
-
-kf_params['with_z_dot'] = with_z_dot = False
-
 #  measurements dimensions
-kf_params['meas_dims'] = meas_dims = 8
+kf_params['meas_dims'] = meas_dims = 2
 
 #  state space dimensions
 kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = dt
+kf_params['dt'] = dt = 0.1
 
-# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
-kf_params['model_order'] = model_order = 3
+# dynamical model order (i.e. ncv = 2, nca = 3, jerk = 4)
+kf_params['model_order'] = model_order = 2
 
-kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
+#########
+# Models
+#########
 
-# state-transition model
+# state-transition models
+F_NCV = np.array([[1.0,dt],
+                  [0.0,1.0]])
 
-F_NCV = np.zeros((model_order+1,model_order+1))
-F_NCA = np.zeros((model_order+1,model_order+1))
-F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-              [0.0,1.0,dt,0.5*dt**2],
-              [0.0,0.0,1.0,dt],
-              [0.0,0.0,0.0,1.0]])
+F_NCA = np.array([[1.0,dt,0.5*dt**2],
+                  [0.0,1.0,dt],
+                  [0.0,0.0,1.0]])
 
-F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
-F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
-F_JERK = F
-
-# process covariance
-
-Q_NCV = np.zeros((model_order+1,model_order+1))
-Q_NCA = np.zeros((model_order+1,model_order+1))
-Q = np.eye(model_order+1)
-
-Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
-Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
-Q_JERK = Q
-
-#######################
-# Choose Model Matrices
-#######################
+F_jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+                   [0.0,1.0,dt,0.5*dt**2],
+                   [0.0,0.0,1.0,dt],
+                   [0.0,0.0,0.0,1.0]])
 
 kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
-kf_params['Q'] = [ q * np.kron(np.eye(state_dims), Q_NCV) for q in np.logspace(-2,-8,4) ]
+kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),np.eye(model_order))
+
+kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order-1),0,1) )
 kf_params['R'] = None
 
 ########################################

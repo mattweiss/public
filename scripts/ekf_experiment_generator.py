@@ -36,7 +36,7 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'asilomar2020'
 
 experiments = [
-    ('kf_ncv_turn_1_gaussian_0_20_Q_0-5',
+    ('ekf_ncv_turn_1_gaussian_0_20_Q_0-5',
      '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
@@ -60,7 +60,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = KalmanFilter
+meta_params['filter'] = ExtendedKalmanFilter
 
 ####################################
 # Model Parameters
@@ -84,55 +84,39 @@ kf_params['dt'] = dt = 0.1
 # dynamical model order (i.e. ncv = 2, nca = 3, jerk = 4)
 kf_params['model_order'] = model_order = 2
 
-#########
-# Models
-#########
-
 # state-transition models
-F_NCV = np.array([[1.0,dt],
-                  [0.0,1.0]])
 
-F_NCA = np.array([[1.0,dt,0.5*dt**2],
-                  [0.0,1.0,dt],
-                  [0.0,0.0,1.0]])
+#NCV
+# np.array([[1.0,dt],
+#           [0.0,1.0]])
 
-F_jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-                   [0.0,1.0,dt,0.5*dt**2],
-                   [0.0,0.0,1.0,dt],
-                   [0.0,0.0,0.0,1.0]])
+# # NCA
+# np.array([[1.0,dt,0.5*dt**2],
+#           [0.0,1.0,dt],
+#           [0.0,0.0,1.0]])
 
-# def F(state_dims,dt):
+# # Jerk
+# np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+#           [0.0,1.0,dt,0.5*dt**2],
+#           [0.0,0.0,1.0,dt],
+#           [0.0,0.0,0.0,1.0]])
 
-#     f = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-#                   [0.0,1.0,dt,0.5*dt**2],
-#                   [0.0,0.0,1.0,dt],
-#                   [0.0,0.0,0.0,1.0]])
+def F(state_dims,dt):
 
-#    return np.kron(np.eye(state_dims),f)
+    state_trans = np.array([[1.0,dt],
+                            [0.0,1.0]])
+    
+    return np.kron(np.eye(state_dims),state_trans)
 
-kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
-#kf_params['F_params'] = ('state_dims','dt')
+kf_params['F'] = F
+kf_params['F_params'] = ('state_dims','dt')
+
+kf_params['J'] = kf_params['F']
+kf_params['J_params'] = kf_params['F_params']
 
 kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order-1),0,1) )
 kf_params['R'] = 5 * np.eye(meas_dims)
-kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),np.eye(model_order))
-
-#####################
-# AEKF MCA Parameters
-#####################
-
-# diagonal
-# kf_params['R'] = 1.0 * np.eye(meas_dims)
-# kf_params['Q'] = 1e-4*np.eye((model_order+1)*state_dims)
-
-# logspace diagonal
-#kf_params['R'] = [ r*np.eye(meas_dims) for r in np.logspace(2,-8,10) ]
-# kf_params['R'] = None # [ None for r in np.logspace(2,-8,10) ]
-# kf_params['Q'] = 1e-2 #[ q*np.eye((model_order+1)*state_dims) for q in np.logspace(-2,-8,4) ]
-
-# random spd
-# kf_params['R'] = [ generate_spd(meas_dims,scale=10) for _ in np.arange(10) ]
-# kf_params['Q'] = [ generate_spd((model_order+1)*state_dims,scale=10) for _ in np.arange(10) ]
+kf_params['Q'] = 0.5 * np.kron(np.eye(state_dims),np.eye(model_order))
 
 ####################################
 # Determine scaler and vector parameters

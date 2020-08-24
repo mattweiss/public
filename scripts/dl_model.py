@@ -24,7 +24,7 @@ import csv
 import pandas as pd
 
 from dovebirdia.utilities.base import loadDict
-from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter, AutoencoderInteractingMultipleModel
+from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 from dovebirdia.deeplearning.networks.lstm_tf import LSTM
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from dovebirdia.datasets.nyse_dataset import nyseDataset
@@ -161,7 +161,6 @@ else:
 config_dicts['model']['hidden_dims'] = list(config_dicts['model']['hidden_dims'])
 
 # if using AEKF
-#if config_dicts['meta']['network'].__name__ == 'AutoencoderKalmanFilter' or 'AutoencoderInteractingMultipleModel':
 try:
     
     # append n_signals
@@ -240,7 +239,7 @@ else:
     eval_ops_list =  None
     attributes_list = None
         
-    if class_name == 'AutoencoderKalmanFilter' or class_name ==  'AutoencoderInteractingMultipleModel':
+    if class_name == 'AutoencoderKalmanFilter':
 
         eval_ops_list =  ['kf_results']
         

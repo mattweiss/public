@@ -19,7 +19,7 @@ except:
 from sklearn.datasets import make_spd_matrix
 
 from dovebirdia.filtering.kalman_filter import KalmanFilter
-from dovebirdia.filtering.interacting_multiple_model import InteractingMultipleModel
+from dovebirdia.filtering.interacting_multiple_model_kalman_filter import InteractingMultipleModelKalmanFilter
 
 from dovebirdia.utilities.base import dictToAttributes, saveDict
 
@@ -80,7 +80,7 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         # instantiate Kalman Filter before parent constructor as
         # the parent calls _buildNetwork()
-        self._kalman_filter = params['kf_type'](params=kf_params)
+        self._kalman_filter = params['kf_type'](**kf_params)
         
         super().__init__(params=params)
 
@@ -139,9 +139,6 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         assert input is not None
 
-        # scale Z, L and R dimensions if including z dot
-        self._dim_scale = self._kalman_filter._model_order + 1 if self._kalman_filter._with_z_dot else 1
-
         z = Dense(name='z',
                   weight_initializer=self._weight_initializer,
                   weight_regularizer=self._weight_regularizer,
@@ -153,12 +150,12 @@ class AutoencoderKalmanFilter(Autoencoder):
                   activation=None,
                   use_bias=True,
                   input_dropout_rate=0.0,
-                  dropout_rate=0.0).build(input, [self._dim_scale*self._hidden_dims[-1]])
+                  dropout_rate=0.0).build(input, [self._hidden_dims[-1]])
 
         z = tf.expand_dims(z, axis=-1)
 
         # dimensions of L
-        self._L_dims = np.sum(np.arange(1,self._dim_scale*self._hidden_dims[-1]+1))
+        self._L_dims = np.sum(np.arange(1,self._hidden_dims[-1]+1))
 
         # learned noise covariance
         if self._R_model == 'learned':
@@ -362,28 +359,3 @@ class AutoencoderKalmanFilter(Autoencoder):
 
         # return W, a, epsilon, u, m, m_i
         return W
-
-class AutoencoderInteractingMultipleModel(AutoencoderKalmanFilter):
-
-    """
-    Autoencoder-Interacting Multiple Model Class
-    This is a wrapper class which does not implement any new functionality
-    It just calls the functions in its parent class.  However, in the future
-    unique functionality may be necessary so this layer was created.  
-    """
-
-    def __init__(self, params=None, kf_params=None):
-
-        super().__init__(params=params,kf_params=kf_params)
-        
-    ##################
-    # Public Methods #
-    ##################
-
-    ###################
-    # Private Methods #
-    ###################
-
-    def _setLoss(self):
-
-        super()._setLoss()

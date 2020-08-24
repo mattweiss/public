@@ -18,11 +18,9 @@ class KalmanFilter():
                  dt=None,
                  model_order=None,
                  F=None,
-                 F_params=None,
                  Q=None,
                  H=None,
-                 R=None,
-                 with_z_dot=None):
+                 R=None):
 
         """
         Implements a Kalman Filter in Tensorflow
@@ -36,14 +34,11 @@ class KalmanFilter():
         self.Q = Q
         self.H = H
         self.R = R
-        self.with_z_dot = with_z_dot
 
         self.sample_freq = np.reciprocal(self.dt)
 
-        self.x0 = np.zeros(((self.model_order+1)*self.state_dims,1), dtype=np_float_prec)
-        self.P0 = np.eye((self.model_order+1)*self.state_dims, dtype=np_float_prec)
-
-        self.F_params = {k:self.__dict__[k] for k in F_params}
+        self.x0 = np.zeros(((self.model_order)*self.state_dims,1), dtype=np_float_prec)
+        self.P0 = np.eye((self.model_order)*self.state_dims, dtype=np_float_prec)
 
     def fit(self,inputs):
 
@@ -63,7 +58,7 @@ class KalmanFilter():
                                                                      name='kfScan')
 
         filter_results = self.process_results(x_hat_pri, x_hat_post, P_pri, P_post, z)
-
+        
         return filter_results
 
     def kfScan(self,state, z):
@@ -91,8 +86,8 @@ class KalmanFilter():
         assert x is not None
         assert P is not None
 
-        x_pri = tf.matmul(self.F(**self.F_params),x,name='x_pri')
-        P_pri = tf.add(tf.matmul(self.F(**self.F_params),tf.matmul(P,self.F(**self.F_params),transpose_b=True)),self.Q,name='P_pri')
+        x_pri = tf.matmul(self.F,x,name='x_pri')
+        P_pri = tf.add(tf.matmul(self.F,tf.matmul(P,self.F,transpose_b=True)),self.Q,name='P_pri')
         
         return x_pri, P_pri
 
@@ -140,10 +135,10 @@ class KalmanFilter():
             z = inputs[0]
             self.R = inputs[1]
 
-            # ensure z is rank e
+            # ensure z is rank 3
             if np.ndim(z) < 3:
 
-                np.expand_dims(z,axis=-1)
+                z = np.expand_dims(z,axis=-1)
 
             z = tf.convert_to_tensor(z)
 
@@ -195,7 +190,6 @@ class KalmanFilter():
 
             pass
 
-        
         return filter_result
 
     def evaluate(self,x=None, x_key='z_hat_post', save_results=True):
@@ -225,24 +219,22 @@ class ExtendedKalmanFilter(KalmanFilter):
                  J_params=None,
                  Q=None,
                  H=None,
-                 R=None,
-                 with_z_dot=None):
+                 R=None):
 
         super().__init__(meas_dims=meas_dims,
                          state_dims=state_dims,
                          dt=dt,
                          model_order=model_order,
                          F=F,
-                         F_params=F_params,
                          Q=Q,
                          H=H,
-                         R=R,
-                         with_z_dot=with_z_dot)
+                         R=R)
 
-    
         # Jacobian
         self.J = J
 
+        # F and Jacobian parameters
+        self.F_params = {k:self.__dict__[k] for k in F_params}
         self.J_params = {k:self.__dict__[k] for k in J_params}
 
     def predict(self,x=None,P=None):

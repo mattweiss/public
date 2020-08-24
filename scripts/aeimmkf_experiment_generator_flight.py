@@ -15,21 +15,32 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.deeplearning.networks.autoencoder import AutoencoderInteractingMultipleModel
+from dovebirdia.deeplearning.networks.autoencoder import AutoencoderKalmanFilter
 from dovebirdia.filtering.kalman_filter import KalmanFilter
-from dovebirdia.filtering.interacting_multiple_model import InteractingMultipleModel
+from dovebirdia.filtering.interacting_multiple_model_kalman_filter import InteractingMultipleModelKalmanFilter
 from dovebirdia.deeplearning.regularizers.base import orthonormal_regularizer
 from dovebirdia.deeplearning.activations.base import sineline, psineline, tanhpoly
 import dovebirdia.utilities.dr_functions as drfns
 import dovebirdia.math.distributions as distributions
+from dovebirdia.datasets.flight_kinematics import FlightKinematicsDataset
+
+#######################################
+trials=1
+turns = 2
+samples_per_state = 100
+samples = (2*turns+1)*samples_per_state
+dt=0.1
+#######################################
 
 ####################################
 # Test Name and Description
 ####################################
 script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/dl_model.py'
-project = 'imm'
-experiment_name = 'aeimm_legendre_gaussian_F1_{F1}_Q1_{Q1}_F2_{F2}_Q2_{Q2}'.format(F1='NCV',Q1='1e-4',
-                                                                                   F2='NCA',Q2='1e-4')
+project = 'asilomar2020'
+experiment_name = 'aeimmkf_turns_{turns}_{noise}_F_{F}_Q_{Q}'.format(turns=turns,
+                                                                   noise='gaussian_0_20',
+                                                                   F='NCA1_NCA2',
+                                                                   Q='0-5')
 experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'
 machine = socket.gethostname()
 ####################################
@@ -50,7 +61,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['network'] = AutoencoderInteractingMultipleModel
+meta_params['network'] = AutoencoderKalmanFilter
 
 ####################################
 # Regularly edited Parameters
@@ -59,11 +70,11 @@ meta_params['network'] = AutoencoderInteractingMultipleModel
 model_params['hidden_dims'] = [(128,64,32),(128,64),(64,32,16),(64,32)]
 model_params['learning_rate'] = list(np.logspace(-3,-5,12))
 model_params['optimizer'] = tf.train.AdamOptimizer
-model_params['mbsize'] = 500
+model_params['mbsize'] = samples
 
 # model params
 
-model_params['kf_type'] = InteractingMultipleModel
+model_params['kf_type'] = InteractingMultipleModelKalmanFilter
 model_params['results_dir'] = '/results/'
 model_params['input_dim'] = 2
 model_params['output_dim'] = model_params['input_dim']
@@ -89,7 +100,7 @@ model_params['train_ground'] = True
 model_params['loss'] = tf.losses.mean_squared_error
 
 # training
-model_params['epochs'] = 5
+model_params['epochs'] = 10
 model_params['momentum'] = 0.96
 model_params['use_nesterov'] = True
 model_params['decay_steps'] = 100
@@ -100,110 +111,62 @@ model_params['staircase'] = False
 # Domain Randomization Parameters
 ####################################
 
-ds_params['ds_type'] = 'train'
-ds_params['x_range'] = (-1,1)
-
-# set dt here based on x range and mb size, for use in scaling noise and the Kalman Filter
-dt = (ds_params['x_range'][1]-ds_params['x_range'][0])/model_params['mbsize']
-
-ds_params['n_trials'] = 1
-ds_params['n_baseline_samples'] = 0
-ds_params['n_samples'] = model_params['mbsize']
-ds_params['n_features'] = model_params['input_dim']
-ds_params['n_noise_features'] = ds_params['n_features']
-ds_params['standardize'] = False
-ds_params['feature_range'] = None
-ds_params['baseline_shift'] = None
-ds_params['param_range'] = 1.0
-ds_params['max_N'] = 3
-ds_params['min_N'] = 1
-ds_params['metric_sublen'] = model_params['epochs'] // 100 # 1 percent
-ds_params['fns'] = (
-    #['zeros', drfns.zeros, []],
-    #['exponential', drfns.exponential, [1.0,(0.02,0.045),-1.0]],
-    #['sigmoid', drfns.sigmoid, [(0.0,100.0),0.15,60.0]],
-    #['sine', drfns.sine, [(0,10.0),(0.01,0.01)]],
-    ['taylor_poly', drfns.taylor_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
-    #['legendre_poly', drfns.legendre_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(ds_params['max_N']+1)],
-    #['trig_poly', drfns.trig_poly, [(-ds_params['param_range'],ds_params['param_range'])]*(2*ds_params['max_N']+1)],
-)
-
-ds_params['noise'] = [
-    #[None, None, None],
-
-    # ['gaussian', np.random.multivariate_normal, {'mean':np.zeros(ds_params['n_features']),
-    #                                              'cov':dt*np.eye(ds_params['n_features'])}],
-
-    ['gaussian', np.random.normal, {'loc':0.0,'scale':dt}],
-    
-    # ['bimodal', distributions.bimodal, {'mean1':np.full(ds_params['n_features'],0.25),
-    #                                     'cov1':0.02*np.eye(ds_params['n_features']),
-    #                                     'mean2':np.full(ds_params['n_features'],-0.25),
-    #                                     'cov2':0.02*np.eye(ds_params['n_features'])}],
-
-    #['cauchy', np.random.standard_cauchy, {}],
-
-    #['stable', distributions.stable, {'alpha':(1.0),'scale':(0.0)}], # alpha = 2 Gaussian, alpha = 1 Cauchy
-]
+ds_params['class'] = FlightKinematicsDataset
+ds_params['n_trials']=trials
+ds_params['n_samples']=samples
+ds_params['n_turns']=turns
+ds_params['dt']=dt
+ds_params['r0']=(0.0,0.0)
+ds_params['v0']=(100.0,0.0)
+ds_params['radius_range']=(200.0,300.0)
+ds_params['angle_range']=(np.pi/4,np.pi/4)
+ds_params['cw']=1
+ds_params['noise']=(np.random.normal,{'loc':0.0,'scale':20},1.0)
+#ds_params['noise']=(np.random.standard_cauchy,{},5.0) # last entry is manual scale for cauchy
+ds_params['metric_sublen'] = model_params['epochs'] // 100
 
 ####################################
 # Kalman Filter Parameters
 ####################################
 
-kf_params['with_z_dot'] = with_z_dot = False
-
 #  measurements dimensions
-kf_params['meas_dims'] = meas_dims = 8
+kf_params['meas_dims'] = meas_dims = 2
 
 #  state space dimensions
 kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = dt
+kf_params['dt'] = dt = 0.1
 
-# dynamical model order (i.e. ncv = 1, nca = 2, jerk = 3)
-kf_params['model_order'] = model_order = 3
+# dynamical model order (i.e. ncv = 2, nca = 3, jerk = 4)
+kf_params['model_order'] = model_order = 2
 
-kf_params['H'] = np.kron(np.eye(meas_dims), np.eye(model_order+1)) if with_z_dot else np.kron(np.eye(meas_dims), np.array([1.0,0.0,0.0,0.0]))
+#########
+# Models
+#########
 
-# state-transition model
+# state-transition models
+F_NCV = np.array([[1.0,dt],
+                  [0.0,1.0]])
 
-F_NCV = np.zeros((model_order+1,model_order+1))
-F_NCA = np.zeros((model_order+1,model_order+1))
-F = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-              [0.0,1.0,dt,0.5*dt**2],
-              [0.0,0.0,1.0,dt],
-              [0.0,0.0,0.0,1.0]])
+F_NCA = np.array([[1.0,dt,0.5*dt**2],
+                  [0.0,1.0,dt],
+                  [0.0,0.0,1.0]])
 
-F_NCV[:F[np.ix_([0,1],[0,1])].shape[0],:F[np.ix_([0,1],[0,1])].shape[0] ] = F[np.ix_([0,1],[0,1])]
-F_NCA[:F[np.ix_([0,1,2],[0,1,2])].shape[0],:F[np.ix_([0,1,2],[0,1,2])].shape[0] ] = F[np.ix_([0,1,2],[0,1,2])]
-F_JERK = F
-
-# process covariance
-
-Q_NCV = np.zeros((model_order+1,model_order+1))
-Q_NCA = np.zeros((model_order+1,model_order+1))
-Q = np.eye(model_order+1)
-
-Q_NCV[:Q[np.ix_([0,1],[0,1])].shape[0],:Q[np.ix_([0,1],[0,1])].shape[0] ] = Q[np.ix_([0,1],[0,1])]
-Q_NCA[:Q[np.ix_([0,1,2],[0,1,2])].shape[0],:Q[np.ix_([0,1,2],[0,1,2])].shape[0] ] = Q[np.ix_([0,1,2],[0,1,2])]
-Q_JERK = Q
+F_jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+                   [0.0,1.0,dt,0.5*dt**2],
+                   [0.0,0.0,1.0,dt],
+                   [0.0,0.0,0.0,1.0]])
 
 # dictionary of models
 
 kf_params['models'] = {
-    'NCV1':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
-    'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
-    'NCA1':[np.kron(np.eye(state_dims),F_NCA),1e-4*np.kron(np.eye(state_dims),Q_NCA)],
-    #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
-    #'NCV3':[np.kron(np.eye(state_dims),F_NCV),1e-4*np.kron(np.eye(state_dims),Q_NCV)],
-    #'JERK1':[np.kron(np.eye(state_dims),F_JERK),1e-4*np.kron(np.eye(state_dims),Q_JERK)],
-    # 'NCV2':[np.kron(np.eye(state_dims),F_NCV),1e-8*np.kron(np.eye(state_dims),Q_NCV)],
-    # 'NCA2':[np.kron(np.eye(state_dims),F_NCA),1e-8*np.kron(np.eye(state_dims),Q_NCA)],
-    # 'JERK2':[np.kron(np.eye(state_dims),F_JERK),1e-8*np.kron(np.eye(state_dims),Q_JERK)],
+    'NCV1':[np.kron(np.eye(state_dims),F_NCV),0.5*np.kron(np.eye(state_dims),np.eye(model_order))],
 }
+
 n_models = len(kf_params['models'].keys())
 
+kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order-1),0,1) )
 kf_params['R'] = None
 
 ####################
