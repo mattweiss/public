@@ -25,7 +25,7 @@ import csv
 import pandas as pd
 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
-from dovebirdia.filtering.kalman_filter import KalmanFilter, ExtendedKalmanFilter
+from dovebirdia.filtering.kalman_filter import KalmanFilter
 from dovebirdia.utilities.base import saveDict, loadDict
 
 import matplotlib

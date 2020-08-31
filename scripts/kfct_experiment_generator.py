@@ -14,7 +14,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.filtering.kalman_filter import KalmanFilter, ExtendedKalmanFilter
+from dovebirdia.filtering.kalman_filter import KalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from sklearn.datasets import make_spd_matrix
@@ -36,7 +36,7 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'asilomar2020'
 
 experiments = [
-    ('ekf_ncv_turn_1_gaussian_0_20_Q_0-5',
+    ('kfct_turn_1_gaussian_0_20_Q_0-5',
      '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
@@ -60,7 +60,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = ExtendedKalmanFilter
+meta_params['filter'] = KalmanFilter
 
 ####################################
 # Model Parameters
@@ -76,47 +76,86 @@ model_params['results_dir'] = '/results/'
 kf_params['meas_dims'] = meas_dims = 2
 
 #  state space dimensions
-kf_params['state_dims'] = state_dims = kf_params['meas_dims']
+kf_params['state_dims'] = state_dims = 5
 
 # number of state estimate 
-kf_params['dt'] = dt = 0.1
+kf_params['dt'] = dt = 1.0
 
 # dynamical model order (i.e. ncv = 2, nca = 3, jerk = 4)
-kf_params['model_order'] = model_order = 2
+kf_params['model_order'] = model_order = 1
 
-# state-transition models
+#########
+# Models
+#########
 
-#NCV
-# np.array([[1.0,dt],
-#           [0.0,1.0]])
+def F(state_dims,dt,x=np.zeros(state_dims)):
 
-# # NCA
-# np.array([[1.0,dt,0.5*dt**2],
-#           [0.0,1.0,dt],
-#           [0.0,0.0,1.0]])
+    w = x[-1,0]
 
-# # Jerk
-# np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-#           [0.0,1.0,dt,0.5*dt**2],
-#           [0.0,0.0,1.0,dt],
-#           [0.0,0.0,0.0,1.0]])
-
-def F(state_dims,dt):
-
-    state_trans = np.array([[1.0,dt],
-                            [0.0,1.0]])
+    if w==0.0:  w = 1e-8
     
-    return np.kron(np.eye(state_dims),state_trans)
+    state_trans = np.array([
+        [1.0, np.sin(w*dt)/dt, 0, (-1+np.cos(w*dt))/w, 0],
+        [0.0, np.cos(w*dt), 0, -np.sin(w*dt), 0.0],
+        [0, (1-np.cos(w*dt))/w, 1.0, np.sin(w*dt)/w, 0.0],
+        [0.0, np.sin(w*dt), 0.0, np.cos(w*dt), 0.0],
+        [0.0,0.0,0.0,0.0,1.0]
+    ])
+    
+    return state_trans
 
+def J(state_dims,dt,x=np.zeros(state_dims)):
+
+    w = x[-1,0]
+
+    if w==0.0: w = 1e-8
+        
+    x_dot,y_dot = x[1,0], x[3,0]
+    
+    f1_w = x_dot*( (np.cos(w*dt)*dt)/w - np.sin(w*dt)/w**2) - y_dot*( (np.sin(w*dt)*dt)/w - (1-np.cos(w*dt))/w**2)
+    f2_w = -x_dot*np.sin(w*dt)*dt - y_dot*np.cos(w*dt)*dt
+    f3_w = x_dot*( (np.sin(w*dt)*dt)/w - (1-np.cos(w*dt))/w**2) + y_dot*( (np.cos(w*dt)*dt)/w - (np.sin(w*dt)*dt)/w**2)
+    f4_w = x_dot*np.cos(w*dt)*dt - y_dot*np.sin(w*dt)*dt
+
+    jacob =  np.array([
+        [1.0, np.sin(w*dt)/dt, 0, (-1+np.cos(w*dt))/w, f1_w],
+        [0.0, np.cos(w*dt), 0, -np.sin(w*dt), f2_w],
+        [0, (1-np.cos(w*dt))/w, 1.0, np.sin(w*dt)/w, f3_w],
+        [0.0, np.sin(w*dt), 0.0, np.cos(w*dt), f4_w],
+        [0.0,0.0,0.0,0.0,1.0]
+    ])
+
+    return jacob
+    
 kf_params['F'] = F
-kf_params['F_params'] = ('state_dims','dt')
+kf_params['F_params'] = ('state_dims','dt','x')
 
-kf_params['J'] = kf_params['F']
+kf_params['J'] = J
 kf_params['J_params'] = kf_params['F_params']
 
-kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order-1),0,1) )
+kf_params['H'] = np.array([
+    [1.0,0.0,0.0,0.0,0.0],
+    [0.0,0.0,1.0,0.0,0.0]
+    ])
 kf_params['R'] = 5 * np.eye(meas_dims)
-kf_params['Q'] = 0.5 * np.kron(np.eye(state_dims),np.eye(model_order))
+kf_params['Q'] = 0.5*np.eye(5)
+
+#####################
+# AEKF MCA Parameters
+#####################
+
+# diagonal
+# kf_params['R'] = 1.0 * np.eye(meas_dims)
+# kf_params['Q'] = 1e-4*np.eye((model_order+1)*state_dims)
+
+# logspace diagonal
+#kf_params['R'] = [ r*np.eye(meas_dims) for r in np.logspace(2,-8,10) ]
+# kf_params['R'] = None # [ None for r in np.logspace(2,-8,10) ]
+# kf_params['Q'] = 1e-2 #[ q*np.eye((model_order+1)*state_dims) for q in np.logspace(-2,-8,4) ]
+
+# random spd
+# kf_params['R'] = [ generate_spd(meas_dims,scale=10) for _ in np.arange(10) ]
+# kf_params['Q'] = [ generate_spd((model_order+1)*state_dims,scale=10) for _ in np.arange(10) ]
 
 ####################################
 # Determine scaler and vector parameters
