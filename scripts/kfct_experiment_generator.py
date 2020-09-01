@@ -14,7 +14,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.filtering.kalman_filter import KalmanFilter
+from dovebirdia.filtering.kalman_filter import ExtendedKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from sklearn.datasets import make_spd_matrix
@@ -60,7 +60,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = KalmanFilter
+meta_params['filter'] = ExtendedKalmanFilter
 
 ####################################
 # Model Parameters
@@ -88,57 +88,76 @@ kf_params['model_order'] = model_order = 1
 # Models
 #########
 
-def F(state_dims,dt,x=np.zeros(state_dims)):
+def F(dt,x):
 
-    w = x[-1,0]
+    w = x[4,0]
+    wt = w*dt
 
-    if w==0.0:  w = 1e-8
-    
-    state_trans = np.array([
-        [1.0, np.sin(w*dt)/dt, 0, (-1+np.cos(w*dt))/w, 0],
-        [0.0, np.cos(w*dt), 0, -np.sin(w*dt), 0.0],
-        [0, (1-np.cos(w*dt))/w, 1.0, np.sin(w*dt)/w, 0.0],
-        [0.0, np.sin(w*dt), 0.0, np.cos(w*dt), 0.0],
+    # if w is zero
+    f0 = np.array([
+        [1.0,dt,0.0,0.0,0.0],
+        [0.0,1.0,0.0,0.0,0.0],
+        [0.0,0.0,1.0,dt,0.0],
+        [0.0,0.0,0.0,1.0,0.0],
         [0.0,0.0,0.0,0.0,1.0]
     ])
-    
-    return state_trans
 
-def J(state_dims,dt,x=np.zeros(state_dims)):
+    # if w is non-zero
+    f1 = tf.TensorArray(tf.float64, size=5, dynamic_size=True)
+    f1 = f1.write(0,[1.0,tf.sin(wt)/w,0.0,-(1-tf.cos(wt))/w,0.0])
+    f1 = f1.write(1,[0.0,tf.cos(wt),0.0,-tf.sin(wt),0.0])
+    f1 = f1.write(2,[0.0,(1-tf.cos(wt))/w,1.0,tf.sin(wt)/w,0.0])
+    f1 = f1.write(3,[0.0,tf.sin(wt),0.0,tf.cos(wt),0.0])
+    f1 = f1.write(4,[0.0,0.0,0.0,0.0,1.0])
+    f1 = tf.reshape(f1.stack(),(5,5))
 
-    w = x[-1,0]
+    return tf.cond(tf.equal(w,0.0),lambda:f0,lambda:f1)
 
-    if w==0.0: w = 1e-8
-        
+def J(dt,x):
+
     x_dot,y_dot = x[1,0], x[3,0]
+
+    w = x[4,0]
+    wt = w*dt
+
+    # if w is zero
+    j0 = tf.TensorArray(tf.float64, size=5, dynamic_size=True)
+    j0 = j0.write(0,[1.0,dt,0.0,0.0,-0.5*dt**2*x_dot])
+    j0 = j0.write(1,[0.0,1.0,0.0,0.0,-dt*y_dot])
+    j0 = j0.write(2,[0.0,0.0,1.0,dt,0.5*dt**2*x_dot])
+    j0 = j0.write(3,[0.0,0.0,0.0,1.0,dt*x_dot])
+    j0 = j0.write(4,[0.0,0.0,0.0,0.0,1.0])
+    j0 = tf.reshape(j0.stack(),(5,5))
+
+    # if w is non-zero
+    f1_w = x_dot*( (tf.cos(wt)*dt)/w - tf.sin(wt)/w**2) - y_dot*( (tf.sin(wt)*dt)/w - (1-tf.cos(wt))/w**2)
+    f2_w = -x_dot*tf.sin(wt)*dt - y_dot*tf.cos(wt)*dt
+    f3_w = x_dot*( (tf.sin(wt)*dt)/w - (1-tf.cos(wt))/w**2) + y_dot*( (tf.cos(wt)*dt)/w - (tf.sin(wt)*dt)/w**2)
+    f4_w = x_dot*tf.cos(wt)*dt - y_dot*tf.sin(wt)*dt
+
+    j1 = tf.TensorArray(tf.float64, size=5, dynamic_size=True)
+    j1 = j1.write(0,[1.0, tf.sin(wt)/w, 0, (-1+tf.cos(wt))/w, f1_w])
+    j1 = j1.write(1,[0.0, tf.cos(wt), 0, -tf.sin(wt), f2_w])
+    j1 = j1.write(2,[0, (1-tf.cos(wt))/w, 1.0, tf.sin(wt)/w, f3_w])
+    j1 = j1.write(3,[0.0, tf.sin(wt), 0.0, tf.cos(wt), f4_w])
+    j1 = j1.write(4,[0.0,0.0,0.0,0.0,1.0])
+    j1 = tf.reshape(j1.stack(),(5,5))
     
-    f1_w = x_dot*( (np.cos(w*dt)*dt)/w - np.sin(w*dt)/w**2) - y_dot*( (np.sin(w*dt)*dt)/w - (1-np.cos(w*dt))/w**2)
-    f2_w = -x_dot*np.sin(w*dt)*dt - y_dot*np.cos(w*dt)*dt
-    f3_w = x_dot*( (np.sin(w*dt)*dt)/w - (1-np.cos(w*dt))/w**2) + y_dot*( (np.cos(w*dt)*dt)/w - (np.sin(w*dt)*dt)/w**2)
-    f4_w = x_dot*np.cos(w*dt)*dt - y_dot*np.sin(w*dt)*dt
-
-    jacob =  np.array([
-        [1.0, np.sin(w*dt)/dt, 0, (-1+np.cos(w*dt))/w, f1_w],
-        [0.0, np.cos(w*dt), 0, -np.sin(w*dt), f2_w],
-        [0, (1-np.cos(w*dt))/w, 1.0, np.sin(w*dt)/w, f3_w],
-        [0.0, np.sin(w*dt), 0.0, np.cos(w*dt), f4_w],
-        [0.0,0.0,0.0,0.0,1.0]
-    ])
-
-    return jacob
+    return tf.cond(tf.equal(w,0.0),lambda:j0,lambda:j0)
     
 kf_params['F'] = F
-kf_params['F_params'] = ('state_dims','dt','x')
+#kf_params['F_params'] = ('dt',)
 
-kf_params['J'] = J
-kf_params['J_params'] = kf_params['F_params']
+kf_params['J'] = F
+#kf_params['J_params'] = ('state_dims','dt','x')
 
 kf_params['H'] = np.array([
     [1.0,0.0,0.0,0.0,0.0],
     [0.0,0.0,1.0,0.0,0.0]
     ])
-kf_params['R'] = 5 * np.eye(meas_dims)
-kf_params['Q'] = 0.5*np.eye(5)
+
+kf_params['R'] = 5.0*np.eye(meas_dims)
+kf_params['Q'] = 1e-2*np.eye(state_dims)
 
 #####################
 # AEKF MCA Parameters

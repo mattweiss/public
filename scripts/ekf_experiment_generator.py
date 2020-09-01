@@ -14,7 +14,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.filtering.kalman_filter import KalmanFilter
+from dovebirdia.filtering.kalman_filter import KalmanFilter, ExtendedKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from sklearn.datasets import make_spd_matrix
@@ -60,7 +60,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = KalmanFilter
+meta_params['filter'] = ExtendedKalmanFilter
 
 ####################################
 # Model Parameters
@@ -89,29 +89,34 @@ kf_params['model_order'] = model_order = 2
 #########
 
 # state-transition models
-F_NCV = np.array([[1.0,dt],
-                  [0.0,1.0]])
+# F_NCV = np.array([[1.0,dt],
+#                   [0.0,1.0]])
 
-F_NCA = np.array([[1.0,dt,0.5*dt**2],
-                  [0.0,1.0,dt],
-                  [0.0,0.0,1.0]])
+# F_NCA = np.array([[1.0,dt,0.5*dt**2],
+#                   [0.0,1.0,dt],
+#                   [0.0,0.0,1.0]])
 
-F_jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
-                   [0.0,1.0,dt,0.5*dt**2],
-                   [0.0,0.0,1.0,dt],
-                   [0.0,0.0,0.0,1.0]])
+# F_jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+#                    [0.0,1.0,dt,0.5*dt**2],
+#                    [0.0,0.0,1.0,dt],
+#                    [0.0,0.0,0.0,1.0]])
 
-# def F(state_dims,dt,x):
+def F(state_dims,dt,x):
 
-#     state_trans = np.array([[1.0,dt],
-#                             [0.0,1.0]])
+    state_trans = np.array([[1.0,dt],
+                            [0.0,1.0]])
     
-#     return np.kron(np.eye(state_dims),state_trans)
+    return np.kron(np.eye(state_dims),state_trans)
 
-kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
-kf_params['H'] = np.kron(np.eye(meas_dims), [1.0,0.0] )
-kf_params['R'] = 5.0 * np.eye(meas_dims)
-kf_params['Q'] = 1e-2*np.kron(np.eye(state_dims),np.eye(model_order))
+kf_params['F'] = F
+kf_params['F_params'] = ('state_dims','dt','x')
+
+kf_params['J'] = kf_params['F']
+kf_params['J_params'] = kf_params['F_params']
+
+kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order-1),0,1) )
+kf_params['R'] = 5 * np.eye(meas_dims)
+kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),np.eye(model_order))
 
 #####################
 # AEKF MCA Parameters

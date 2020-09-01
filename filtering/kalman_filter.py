@@ -33,32 +33,17 @@ class KalmanFilter():
         self.state_dims = state_dims
         self.model_order = model_order
         self.dt = dt
-
         
         self.x0 = np.zeros(((self.model_order)*self.state_dims,1), dtype=np_float_prec)
         self.P0 = np.eye((self.model_order)*self.state_dims, dtype=np_float_prec)
-        self.x = self.x0
         self.F = F
-        self.F_params = {k:self.__dict__[k] for k in F_params}
 
-        # if Jacobian terms are defined specifically, i.e. using EKF
-        try:
-
-            self.J = J
-            self.J_params = {k:self.__dict__[k] for k in J_params}
-
-        # otherwise standard KF
-        except:
-
-            self.J = F
-            self.J_params = self.F_params
-            
         self.Q = Q
         self.H = H
         self.R = R
 
         self.sample_freq = np.reciprocal(self.dt)
-        
+
     def fit(self,inputs):
 
         """
@@ -69,13 +54,14 @@ class KalmanFilter():
         z = self.process_inputs(inputs)
 
         x_hat_pri, x_hat_post, P_pri, P_post, self.kf_ctr = tf.scan(self.kfScan,
-                                                                     z,
-                                                                     initializer = [ self.x0,
-                                                                                     self.x0,
-                                                                                     self.P0,
-                                                                                     self.P0, tf.constant(0) ],
-                                                                     name='kfScan')
-
+                                                                    z,
+                                                                    initializer = [ self.x0,
+                                                                                    self.x0,
+                                                                                    self.P0,
+                                                                                    self.P0,
+                                                                                    tf.constant(0) ],
+                                                                    name='kfScan')
+        
         filter_results = self.process_results(x_hat_pri, x_hat_post, P_pri, P_post, z)
         
         return filter_results
@@ -104,13 +90,11 @@ class KalmanFilter():
 
         assert x is not None
         assert P is not None
-
-        self.x = x
-        F = self.F(**self.F_params)
-        J = self.J(**self.J_params)
-
-        x_pri = tf.matmul(F,x,name='x_pri')
-        P_pri = tf.add(tf.matmul(J,tf.matmul(P,J,transpose_b=True)),self.Q,name='P_pri')
+        
+        #F = self.F(self.dt,x)
+        x_pri = tf.matmul(self.F,x,name='x_pri')
+        #J = self.J(**self.J_params)
+        P_pri = tf.add(tf.matmul(self.F,tf.matmul(P,self.F,transpose_b=True)),self.Q,name='P_pri')
         
         return x_pri, P_pri
 
@@ -222,50 +206,49 @@ class KalmanFilter():
         filter_result = self.fit(x)
 
         return filter_result[x_key][:,:,0], filter_result['R']
-    
-################################################################################
 
-# class ExtendedKalmanFilter(KalmanFilter):
+class ExtendedKalmanFilter(KalmanFilter):
 
-#     """
-#     Tensorflow implementation of Extended Kalman Filter
-#     """
+    """
+    Tensorflow implementation of Extended Kalman Filter
+    """
 
-#     def __init__(self,
-#                  meas_dims=None,
-#                  state_dims=None,
-#                  dt=None,
-#                  model_order=None,
-#                  F=None,
-#                  F_params=None,
-#                  J=None,
-#                  J_params=None,
-#                  Q=None,
-#                  H=None,
-#                  R=None):
+    def __init__(self,
+                 meas_dims=None,
+                 state_dims=None,
+                 dt=None,
+                 model_order=None,
+                 F=None,
+                 F_params=None,
+                 J=None,
+                 J_params=None,
+                 Q=None,
+                 H=None,
+                 R=None):
 
-#         super().__init__(meas_dims=meas_dims,
-#                          state_dims=state_dims,
-#                          dt=dt,
-#                          model_order=model_order,
-#                          F=F,
-#                          Q=Q,
-#                          H=H,
-#                          R=R)
+        super().__init__(meas_dims=meas_dims,
+                         state_dims=state_dims,
+                         dt=dt,
+                         model_order=model_order,
+                         F=F,
+                         Q=Q,
+                         H=H,
+                         R=R)
 
-#         # Jacobian
-#         self.J = J
+        # Jacobian
+        #self.F = F
+        self.J = J
 
-#         # F and Jacobian parameters
-#         self.F_params = {k:self.__dict__[k] for k in F_params}
-#         self.J_params = {k:self.__dict__[k] for k in J_params}
+        # F and Jacobian parameters
+        #self.F_params = {k:self.__dict__[k] for k in F_params}
+        #self.J_params = {k:self.__dict__[k] for k in J_params}
 
-#     def predict(self,x=None,P=None):
+    def predict(self,x=None,P=None):
 
-#         assert x is not None
-#         assert P is not None
+        assert x is not None
+        assert P is not None
 
-#         x_pri = tf.matmul(self.F(**self.F_params),x,name='x_pri')
-#         P_pri = tf.add(tf.matmul(self.J(**self.J_params),tf.matmul(P,self.J(**self.J_params),transpose_b=True)),self.Q,name='P_pri')
+        x_pri = tf.matmul(self.F(self.dt,x),x)
+        P_pri = tf.add(tf.matmul(self.J(self.dt,x),tf.matmul(P,self.J(self.dt,x),transpose_b=True)),self.Q,name='P_pri')
         
-#         return x_pri, P_pri
+        return x_pri, P_pri

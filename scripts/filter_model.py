@@ -29,7 +29,7 @@ from dovebirdia.filtering.kalman_filter import KalmanFilter
 from dovebirdia.utilities.base import saveDict, loadDict
 
 import matplotlib
-matplotlib.use('Agg') 
+#matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 
 ################################################################################
@@ -95,7 +95,8 @@ z_meas, z_true, t = dataset['data']['x_test'], dataset['data']['y_test'], datase
 
 filter_results_list = list()
 
-for z in z_meas:
+n_trials = 1
+for z in z_meas[:n_trials]:
 
     filter = config_dicts['meta']['filter'](**config_dicts['kf'])
     filter_results = filter.fit(z)
@@ -104,6 +105,12 @@ for z in z_meas:
 
 # extract z hat
 z_hat = np.array([ res['z_hat_post'].reshape(-1,res['z_hat_post'].shape[1]) for res in filter_results_list ])
+
+for trial in np.arange(z_meas.shape[0])[:n_trials]:
+
+    plt.scatter(z_meas[trial,:,0],z_meas[trial,:,1])
+    plt.plot(z_hat[trial,:,0],z_hat[trial,:,1],color='C1')
+    plt.show()
 
 # save kf data
 test_results_dict = {
