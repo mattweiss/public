@@ -95,8 +95,8 @@ z_meas, z_true, t = dataset['data']['x_test'], dataset['data']['y_test'], datase
 
 filter_results_list = list()
 
-n_trials = 1
-for z in z_meas[:n_trials]:
+n_trials = None
+for z in z_meas:
 
     filter = config_dicts['meta']['filter'](**config_dicts['kf'])
     filter_results = filter.fit(z)

@@ -71,7 +71,7 @@ class InteractingMultipleModelKalmanFilter(KalmanFilter):
         """ This is where the Kalman Filter is implemented. """
 
         x_post, P_post, _ , _ , _ , _ , self.kf_ctr = state
-        
+
         # Hold accumlated a priori and a posteriori x and P along with likelihood of measurement
         self.x_pri = list()
         self.P_pri = list()
@@ -285,13 +285,14 @@ class InteractingMultipleModelExtendedKalmanFilter(InteractingMultipleModelKalma
         assert P is not None
         assert model is not None
 
-        self.F, F_params, self.J, J_params, self.Q = model
+        self.F, F_params, self.J, J_params, self.Q, Q_params = model
 
-        # F and Jacobian parameters
-        self.F_params = {k:self.__dict__[k] for k in F_params}
-        self.J_params = {k:self.__dict__[k] for k in J_params}
-        
-        x_pri = tf.matmul(self.F(**self.F_params),x,name='x_pri')
-        P_pri = tf.add(tf.matmul(self.J(**self.J_params),tf.matmul(P,self.J(**self.J_params),transpose_b=True)),self.Q,name='P_pri')
-        
+        # State transition and Jacobian parameters
+        self.F_params = {k:v for k,v in self.__dict__.items() if k in F_params}
+        self.J_params = {k:v for k,v in self.__dict__.items() if k in J_params}
+        self.Q_params = {k:v for k,v in self.__dict__.items() if k in Q_params}
+
+        x_pri = tf.matmul(self.F(**self.F_params,x=x),x,name='x_pri')
+        P_pri = tf.add(tf.matmul(self.J(**self.J_params,x=x),tf.matmul(P,self.J(**self.J_params,x=x),transpose_b=True)),self.Q(**self.Q_params),name='P_pri')
+
         return x_pri, P_pri

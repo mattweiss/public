@@ -14,19 +14,8 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.filtering.kalman_filter import ExtendedKalmanFilter
+from dovebirdia.filtering.interacting_multiple_model_kalman_filter import InteractingMultipleModelExtendedKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
-from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
-from sklearn.datasets import make_spd_matrix
-
-#################################
-# Function to generate SPD Matrix
-#################################
-def generate_spd(ndim=2,scale=1,epsilon=1e-8):
-
-    m = scale * np.random.normal(size=(ndim,ndim))
-    L = np.abs(np.triu(m))
-    return L.T@L
 
 ####################################
 # Test Name and Description
@@ -36,7 +25,7 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'asilomar2020'
 
 experiments = [
-    ('kfct_turn_1_gaussian_0_20_Q_0-5',
+    ('immekf_ncv1_turn_1_gaussian_0_20_Q_0-5',
      '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
@@ -60,7 +49,7 @@ params_dicts = OrderedDict([
 # Meta Parameters
 ####################################
 
-meta_params['filter'] = ExtendedKalmanFilter
+meta_params['filter'] = InteractingMultipleModelExtendedKalmanFilter
 
 ####################################
 # Model Parameters
@@ -76,105 +65,67 @@ model_params['results_dir'] = '/results/'
 kf_params['meas_dims'] = meas_dims = 2
 
 #  state space dimensions
-kf_params['state_dims'] = state_dims = 5
+kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = dt = 1.0
+kf_params['dt'] = dt = 1e-1
 
 # dynamical model order (i.e. ncv = 2, nca = 3, jerk = 4)
-kf_params['model_order'] = model_order = 1
+kf_params['model_order'] = model_order = 2
 
 #########
 # Models
 #########
 
-def F(dt,x):
+#NCV
+# np.array([[1.0,dt],
+#           [0.0,1.0]])
 
-    w = x[4,0]
-    wt = w*dt
+# # NCA
+# np.array([[1.0,dt,0.5*dt**2],
+#           [0.0,1.0,dt],
+#           [0.0,0.0,1.0]])
 
-    # if w is zero
-    f0 = np.array([
-        [1.0,dt,0.0,0.0,0.0],
-        [0.0,1.0,0.0,0.0,0.0],
-        [0.0,0.0,1.0,dt,0.0],
-        [0.0,0.0,0.0,1.0,0.0],
-        [0.0,0.0,0.0,0.0,1.0]
-    ])
+# # Jerk
+# np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
+#           [0.0,1.0,dt,0.5*dt**2],
+#           [0.0,0.0,1.0,dt],
+#           [0.0,0.0,0.0,1.0]])
 
-    # if w is non-zero
-    f1 = tf.TensorArray(tf.float64, size=5, dynamic_size=True)
-    f1 = f1.write(0,[1.0,tf.sin(wt)/w,0.0,-(1-tf.cos(wt))/w,0.0])
-    f1 = f1.write(1,[0.0,tf.cos(wt),0.0,-tf.sin(wt),0.0])
-    f1 = f1.write(2,[0.0,(1-tf.cos(wt))/w,1.0,tf.sin(wt)/w,0.0])
-    f1 = f1.write(3,[0.0,tf.sin(wt),0.0,tf.cos(wt),0.0])
-    f1 = f1.write(4,[0.0,0.0,0.0,0.0,1.0])
-    f1 = tf.reshape(f1.stack(),(5,5))
+def F_NCV(state_dims,dt,x):
 
-    return tf.cond(tf.equal(w,0.0),lambda:f0,lambda:f1)
-
-def J(dt,x):
-
-    x_dot,y_dot = x[1,0], x[3,0]
-
-    w = x[4,0]
-    wt = w*dt
-
-    # if w is zero
-    j0 = tf.TensorArray(tf.float64, size=5, dynamic_size=True)
-    j0 = j0.write(0,[1.0,dt,0.0,0.0,-0.5*dt**2*x_dot])
-    j0 = j0.write(1,[0.0,1.0,0.0,0.0,-dt*y_dot])
-    j0 = j0.write(2,[0.0,0.0,1.0,dt,0.5*dt**2*x_dot])
-    j0 = j0.write(3,[0.0,0.0,0.0,1.0,dt*x_dot])
-    j0 = j0.write(4,[0.0,0.0,0.0,0.0,1.0])
-    j0 = tf.reshape(j0.stack(),(5,5))
-
-    # if w is non-zero
-    f1_w = x_dot*( (tf.cos(wt)*dt)/w - tf.sin(wt)/w**2) - y_dot*( (tf.sin(wt)*dt)/w - (1-tf.cos(wt))/w**2)
-    f2_w = -x_dot*tf.sin(wt)*dt - y_dot*tf.cos(wt)*dt
-    f3_w = x_dot*( (tf.sin(wt)*dt)/w - (1-tf.cos(wt))/w**2) + y_dot*( (tf.cos(wt)*dt)/w - (tf.sin(wt)*dt)/w**2)
-    f4_w = x_dot*tf.cos(wt)*dt - y_dot*tf.sin(wt)*dt
-
-    j1 = tf.TensorArray(tf.float64, size=5, dynamic_size=True)
-    j1 = j1.write(0,[1.0, tf.sin(wt)/w, 0, (-1+tf.cos(wt))/w, f1_w])
-    j1 = j1.write(1,[0.0, tf.cos(wt), 0, -tf.sin(wt), f2_w])
-    j1 = j1.write(2,[0, (1-tf.cos(wt))/w, 1.0, tf.sin(wt)/w, f3_w])
-    j1 = j1.write(3,[0.0, tf.sin(wt), 0.0, tf.cos(wt), f4_w])
-    j1 = j1.write(4,[0.0,0.0,0.0,0.0,1.0])
-    j1 = tf.reshape(j1.stack(),(5,5))
+    state_trans = np.array([[1.0,dt],
+                            [0.0,1.0]])
     
-    return tf.cond(tf.equal(w,0.0),lambda:j0,lambda:j0)
-    
-kf_params['F'] = F
-#kf_params['F_params'] = ('dt',)
+    return np.kron(np.eye(state_dims),state_trans)
 
-kf_params['J'] = F
-#kf_params['J_params'] = ('state_dims','dt','x')
+def Q(state_dims,model_order):
 
-kf_params['H'] = np.array([
-    [1.0,0.0,0.0,0.0,0.0],
-    [0.0,0.0,1.0,0.0,0.0]
-    ])
+    return 1e-4*np.kron(np.eye(state_dims),np.eye(model_order))
 
-kf_params['R'] = 5.0*np.eye(meas_dims)
-kf_params['Q'] = 1e-2*np.eye(state_dims)
+# dictionary of models
 
-#####################
-# AEKF MCA Parameters
-#####################
+kf_params['models'] = {
+    'NCV':[F_NCV,('state_dims','dt'), # F/F params
+           F_NCV,('state_dims','dt'), # J/ J params
+           Q,('state_dims','model_order')], # Q
+}
 
-# diagonal
-# kf_params['R'] = 1.0 * np.eye(meas_dims)
-# kf_params['Q'] = 1e-4*np.eye((model_order+1)*state_dims)
+n_models = len(kf_params['models'].keys())
 
-# logspace diagonal
-#kf_params['R'] = [ r*np.eye(meas_dims) for r in np.logspace(2,-8,10) ]
-# kf_params['R'] = None # [ None for r in np.logspace(2,-8,10) ]
-# kf_params['Q'] = 1e-2 #[ q*np.eye((model_order+1)*state_dims) for q in np.logspace(-2,-8,4) ]
+kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order-1),0,1) )
+kf_params['R'] = 20.0 * np.eye(meas_dims)
 
-# random spd
-# kf_params['R'] = [ generate_spd(meas_dims,scale=10) for _ in np.arange(10) ]
-# kf_params['Q'] = [ generate_spd((model_order+1)*state_dims,scale=10) for _ in np.arange(10) ]
+####################
+# Mixing Parameters
+####################
+
+p_trans = 0.1
+
+kf_params['p'] = np.full((n_models,n_models),p_trans)
+np.fill_diagonal(kf_params['p'],1.0-(n_models-1)*p_trans)
+                                  
+kf_params['mu'] = np.full((n_models,1),0.5)
 
 ####################################
 # Determine scaler and vector parameters
@@ -184,8 +135,7 @@ config_params_dicts = OrderedDict()
 
 for dict_name, params_dict in params_dicts.items():
 
-    # number of config files+
-    
+    # number of config files
     n_cfg_files = 1
 
     # keys for parameters that have more than one value
@@ -244,6 +194,7 @@ for experiment in experiments:
 
 
         config_params[2]['load_path'] = test_dataset_full_path
+        #config_params[3]['dimensions'] = kf_dims
         
         # Create Directories
         experiment_dir = '/Documents/wpi/research/code/dovebirdia/experiments/' + project + '/' + experiment_name + '/'

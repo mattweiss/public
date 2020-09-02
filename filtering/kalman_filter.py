@@ -91,9 +91,7 @@ class KalmanFilter():
         assert x is not None
         assert P is not None
         
-        #F = self.F(self.dt,x)
         x_pri = tf.matmul(self.F,x,name='x_pri')
-        #J = self.J(**self.J_params)
         P_pri = tf.add(tf.matmul(self.F,tf.matmul(P,self.F,transpose_b=True)),self.Q,name='P_pri')
         
         return x_pri, P_pri
@@ -223,6 +221,7 @@ class ExtendedKalmanFilter(KalmanFilter):
                  J=None,
                  J_params=None,
                  Q=None,
+                 Q_params=None,
                  H=None,
                  R=None):
 
@@ -235,20 +234,23 @@ class ExtendedKalmanFilter(KalmanFilter):
                          H=H,
                          R=R)
 
+        # need to set self.x for state transition and Jacobian matricies
+        # self.x = self.x0
+        
         # Jacobian
-        #self.F = F
         self.J = J
 
-        # F and Jacobian parameters
-        #self.F_params = {k:self.__dict__[k] for k in F_params}
-        #self.J_params = {k:self.__dict__[k] for k in J_params}
-
+        # State transition and Jacobian parameters
+        self.F_params = {k:v for k,v in self.__dict__.items() if k in F_params}
+        self.J_params = {k:v for k,v in self.__dict__.items() if k in J_params}
+        self.Q_params = {k:v for k,v in self.__dict__.items() if k in Q_params}
+        
     def predict(self,x=None,P=None):
 
         assert x is not None
         assert P is not None
 
-        x_pri = tf.matmul(self.F(self.dt,x),x)
-        P_pri = tf.add(tf.matmul(self.J(self.dt,x),tf.matmul(P,self.J(self.dt,x),transpose_b=True)),self.Q,name='P_pri')
-        
+        x_pri = tf.matmul(self.F(**self.F_params,x=x),x,name='x_pri')
+        P_pri = tf.add(tf.matmul(self.J(**self.J_params,x=x),tf.matmul(P,self.J(**self.J_params,x=x),transpose_b=True)),self.Q(**self.Q_params),name='P_pri')
+
         return x_pri, P_pri

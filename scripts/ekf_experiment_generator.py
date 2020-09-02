@@ -14,7 +14,7 @@ import dill
 import itertools
 from collections import OrderedDict
 from pdb import set_trace as st
-from dovebirdia.filtering.kalman_filter import KalmanFilter, ExtendedKalmanFilter
+from dovebirdia.filtering.kalman_filter import ExtendedKalmanFilter
 import dovebirdia.utilities.dr_functions as drfns 
 from dovebirdia.datasets.domain_randomization import DomainRandomizationDataset
 from sklearn.datasets import make_spd_matrix
@@ -36,7 +36,7 @@ script = '/home/mlweiss/Documents/wpi/research/code/dovebirdia/scripts/filter_mo
 project = 'asilomar2020'
 
 experiments = [
-    ('kf_ncv_turn_1_gaussian_0_20_Q_0-5',
+    ('ekf_ncv_turn_1_gaussian_0_20_Q_0-5',
      '/home/mlweiss/Documents/wpi/research/code/dovebirdia/experiments/asilomar2020/eval/benchmark_gaussian_20_turn.pkl')
 ]
 
@@ -79,7 +79,7 @@ kf_params['meas_dims'] = meas_dims = 2
 kf_params['state_dims'] = state_dims = kf_params['meas_dims']
 
 # number of state estimate 
-kf_params['dt'] = dt = 0.1
+kf_params['dt'] = dt = 1e-1
 
 # dynamical model order (i.e. ncv = 2, nca = 3, jerk = 4)
 kf_params['model_order'] = model_order = 2
@@ -108,15 +108,21 @@ def F(state_dims,dt,x):
     
     return np.kron(np.eye(state_dims),state_trans)
 
+def Q(state_dims,model_order):
+
+    return 1e-4*np.kron(np.eye(state_dims),np.eye(model_order))
+    
 kf_params['F'] = F
-kf_params['F_params'] = ('state_dims','dt','x')
+kf_params['F_params'] = ('state_dims','dt')
 
 kf_params['J'] = kf_params['F']
 kf_params['J_params'] = kf_params['F_params']
 
+kf_params['Q'] = Q
+kf_params['Q_params'] = ('state_dims','model_order')
+
 kf_params['H'] = np.kron(np.eye(meas_dims), np.insert(np.zeros(model_order-1),0,1) )
-kf_params['R'] = 5 * np.eye(meas_dims)
-kf_params['Q'] = 0.5*np.kron(np.eye(state_dims),np.eye(model_order))
+kf_params['R'] = 20.0 * np.eye(meas_dims)
 
 #####################
 # AEKF MCA Parameters

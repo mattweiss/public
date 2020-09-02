@@ -108,10 +108,26 @@ F_jerk = np.array([[1.0,dt,0.5*dt**2,(1.0/6.0)*dt**3],
     
 #     return np.kron(np.eye(state_dims),state_trans)
 
+def Q_NCV():
+
+    dt = 0.1
+    
+    G = np.array([
+        [(dt**2)/2.0,0.0],
+        [dt,0.0],
+        [0.0,(dt**2)/2.0],
+        [0.0,dt],
+    ])
+
+    w = 1e3*np.array([[0.5],[0.5]])
+    Q = w@w.T
+
+    return np.eye(4) #G@Q@G.T
+
 kf_params['F'] = np.kron(np.eye(state_dims),F_NCV)
 kf_params['H'] = np.kron(np.eye(meas_dims), [1.0,0.0] )
-kf_params['R'] = 5.0 * np.eye(meas_dims)
-kf_params['Q'] = 1e-2*np.kron(np.eye(state_dims),np.eye(model_order))
+kf_params['R'] = 20.0 * np.eye(meas_dims)
+kf_params['Q'] = Q_NCV() #1e-1*np.kron(np.eye(state_dims),np.eye(model_order))
 
 #####################
 # AEKF MCA Parameters
